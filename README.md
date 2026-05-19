@@ -1,6 +1,12 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS-K1T323MBWX
+# 📋 Sistema de Control de Asistencia — Hikvision DS-K1T323MBWX (v1.1)
 
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS-K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS**.
+
+### 🌟 Novedades de la Versión 1.1
+* **Tolerancias de Entrada y Salida Configurables:** Ahora es posible definir de forma dinámica desde la web los minutos de tolerancia para la llegada de personal.
+* **Importación Histórica Inteligente por Fechas:** Nuevo módulo con barra de carga animada y anti-bloqueo que permite extraer y consolidar asistencias de meses pasados directo desde el biométrico.
+* **Filtro Automático de Desconocidos:** El sistema ignora de forma inteligente cualquier intento de autenticación que no corresponda a un empleado registrado.
+* **Arranque Automático en Linux:** Soporte completo para correr como un servicio de sistema continuo (`systemd`).
 
 ---
 
@@ -18,8 +24,13 @@ Para ejecutar el proyecto en tu computadora local:
    - Configura las variables de tu base de datos y del dispositivo Hikvision.
 
 3. **Arrancar el sistema:**
-   - Simplemente haz doble clic en el archivo **`start.bat`**. 
-   - *Este archivo automáticamente creará un entorno virtual, instalará las dependencias necesarias y arrancará el servidor.*
+   - **En Windows:** Simplemente haz doble clic en el archivo **`start.bat`**. 
+     *Este archivo automáticamente creará un entorno virtual, instalará las dependencias necesarias y arrancará el servidor.*
+   - **En Linux:** Ejecuta en la terminal:
+     ```bash
+     source venv/bin/activate
+     python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+     ```
 
 4. **Acceso:**
    - Abre el navegador y ve a: **http://localhost:8000**
@@ -68,9 +79,58 @@ Si quieres descargar este código fuente en otra computadora y hacerlo funcionar
 
 ---
 
-## 🐙 3. Cómo subir cambios a GitHub
+## 🛠️ 3. Configuración como Servicio de Linux (Systemd)
 
-Si modificas el código (agregas nuevas funcionalidades, modificas el diseño, etc.) y quieres guardar esos cambios en GitHub, abre la terminal en la carpeta del proyecto y ejecuta estos tres comandos:
+Para que el servidor se encienda **automáticamente al prender la computadora** (sin tener que abrir la terminal o dejar una consola abierta):
+
+1. **Crea el archivo del servicio de sistema:**
+   ```bash
+   sudo nano /etc/systemd/system/asistencia.service
+   ```
+
+2. **Pega la siguiente estructura de configuración (adaptando la ruta de tu proyecto):**
+   ```ini
+   [Unit]
+   Description=Servicio de Control de Asistencia Hikvision
+   After=network.target postgresql.service
+
+   [Service]
+   User=cesar
+   WorkingDirectory=/home/cesar/Descargas/Asistencia
+   ExecStart=/home/cesar/Descargas/Asistencia/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
+   Restart=always
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. **Activa e inicia el servicio en Linux:**
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable asistencia
+   sudo systemctl start asistencia
+   ```
+
+4. **Comandos útiles del servicio:**
+   * Ver el estado en vivo: `sudo systemctl status asistencia`
+   * Reiniciar el servidor: `sudo systemctl restart asistencia`
+   * Detener el servidor: `sudo systemctl stop asistencia`
+
+---
+
+## 🧰 4. Scripts y Utilidades de Soporte Incorporados
+
+En la raíz del proyecto encontrarás scripts listos para tareas directas de administración:
+
+* **`import_historic.py`**: Script de consola ultra robusto para extraer datos históricos. Permite sincronizar manualmente tramos específicos de años anteriores saltándose las restricciones de hardware del biométrico.
+* **`clear_db.py`**: Limpiador seguro para base de datos local. Borra selectivamente las tablas de asistencias (`AttendanceRecord`) y empleados (`Employee`) para realizar una nueva importación limpia desde el terminal.
+* **`add_columns.py`**: Agrega de forma rápida las nuevas columnas de configuración a la base de datos sin alterar los registros existentes.
+
+---
+
+## 🐙 5. Cómo subir cambios a GitHub
+
+Si modificas el código (agregas nuevas funcionalidades, modificas el diseño, etc.) y quieres guardar esos cambios en tu repositorio, abre la terminal en la carpeta del proyecto y ejecuta estos comandos:
 
 1. **Añadir todos los archivos modificados:**
    ```bash
@@ -80,14 +140,14 @@ Si modificas el código (agregas nuevas funcionalidades, modificas el diseño, e
    ```bash
    git commit -m "Descripción de lo que modificaste (ej: Agregado nuevo reporte de horas)"
    ```
-3. **Subir los cambios al repositorio en internet:**
+3. **Subir los cambios al repositorio a la versión activa:**
    ```bash
-   git push origin main
+   git push origin 1.1
    ```
 
 ---
 
-## 🌐 4. Proceso de despliegue (Cómo subirlo a un Servidor Real / VPS)
+## 🌐 6. Proceso de despliegue (Cómo subirlo a un Servidor Real / VPS)
 
 Para poner este sistema en producción en un servidor real (como AWS, DigitalOcean, Hostinger VPS, etc.), los pasos generales son:
 
@@ -99,11 +159,7 @@ Para poner este sistema en producción en un servidor real (como AWS, DigitalOce
    - Acceder al servidor por SSH y clonar el repositorio:
      `git clone https://github.com/sistemctl/Sistema-De-Asistencia.git`
 4. **Configurar como Servicio de Producción:**
-   - En producción **no** se usa `start.bat`.
-   - Se debe instalar **Gunicorn** como servidor de aplicaciones para correr FastAPI.
-   - Configurar un proxy inverso con **Nginx** para que reciba las peticiones del puerto 80 (HTTP) o 443 (HTTPS) y las mande al puerto de FastAPI (8000).
-5. **Asegurar la red:**
-   - El servidor en la nube debe poder alcanzar la IP de tu dispositivo Hikvision (esto suele requerir configuración de redes, como VPN o port-forwarding en la ubicación física donde esté el dispositivo biométrico, o instalar el backend en una computadora física dentro de la misma red local del dispositivo y exponer solo el puerto 8000 al exterior).
+   - Configurar el Nginx como proxy inverso para que exponga el puerto 80/443 de forma segura y segura redirija las peticiones a FastAPI.
 
 > [!WARNING]  
 > **Comunicación con el biométrico:** Dado que el biométrico funciona en una red local (LAN, ej: `192.168...`), si instalas el sistema en un servidor de internet (Nube), el servidor de internet NO podrá "ver" al dispositivo.  
