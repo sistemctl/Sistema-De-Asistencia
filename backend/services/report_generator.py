@@ -157,3 +157,127 @@ def generate_pdf_report(
 
     doc.build(elements)
     return buf.getvalue()
+
+
+def generate_consolidated_excel(
+    db: Session,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+) -> bytes:
+    """Genera un reporte consolidado en Excel con entrada y salida en la misma fila por día."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from collections import defaultdict
+
+    query = db.query(AttendanceRecord).join(
+        Employee, AttendanceRecord.employee_id == Employee.id, isouter=True
+    )
+    if date_from:
+        query = query.filter(AttendanceRecord.event_time >= date_from)
+    if date_to:
+        query = query.filter(AttendanceRecord.event_time <= date_to)
+
+    records = query.order_by(AttendanceRecord.event_time.asc()).all()
+
+    # Agrupar por (empleado, fecha)
+    data_map = defaultdict(lambda: {"entries": [], "exits": []})
+    employee_cache = {}
+
+    for r in records:
+        if not r.employee_id:
+            continue
+        emp_id = r.employee_id
+        if emp_id not in employee_cache:
+            employee_cache[emp_id] = r.employee
+            
+        day = r.event_time.date()
+        if r.event_type == "entry":
+            data_map[(emp_id, day)]["entries"].append(r)
+        else:
+            data_map[(emp_id, day)]["exits"].append(r)
+
+    # Ordenar por fecha desc, luego nombre empleado
+    sorted_keys = sorted(
+        data_map.keys(),
+        key=lambda k: (k[1], employee_cache.get(k[0]).last_name if employee_cache.get(k[0]) else ""),
+        reverse=True
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Consolidado Diario"
+
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill("solid", fgColor="1e3a5f")
+    center = Alignment(horizontal="center", vertical="center")
+    thin = Side(style="thin", color="CCCCCC")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    headers = [
+        "Fecha", "Código", "Empleado", "Departamento", 
+        "Hora Entrada", "Hora Salida", "Horario", "Tardanza"
+    ]
+    ws.append(headers)
+
+    for col_idx, _ in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+        cell.border = border
+
+    row_num = 2
+    for key in sorted_keys:
+        emp_id, day = key
+        emp = employee_cache.get(emp_id)
+        if not emp:
+            continue
+            
+        group = data_map[key]
+        
+        # Entrada: primer registro de entrada del día
+        entry_time_str = "-"
+        is_late_str = "No"
+        if group["entries"]:
+            first_entry = min(group["entries"], key=lambda r: r.event_time)
+            entry_time_str = first_entry.event_time.strftime("%H:%M:%S")
+            is_late_str = "Sí" if first_entry.is_late else "No"
+            
+        # Salida: último registro de salida del día
+        exit_time_str = "-"
+        if group["exits"]:
+            last_exit = max(group["exits"], key=lambda r: r.event_time)
+            exit_time_str = last_exit.event_time.strftime("%H:%M:%S")
+
+        row = [
+            day.strftime("%d/%m/%Y"),
+            emp.employee_code,
+            emp.full_name,
+            emp.department.name if emp.department else "-",
+            entry_time_str,
+            exit_time_str,
+            f"{emp.work_start_time} - {emp.work_end_time}",
+            is_late_str
+        ]
+        ws.append(row)
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_num, column=col_idx)
+            cell.alignment = center
+            cell.border = border
+            if is_late_str == "Sí" and col_idx == 8:
+                cell.font = Font(color="CC0000", bold=True)
+        
+        row_num += 1
+
+    # Anchos de columna
+    col_widths = [14, 12, 28, 20, 14, 14, 16, 12]
+    for i, width in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

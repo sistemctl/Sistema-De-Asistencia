@@ -177,3 +177,108 @@ def sync_employee_to_device(emp_id: int, db: Session = Depends(get_db), _=Depend
         return {"ok": True, "device_user_id": device_uid}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al sincronizar: {str(e)}")
+
+
+@router.post("/import-from-device")
+def import_employees_from_device(db: Session = Depends(get_db), _=Depends(require_admin)):
+    from backend.models import DeviceConfig
+    from backend.services.hikvision import HikvisionClient
+
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=503, detail="No hay configuración de dispositivo")
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    if not client.check_online():
+        raise HTTPException(status_code=503, detail="Dispositivo fuera de línea")
+
+    try:
+        # Traer usuarios en páginas de 30 con manejo de reintentos por rate-limit
+        import time
+        user_list = []
+        start_pos = 1
+        limit = 30
+        while True:
+            users_page = None
+            for attempt in range(3):
+                try:
+                    res = client.list_users(start=start_pos, limit=limit)
+                    search_data = res.get("UserInfoSearchRet") or res.get("UserInfoSearch", {})
+                    users_page = search_data.get("UserInfo", [])
+                    break  # Éxito
+                except Exception as e:
+                    print(f"Error importando página (intento {attempt+1}): {e}")
+                    time.sleep(1)
+            
+            if users_page is None:
+                raise HTTPException(status_code=502, detail="Fallo repetido al comunicarse con el biométrico")
+                
+            if not users_page:
+                break
+                
+            user_list.extend(users_page)
+            if len(users_page) < limit:
+                break
+            start_pos += limit
+            time.sleep(0.2)  # Pequeña pausa para no saturar el dispositivo
+        
+        imported_count = 0
+        updated_count = 0
+        
+        for u in user_list:
+            device_uid = str(u.get("employeeNo"))
+            name = u.get("name", "Empleado")
+            
+            # Obtener número de tarjeta si tiene
+            card_info = u.get("CardInfo", [])
+            card_number = card_info[0].get("cardNo") if card_info else None
+            
+            # Dividir primer nombre y apellido
+            parts = name.strip().split(" ", 1)
+            if len(parts) == 2:
+                first_name, last_name = parts[0], parts[1]
+            else:
+                first_name, last_name = parts[0], "-"
+            
+            # Buscar si ya existe por device_user_id o employee_code
+            emp = db.query(Employee).filter(
+                (Employee.device_user_id == device_uid) | 
+                (Employee.employee_code == device_uid)
+            ).first()
+            
+            if emp:
+                # Actualizar información
+                emp.device_user_id = device_uid
+                emp.first_name = first_name
+                emp.last_name = last_name
+                if card_number:
+                    emp.card_number = card_number
+                emp.synced_to_device = True
+                updated_count += 1
+            else:
+                # Crear nuevo empleado con el horario de 7:00 AM a 6:00 PM por defecto
+                new_emp = Employee(
+                    employee_code=device_uid,
+                    device_user_id=device_uid,
+                    first_name=first_name,
+                    last_name=last_name,
+                    card_number=card_number,
+                    synced_to_device=True,
+                    is_active=True,
+                    work_start_time="07:00",
+                    work_end_time="18:00",
+                )
+                db.add(new_emp)
+                imported_count += 1
+                
+        db.commit()
+        return {
+            "status": "success",
+            "imported": imported_count,
+            "updated": updated_count,
+            "total_device_users": len(user_list)
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al importar desde el dispositivo: {str(e)}")
+

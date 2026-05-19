@@ -12,7 +12,10 @@ const EmployeesPage = {
             <span class="icon">🔍</span>
             <input type="text" id="empSearch" placeholder="Buscar por nombre o código..." style="width:220px" />
           </div>
-          ${Auth.isAdmin() ? `<button class="btn btn-primary" id="btnNewEmp">+ Nuevo empleado</button>` : ''}
+          ${Auth.isAdmin() ? `
+            <button class="btn btn-secondary" id="btnImportFromDevice" style="margin-right:8px">📥 Importar del Biométrico</button>
+            <button class="btn btn-primary" id="btnNewEmp">+ Nuevo empleado</button>
+          ` : ''}
         </div>
       </div>
       <div class="card">
@@ -33,7 +36,10 @@ const EmployeesPage = {
     document.getElementById('empSearch').addEventListener('input', (e) => {
       this.search = e.target.value; this.page = 1; this.loadTable();
     });
-    if (Auth.isAdmin()) document.getElementById('btnNewEmp')?.addEventListener('click', () => this.openForm());
+    if (Auth.isAdmin()) {
+      document.getElementById('btnNewEmp')?.addEventListener('click', () => this.openForm());
+      document.getElementById('btnImportFromDevice')?.addEventListener('click', () => this.importFromDevice());
+    }
     await this.loadTable();
   },
 
@@ -88,8 +94,8 @@ const EmployeesPage = {
         <div class="field"><label>N° Tarjeta M1</label><input id="fCard" value="${emp?.card_number||''}" placeholder="Opcional" /></div>
       </div>
       <div class="form-row">
-        <div class="field"><label>Entrada</label><input id="fStart" type="time" value="${emp?.work_start_time||'08:00'}" /></div>
-        <div class="field"><label>Salida</label><input id="fEnd" type="time" value="${emp?.work_end_time||'17:00'}" /></div>
+        <div class="field"><label>Entrada</label><input id="fStart" type="time" value="${emp?.work_start_time||'07:00'}" /></div>
+        <div class="field"><label>Salida</label><input id="fEnd" type="time" value="${emp?.work_end_time||'18:00'}" /></div>
       </div>`,
       `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
        <button class="btn btn-primary" onclick="EmployeesPage.saveEmployee(${id||'null'})">Guardar</button>`);
@@ -131,5 +137,22 @@ const EmployeesPage = {
       await API.postForm(`/api/employees/${id}/photo`, fd);
       Modal.close(); Toast.show('Foto actualizada', 'success'); this.loadTable();
     } catch(e) { Toast.show(e.message, 'error'); }
+  },
+
+  async importFromDevice() {
+    if (!confirm("¿Deseas importar todos los empleados registrados en el dispositivo biométrico? Esto agregará a los empleados nuevos y actualizará los existentes.")) return;
+    
+    Toast.show('Iniciando importación desde el dispositivo...', 'info');
+    try {
+      const res = await API.post('/api/employees/import-from-device');
+      if (res.status === 'success') {
+        Toast.show(`Importación finalizada: ${res.imported} creados, ${res.updated} actualizados (Total: ${res.total_device_users} en dispositivo).`, 'success');
+        this.loadTable();
+      } else {
+        Toast.show('Error al importar empleados', 'error');
+      }
+    } catch(e) {
+      Toast.show(e.message || 'Error de conexión', 'error');
+    }
   },
 };

@@ -18,7 +18,8 @@ class HikvisionClient:
 
     def __init__(self, ip: str, port: int, username: str, password: str):
         self.base_url = f"http://{ip}:{port}/ISAPI"
-        self.auth = HTTPDigestAuth(username, password)
+        self.username = username
+        self.password = password
         self.timeout = DEVICE_TIMEOUT
         self._is_online: Optional[bool] = None
 
@@ -29,7 +30,7 @@ class HikvisionClient:
         try:
             r = requests.get(
                 f"{self.base_url}/System/deviceInfo",
-                auth=self.auth,
+                auth=HTTPDigestAuth(self.username, self.password),
                 timeout=self.timeout,
             )
             self._is_online = r.status_code in (200, 401)
@@ -48,7 +49,7 @@ class HikvisionClient:
     def get_device_info(self) -> dict:
         r = requests.get(
             f"{self.base_url}/System/deviceInfo",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             timeout=self.timeout,
         )
         r.raise_for_status()
@@ -56,17 +57,20 @@ class HikvisionClient:
 
     # ── Usuarios ──────────────────────────────────────────────────────────────
 
-    def list_users(self, start: int = 1, limit: int = 50) -> dict:
+    def list_users(self, start: int = 1, limit: int = 50, search_id: str = None) -> dict:
+        if not search_id:
+            import uuid
+            search_id = uuid.uuid4().hex
         payload = {
             "UserInfoSearchCond": {
-                "searchID": "1",
+                "searchID": search_id,
                 "searchResultPosition": start,
                 "maxResults": limit,
             }
         }
         r = requests.post(
             f"{self.base_url}/AccessControl/UserInfo/Search?format=json",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -93,7 +97,7 @@ class HikvisionClient:
         payload = {"UserInfo": [user_info]}
         r = requests.post(
             f"{self.base_url}/AccessControl/UserInfo/Record?format=json",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -104,7 +108,7 @@ class HikvisionClient:
         payload = {"UserInfoDelCond": {"EmployeeNoList": [{"employeeNo": user_id}]}}
         r = requests.put(
             f"{self.base_url}/AccessControl/UserInfo/Delete?format=json",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -122,7 +126,7 @@ class HikvisionClient:
         }
         r = requests.post(
             f"{self.base_url}/Intelligent/FDLib/FaceDataRecord?format=json",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -133,9 +137,10 @@ class HikvisionClient:
 
     def get_events(self, start_time: datetime, end_time: datetime, max_results: int = 1000) -> list[dict]:
         """Obtiene eventos de acceso del dispositivo en un rango de tiempo."""
+        import uuid
         payload = {
             "AcsEventCond": {
-                "searchID": "1",
+                "searchID": uuid.uuid4().hex,
                 "searchResultPosition": 0,
                 "maxResults": max_results,
                 "major": 5,
@@ -146,7 +151,7 @@ class HikvisionClient:
         }
         r = requests.post(
             f"{self.base_url}/AccessControl/AcsEvent?format=json",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -159,7 +164,7 @@ class HikvisionClient:
     def get_capabilities(self) -> dict:
         r = requests.get(
             f"{self.base_url}/AccessControl/capabilities",
-            auth=self.auth,
+            auth=HTTPDigestAuth(self.username, self.password),
             timeout=self.timeout,
         )
         r.raise_for_status()

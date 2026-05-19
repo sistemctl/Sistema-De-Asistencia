@@ -65,8 +65,8 @@ class EmployeeCreate(BaseModel):
     position: Optional[str] = None
     department_id: Optional[int] = None
     card_number: Optional[str] = None
-    work_start_time: str = "08:00"
-    work_end_time: str = "17:00"
+    work_start_time: str = "07:00"
+    work_end_time: str = "18:00"
 
 class EmployeeUpdate(BaseModel):
     first_name: Optional[str] = None

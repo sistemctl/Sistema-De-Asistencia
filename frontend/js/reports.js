@@ -4,7 +4,7 @@ const ReportsPage = {
   async render() {
     document.getElementById('pageContent').innerHTML = `
       <div class="section-header"><div class="section-title">Reportes</div></div>
-      <div class="grid-2">
+      <div class="grid-3">
 
         <div class="card">
           <div class="card-header">
@@ -28,6 +28,17 @@ const ReportsPage = {
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">📅 Consolidado Diario</div><div class="card-sub">Una sola fila por día (Entrada y Salida)</div></div>
+          </div>
+          <div class="field"><label>Desde</label><input type="date" id="consFrom" /></div>
+          <div class="field"><label>Hasta</label><input type="date" id="consTo" /></div>
+          <div style="margin-top:8px">
+            <button class="btn btn-success" style="width:100%" onclick="ReportsPage.exportConsolidated()">⬇ Consolidado Excel</button>
+          </div>
+        </div>
+
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -43,8 +54,8 @@ const ReportsPage = {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
-    ['xlFrom','pdfFrom'].forEach(id => document.getElementById(id).value = firstDay);
-    ['xlTo','pdfTo'].forEach(id => document.getElementById(id).value = todayStr);
+    ['xlFrom','pdfFrom','consFrom'].forEach(id => document.getElementById(id).value = firstDay);
+    ['xlTo','pdfTo','consTo'].forEach(id => document.getElementById(id).value = todayStr);
   },
 
   download(url) {
@@ -88,5 +99,19 @@ const ReportsPage = {
         Toast.show('PDF descargado', 'success');
       })
       .catch(() => Toast.show('Error generando PDF', 'error'));
+  },
+
+  exportConsolidated() {
+    const token = API.token();
+    const params = this.buildParams('consFrom', 'consTo');
+    fetch(`/api/reports/consolidated${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `consolidado_asistencia_${new Date().toISOString().split('T')[0]}.xlsx`; a.click();
+        Toast.show('Consolidado descargado', 'success');
+      })
+      .catch(() => Toast.show('Error generando Consolidado', 'error'));
   },
 };

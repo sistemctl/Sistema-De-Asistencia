@@ -55,8 +55,8 @@ class Employee(Base):
     card_number = Column(String(50), nullable=True)       # Número de tarjeta M1
     is_active = Column(Boolean, default=True)
     synced_to_device = Column(Boolean, default=False)     # ¿Está registrado en el dispositivo?
-    work_start_time = Column(String(5), default="08:00")  # HH:MM
-    work_end_time = Column(String(5), default="17:00")
+    work_start_time = Column(String(5), default="07:00")  # HH:MM
+    work_end_time = Column(String(5), default="18:00")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
