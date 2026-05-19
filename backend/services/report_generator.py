@@ -120,9 +120,10 @@ def generate_pdf_report(
     title_style = ParagraphStyle("title", parent=styles["Title"], fontSize=16, textColor=colors.HexColor("#1e3a5f"))
     sub_style = ParagraphStyle("sub", parent=styles["Normal"], fontSize=9, textColor=colors.grey)
 
+    from backend.utils import get_local_now
     elements = [
         Paragraph("Reporte de Asistencia", title_style),
-        Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')} — Total registros: {len(records)}", sub_style),
+        Paragraph(f"Generado: {get_local_now().strftime('%d/%m/%Y %H:%M')} — Total registros: {len(records)}", sub_style),
         Spacer(1, 0.5*cm),
     ]
 

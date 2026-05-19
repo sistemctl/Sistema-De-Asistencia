@@ -6,11 +6,12 @@ import json
 import random
 from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import requests
 from requests.auth import HTTPDigestAuth
 
-from backend.config import DEVICE_TIMEOUT
+from backend.config import DEVICE_TIMEOUT, TIMEZONE
 
 
 class HikvisionClient:
@@ -136,28 +137,72 @@ class HikvisionClient:
     # ── Eventos de acceso / asistencia ────────────────────────────────────────
 
     def get_events(self, start_time: datetime, end_time: datetime, max_results: int = 1000) -> list[dict]:
-        """Obtiene eventos de acceso del dispositivo en un rango de tiempo."""
+        """Obtiene todos los eventos de acceso del dispositivo en un rango de tiempo usando paginación."""
         import uuid
-        payload = {
-            "AcsEventCond": {
-                "searchID": uuid.uuid4().hex,
-                "searchResultPosition": 0,
-                "maxResults": max_results,
-                "major": 5,
-                "minor": 75,
-                "startTime": start_time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                "endTime": end_time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+        search_id = uuid.uuid4().hex
+        all_events = []
+        position = 0
+        limit = 500  # Pedir de 500 en 500 para evitar saturar el dispositivo
+
+        while True:
+
+            # Formatear tiempos con offset ISO8601 correcto para la zona configurada
+            tz = ZoneInfo(TIMEZONE)
+            st_aware = start_time.replace(tzinfo=tz) if not start_time.tzinfo else start_time.astimezone(tz)
+            et_aware = end_time.replace(tzinfo=tz) if not end_time.tzinfo else end_time.astimezone(tz)
+
+            # Eliminar microsegundos porque Hikvision ISAPI no los soporta
+            st_aware = st_aware.replace(microsecond=0)
+            et_aware = et_aware.replace(microsecond=0)
+
+            payload = {
+                "AcsEventCond": {
+                    "searchID": search_id,
+                    "searchResultPosition": position,
+                    "maxResults": limit,
+                    "major": 5,
+                    "minor": 0,
+                    "startTime": st_aware.isoformat(),
+                    "endTime": et_aware.isoformat(),
+                }
             }
-        }
-        r = requests.post(
-            f"{self.base_url}/AccessControl/AcsEvent?format=json",
-            auth=HTTPDigestAuth(self.username, self.password),
-            json=payload,
-            timeout=self.timeout,
-        )
-        r.raise_for_status()
-        data = r.json()
-        return data.get("AcsEvent", {}).get("InfoList", [])
+            try:
+                r = requests.post(
+                    f"{self.base_url}/AccessControl/AcsEvent?format=json",
+                    auth=HTTPDigestAuth(self.username, self.password),
+                    json=payload,
+                    timeout=self.timeout,
+                )
+                r.raise_for_status()
+            except Exception:
+                # Si falla o hay timeout en la página N, devolver lo que ya logramos obtener
+                break
+
+            data = r.json()
+            events_page = data.get("AcsEvent", {}).get("InfoList", [])
+            
+            if not events_page:
+                break
+            
+            all_events.extend(events_page)
+            if len(all_events) >= max_results:
+                all_events = all_events[:max_results]
+                break
+
+            status_str = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            if status_str != "MORE":
+                break
+
+            position += len(events_page)
+            # Pequeña pausa para no saturar al dispositivo con 56 peticiones
+            import time
+            time.sleep(0.1)
+            
+            # Límite de seguridad para no quedar atrapados en un loop infinito
+            if len(all_events) >= 50000:
+                break
+
+        return all_events
 
     # ── Capacidades ───────────────────────────────────────────────────────────
 
@@ -185,7 +230,8 @@ def generate_mock_events(since: datetime, employee_ids: list[str], max_events: i
     Simula entradas entre 07:30 y 09:30 y salidas entre 17:00 y 18:30.
     """
     events = []
-    now = datetime.utcnow()
+    tz = ZoneInfo(TIMEZONE)
+    now = datetime.now(tz)
     day = since.date()
 
     # Solo generar eventos para días pasados hasta hoy
@@ -195,11 +241,11 @@ def generate_mock_events(since: datetime, employee_ids: list[str], max_events: i
                 # Entrada
                 entry_hour = random.randint(7, 9)
                 entry_min = random.randint(0, 59)
-                entry_dt = datetime(day.year, day.month, day.day, entry_hour, entry_min)
+                entry_dt = datetime(day.year, day.month, day.day, entry_hour, entry_min, tzinfo=tz)
                 events.append({
                     "eventId": f"MOCK-{day}-{uid}-IN",
                     "employeeNoString": uid,
-                    "time": entry_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "time": entry_dt.isoformat(),
                     "major": 5,
                     "minor": 75,
                     "currentVerifyMode": "faceNotCompare",
@@ -210,11 +256,11 @@ def generate_mock_events(since: datetime, employee_ids: list[str], max_events: i
                 if random.random() > 0.1:
                     exit_hour = random.randint(17, 18)
                     exit_min = random.randint(0, 59)
-                    exit_dt = datetime(day.year, day.month, day.day, exit_hour, exit_min)
+                    exit_dt = datetime(day.year, day.month, day.day, exit_hour, exit_min, tzinfo=tz)
                     events.append({
                         "eventId": f"MOCK-{day}-{uid}-OUT",
                         "employeeNoString": uid,
-                        "time": exit_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "time": exit_dt.isoformat(),
                         "major": 5,
                         "minor": 75,
                         "currentVerifyMode": "faceNotCompare",

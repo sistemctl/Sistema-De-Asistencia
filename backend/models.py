@@ -22,7 +22,7 @@ class User(Base):
     full_name = Column(String(150), nullable=False)
     role = Column(String(20), default="viewer")          # admin | viewer
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     last_login = Column(DateTime, nullable=True)
 
 
@@ -33,7 +33,7 @@ class Department(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
     description = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
 
     employees = relationship("Employee", back_populates="department")
 
@@ -57,8 +57,8 @@ class Employee(Base):
     synced_to_device = Column(Boolean, default=False)     # ¿Está registrado en el dispositivo?
     work_start_time = Column(String(5), default="07:00")  # HH:MM
     work_end_time = Column(String(5), default="18:00")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     department = relationship("Department", back_populates="employees")
     attendance_records = relationship("AttendanceRecord", back_populates="employee")
@@ -83,7 +83,7 @@ class AttendanceRecord(Base):
     mask_detected = Column(Boolean, nullable=True)
     is_late = Column(Boolean, default=False)
     raw_data = Column(Text, nullable=True)                      # JSON crudo del evento
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
 
     employee = relationship("Employee", back_populates="attendance_records")
 
@@ -106,7 +106,9 @@ class DeviceConfig(Base):
     last_check = Column(DateTime, nullable=True)
     last_successful_sync = Column(DateTime, nullable=True)
     total_events_synced = Column(Integer, default=0)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    entry_tolerance_minutes = Column(Integer, default=10)
+    exit_tolerance_minutes = Column(Integer, default=10)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class SyncLog(Base):
@@ -114,7 +116,7 @@ class SyncLog(Base):
     __tablename__ = "sync_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=datetime.now)
     finished_at = Column(DateTime, nullable=True)
     status = Column(String(20), default="running")   # running | success | error | offline
     events_fetched = Column(Integer, default=0)

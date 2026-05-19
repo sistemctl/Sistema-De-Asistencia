@@ -14,7 +14,8 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 @router.get("/kpis")
 def get_kpis(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    today = date.today()
+    from backend.utils import get_local_now
+    today = get_local_now().date()
     today_start = datetime.combine(today, datetime.min.time())
     today_end = datetime.combine(today, datetime.max.time())
 
@@ -60,7 +61,8 @@ def get_kpis(db: Session = Depends(get_db), _=Depends(get_current_user)):
 
 @router.get("/weekly")
 def get_weekly_data(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    today = date.today()
+    from backend.utils import get_local_now
+    today = get_local_now().date()
     labels, present_list, absent_list, late_list = [], [], [], []
 
     total_employees = db.query(Employee).filter(Employee.is_active == True).count()

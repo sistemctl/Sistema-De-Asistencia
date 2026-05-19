@@ -5,6 +5,7 @@ Usa APScheduler para ejecutar la sincronización cada N minutos en segundo plano
 import json
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
@@ -12,11 +13,12 @@ from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.models import AttendanceRecord, DeviceConfig, Employee, SyncLog
 from backend.services.hikvision import HikvisionClient, generate_mock_events
-from backend.config import SYNC_MAX_EVENTS
+from backend.config import SYNC_MAX_EVENTS, TIMEZONE
+from backend.utils import get_local_now, to_local_datetime
 
 logger = logging.getLogger(__name__)
 
-_scheduler = BackgroundScheduler(timezone="America/Lima")
+_scheduler = BackgroundScheduler(timezone=TIMEZONE)
 
 
 def start_scheduler():
@@ -30,7 +32,7 @@ def start_scheduler():
         minutes=interval,
         id="sync_hikvision",
         replace_existing=True,
-        next_run_time=datetime.now(),  # Ejecutar inmediatamente al iniciar
+        next_run_time=get_local_now().replace(tzinfo=None),  # Ejecutar inmediatamente al iniciar
     )
     _scheduler.start()
     logger.info(f"✅ Scheduler iniciado — sincronización cada {interval} minutos")
@@ -55,7 +57,7 @@ def update_sync_interval(minutes: int):
 def sync_job():
     """Tarea principal de sincronización. Se ejecuta periódicamente."""
     db = SessionLocal()
-    log = SyncLog(started_at=datetime.utcnow(), status="running")
+    log = SyncLog(started_at=get_local_now().replace(tzinfo=None), status="running")
     db.add(log)
     db.commit()
     db.refresh(log)
@@ -71,30 +73,27 @@ def sync_job():
 
         # Actualizar estado online en BD
         cfg.is_online = is_online
-        cfg.last_check = datetime.utcnow()
+        cfg.last_check = get_local_now().replace(tzinfo=None)
         db.commit()
 
-        # Determinar desde cuándo traer eventos
-        since = cfg.last_successful_sync or (datetime.utcnow() - timedelta(days=7))
+        # Determinar desde cuándo traer eventos (Si es la primera vez, trae de hace 90 días)
+        since = cfg.last_successful_sync or (get_local_now().replace(tzinfo=None) - timedelta(days=90))
+        until = get_local_now().replace(tzinfo=None) + timedelta(hours=1)
 
         if is_online:
-            raw_events = client.get_events(since, datetime.utcnow(), SYNC_MAX_EVENTS)
+            raw_events = client.get_events(since, until, SYNC_MAX_EVENTS)
             is_mock = False
             logger.info(f"📡 Dispositivo online — {len(raw_events)} eventos obtenidos")
         else:
-            # Modo offline: generar eventos simulados
-            employee_ids = [e.device_user_id or str(e.id) for e in
-                            db.query(Employee).filter(Employee.is_active == True).all()]
-            if not employee_ids:
-                employee_ids = [str(i) for i in range(1, 6)]
-            raw_events = generate_mock_events(since, employee_ids, max_events=30)
-            is_mock = True
-            logger.info(f"🔵 Dispositivo offline — {len(raw_events)} eventos simulados")
+            # Modo offline: Ya no generamos eventos simulados
+            raw_events = []
+            is_mock = False
+            logger.info(f"📴 Dispositivo offline — Sincronización omitida (MOCK desactivado)")
 
-        new_count = _process_events(db, raw_events)
+        new_count = _process_events(db, raw_events, cfg)
 
         # Actualizar estadísticas
-        cfg.last_successful_sync = datetime.utcnow()
+        cfg.last_successful_sync = get_local_now().replace(tzinfo=None)
         cfg.total_events_synced += new_count
         _finish_log(db, log, "success", fetched=len(raw_events), new=new_count, is_mock=is_mock)
         logger.info(f"✅ Sync completado — {new_count} registros nuevos")
@@ -107,7 +106,119 @@ def sync_job():
         db.close()
 
 
-def _process_events(db: Session, raw_events: list[dict]) -> int:
+def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
+    """Descarga de forma profunda el historial filtrando por fechas dinámicas."""
+    import time
+    import requests
+    from requests.auth import HTTPDigestAuth
+    import uuid
+    
+    db = SessionLocal()
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        db.close()
+        return
+
+    log = SyncLog(started_at=get_local_now().replace(tzinfo=None), status="running")
+    db.add(log)
+    db.commit()
+
+    try:
+        client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+        if not client.check_online():
+            raise Exception("Dispositivo fuera de línea")
+
+        if start_date_str:
+            current_start = datetime.strptime(start_date_str, "%Y-%m-%d")
+        else:
+            current_start = datetime(2020, 1, 1, 0, 0, 0)
+            
+        if end_date_str:
+            final_end = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=1)
+        else:
+            final_end = get_local_now().replace(tzinfo=None) + timedelta(days=1)
+        
+        total_downloaded = 0
+        total_inserted = 0
+        tz = ZoneInfo(TIMEZONE)
+        
+        while current_start < final_end:
+            st_aware = current_start.replace(tzinfo=tz) if not current_start.tzinfo else current_start.astimezone(tz)
+            st_aware = st_aware.replace(microsecond=0)
+            
+            search_id = uuid.uuid4().hex
+            position = 0
+            limit = 500
+            last_event_time_str = None
+            
+            while True:
+                payload = {
+                    "AcsEventCond": {
+                        "searchID": search_id,
+                        "searchResultPosition": position,
+                        "maxResults": limit,
+                        "major": 5,
+                        "minor": 0,
+                        "startTime": st_aware.isoformat(),
+                        "endTime": final_end.replace(tzinfo=tz).replace(microsecond=0).isoformat(),
+                    }
+                }
+                
+                events_page = None
+                for attempt in range(3):
+                    try:
+                        r = requests.post(
+                            f"{client.base_url}/AccessControl/AcsEvent?format=json",
+                            auth=HTTPDigestAuth(client.username, client.password),
+                            json=payload,
+                            timeout=30
+                        )
+                        r.raise_for_status()
+                        data = r.json()
+                        events_page = data.get("AcsEvent", {}).get("InfoList", [])
+                        break
+                    except Exception as e:
+                        time.sleep(1)
+                        
+                if events_page is None or not events_page:
+                    break
+                    
+                total_downloaded += len(events_page)
+                last_event_time_str = events_page[-1].get("time")
+                
+                new_count = _process_events(db, events_page, cfg)
+                total_inserted += new_count
+                db.commit()
+                
+                status_str = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+                if status_str != "MORE":
+                    break
+                    
+                position += len(events_page)
+                time.sleep(0.1)
+                
+            if not last_event_time_str:
+                break
+                
+            try:
+                dt = datetime.fromisoformat(last_event_time_str.replace("Z", "+00:00"))
+                current_start = dt.replace(tzinfo=None) + timedelta(seconds=1)
+            except:
+                current_start += timedelta(days=1)
+                
+        cfg.total_events_synced += total_inserted
+        _finish_log(db, log, "success", fetched=total_downloaded, new=total_inserted, is_mock=False)
+        logger.info(f"✅ Sync Histórico completado — {total_inserted} registros insertados")
+
+    except Exception as e:
+        db.rollback()
+        _finish_log(db, log, "error", error=str(e))
+        logger.error(f"❌ Error en sync histórico: {e}")
+    finally:
+        db.close()
+
+
+def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
     """Procesa la lista de eventos y los inserta en BD. Retorna cantidad de nuevos."""
     new_count = 0
     for event in raw_events:
@@ -130,23 +241,39 @@ def _process_events(db: Session, raw_events: list[dict]) -> int:
                 Employee.device_user_id == str(device_uid)
             ).first()
 
+        # Ignorar evento si la persona no está en la base de datos de empleados
+        if not employee:
+            continue
+
         # Parsear timestamp
         raw_time = event.get("time", "")
         try:
-            event_time = datetime.fromisoformat(raw_time.replace("Z", "+00:00").replace("+00:00", ""))
+            # Reemplazar Z por +00:00 para que fromisoformat lo entienda
+            dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+            # Convertir a local y guardar como naive (SQLAlchemy/DB local)
+            event_time = to_local_datetime(dt).replace(tzinfo=None)
         except Exception:
-            event_time = datetime.utcnow()
+            event_time = get_local_now().replace(tzinfo=None)
 
         # Determinar tipo de evento (entrada/salida por hora)
         hour = event_time.hour
         event_type = "entry" if 5 <= hour < 13 else "exit"
 
-        # Detectar tardanza
+        # Detectar tardanza (o salida temprana) según la tolerancia de DeviceConfig
         is_late = False
-        if employee and event_type == "entry":
+        if employee:
             try:
-                h, m = map(int, employee.work_start_time.split(":"))
-                is_late = event_time.hour > h or (event_time.hour == h and event_time.minute > m + 10)
+                if event_type == "entry":
+                    h, m = map(int, employee.work_start_time.split(":"))
+                    target = event_time.replace(hour=h, minute=m, second=0)
+                    diff_mins = (event_time - target).total_seconds() / 60.0
+                    is_late = diff_mins > cfg.entry_tolerance_minutes
+                else:
+                    h, m = map(int, employee.work_end_time.split(":"))
+                    target = event_time.replace(hour=h, minute=m, second=0)
+                    diff_mins = (event_time - target).total_seconds() / 60.0
+                    # Salida temprana (negativo significa antes de la hora)
+                    is_late = diff_mins < -cfg.exit_tolerance_minutes
             except Exception:
                 pass
 
@@ -176,7 +303,7 @@ def _get_device_config():
 
 
 def _finish_log(db, log, status, fetched=0, new=0, error=None, is_mock=False):
-    log.finished_at = datetime.utcnow()
+    log.finished_at = get_local_now().replace(tzinfo=None)
     log.status = status
     log.events_fetched = fetched
     log.events_new = new

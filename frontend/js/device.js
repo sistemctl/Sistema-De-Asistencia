@@ -7,8 +7,26 @@ const DevicePage = {
         <div class="section-title">Dispositivo</div>
         <div class="section-actions">
           <button class="btn btn-secondary" onclick="DevicePage.checkConnection()">🔍 Verificar conexión</button>
-          ${Auth.isAdmin() ? `<button class="btn btn-primary" onclick="DevicePage.manualSync()">⟳ Sync manual</button>` : ''}
+          ${Auth.isAdmin() ? `<button class="btn btn-primary" onclick="DevicePage.manualSync()" id="btnManualSync">⟳ Sync manual</button>
+                              <button class="btn btn-primary" style="background-color: var(--primary);" onclick="DevicePage.historicSync()" id="btnHistoricSync">📥 Importar Histórico</button>` : ''}
         </div>
+      </div>
+      
+      <div id="syncProgressBar" style="display:none; margin-bottom: 20px; background: var(--surface-2); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <strong style="color:var(--accent-1);">Sincronizando con el biométrico...</strong>
+          <span style="font-size:0.85rem; color:var(--text-2);" id="syncProgressText">Procesando datos en segundo plano</span>
+        </div>
+        <div style="width: 100%; height: 8px; background-color: var(--surface-3); border-radius: 4px; overflow: hidden;">
+          <div style="width: 100%; height: 100%; background-color: var(--accent-1); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left;"></div>
+        </div>
+        <style>
+          @keyframes progressIndeterminate {
+            0% { transform: scaleX(0); opacity: 1; }
+            50% { transform: scaleX(0.5); opacity: 0.8; }
+            100% { transform: scaleX(1); opacity: 0; }
+          }
+        </style>
       </div>
 
       <div class="grid-2" style="margin-bottom:20px">
@@ -73,6 +91,10 @@ const DevicePage = {
           <div class="field"><label>Puerto</label><input id="cfgPort" type="number" value="${c.port}" /></div>
           <div class="field"><label>Intervalo sync (min)</label><input id="cfgInterval" type="number" value="${c.sync_interval_minutes}" min="1" max="60" /></div>
         </div>
+        <div class="form-row">
+          <div class="field"><label>Tolerancia Entrada (min)</label><input id="cfgEntryTol" type="number" value="${c.entry_tolerance_minutes}" min="0" max="120" title="Minutos adicionales antes de marcar llegada tarde" /></div>
+          <div class="field"><label>Tolerancia Salida (min)</label><input id="cfgExitTol" type="number" value="${c.exit_tolerance_minutes}" min="0" max="120" title="Minutos permitidos antes de marcar salida temprana" /></div>
+        </div>
         <div class="field"><label>Usuario dispositivo</label><input id="cfgUser" value="${c.username}" /></div>
         <div class="field"><label>Contraseña dispositivo</label><input id="cfgPass" type="password" placeholder="••••••••" /></div>
         <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="DevicePage.saveConfig()">Guardar configuración</button>`;
@@ -84,6 +106,8 @@ const DevicePage = {
       ip_address: document.getElementById('cfgIp').value.trim(),
       port: parseInt(document.getElementById('cfgPort').value),
       sync_interval_minutes: parseInt(document.getElementById('cfgInterval').value),
+      entry_tolerance_minutes: parseInt(document.getElementById('cfgEntryTol').value),
+      exit_tolerance_minutes: parseInt(document.getElementById('cfgExitTol').value),
       username: document.getElementById('cfgUser').value.trim(),
     };
     const pass = document.getElementById('cfgPass').value;
@@ -99,9 +123,12 @@ const DevicePage = {
       const logs = await API.get('/api/device/logs?limit=20');
       const tbody = document.getElementById('logsTable');
       if (!logs?.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📜</div><p>Sin historial aún</p></div></td></tr>`; return; }
+      
+      let isRunning = false;
       tbody.innerHTML = logs.map(l => {
         const badges = { success:'badge-green', error:'badge-red', running:'badge-blue', offline:'badge-yellow' };
         const labels = { success:'✓ Exitosa', error:'✕ Error', running:'⟳ En curso', offline:'📴 Offline' };
+        if (l.status === 'running') isRunning = true;
         return `<tr>
           <td style="font-size:.8rem">${new Date(l.started_at).toLocaleString('es')}</td>
           <td><span class="badge ${badges[l.status]||'badge-gray'}">${labels[l.status]||l.status}</span></td>
@@ -111,7 +138,25 @@ const DevicePage = {
           <td style="font-size:.75rem;color:var(--danger)">${l.error_message||''}</td>
         </tr>`;
       }).join('');
+      
+      this.toggleProgress(isRunning);
+      if (isRunning && !this.pollInterval) {
+        this.pollInterval = setInterval(() => this.loadLogs(), 4000);
+      } else if (!isRunning && this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+        this.loadStatus();
+      }
     } catch(e) {}
+  },
+  
+  toggleProgress(show) {
+    const bar = document.getElementById('syncProgressBar');
+    const btn1 = document.getElementById('btnManualSync');
+    const btn2 = document.getElementById('btnHistoricSync');
+    if (bar) bar.style.display = show ? 'block' : 'none';
+    if (btn1) btn1.disabled = show;
+    if (btn2) btn2.disabled = show;
   },
 
   async checkConnection() {
@@ -125,8 +170,60 @@ const DevicePage = {
   async manualSync() {
     try {
       await API.post('/api/device/sync', {});
-      Toast.show('Sincronización iniciada en segundo plano', 'info');
-      setTimeout(() => this.loadLogs(), 3000);
+      Toast.show('Sincronización iniciada', 'info');
+      setTimeout(() => this.loadLogs(), 1000);
     } catch(e) { Toast.show(e.message, 'error'); }
   },
+
+  async historicSync() {
+    const today = new Date().toISOString().split('T')[0];
+    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+
+    const body = `
+      <div class="field">
+        <label>Fecha de inicio</label>
+        <input type="date" id="syncStartDate" value="${firstDay}" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Fecha de fin</label>
+        <input type="date" id="syncEndDate" value="${today}" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+      </div>
+      <p style="margin-top:15px; font-size:0.85rem; color:var(--text-2);">
+        Descargará todos los eventos en este rango, omitiendo personas desconocidas y aplicando las reglas de tolerancia.
+      </p>
+    `;
+
+    document.getElementById('modalTitle').textContent = 'Sincronización por Fechas';
+    document.getElementById('modalBody').innerHTML = body;
+    document.getElementById('modalFooter').innerHTML = `
+      <button class="btn btn-secondary" id="modalCloseBtn">Cancelar</button>
+      <button class="btn btn-primary" id="confirmSyncBtn">Iniciar Descarga</button>
+    `;
+    
+    document.getElementById('modalBox').className = 'modal modal-sm';
+    document.getElementById('modalOverlay').classList.add('open');
+
+    document.getElementById('modalCloseBtn').onclick = () => {
+      document.getElementById('modalOverlay').classList.remove('open');
+    };
+    
+    document.getElementById('confirmSyncBtn').onclick = async () => {
+      const start = document.getElementById('syncStartDate').value;
+      const end = document.getElementById('syncEndDate').value;
+      if(!start || !end) return Toast.show("Selecciona ambas fechas", "warning");
+      
+      document.getElementById('modalOverlay').classList.remove('open');
+      
+      try {
+        await API.post('/api/device/sync-historic', { start_date: start, end_date: end });
+        Toast.show('Importación histórica iniciada', 'info');
+        setTimeout(() => DevicePage.loadLogs(), 1000);
+      } catch(e) { Toast.show(e.message, 'error'); }
+    };
+  },
+  
+  // Limpieza al desmontar la vista
+  destroy() {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+  }
 };

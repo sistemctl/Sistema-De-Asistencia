@@ -9,6 +9,8 @@ from backend.database import get_db
 from backend.models import User
 from backend.schemas import LoginRequest, Token, UserCreate, UserOut, UserUpdate
 
+from backend.utils import get_local_now
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -17,7 +19,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, data.username, data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales incorrectas")
-    user.last_login = datetime.utcnow()
+    user.last_login = get_local_now().replace(tzinfo=None)
     db.commit()
     token = create_access_token({"sub": user.username})
     return Token(access_token=token, user=UserOut.model_validate(user))

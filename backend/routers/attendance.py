@@ -52,7 +52,8 @@ def list_attendance(
 
 @router.get("/today")
 def today_records(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    today = date.today()
+    from backend.utils import get_local_now
+    today = get_local_now().date()
     records = db.query(AttendanceRecord).filter(
         AttendanceRecord.event_time >= datetime.combine(today, datetime.min.time()),
         AttendanceRecord.event_time <= datetime.combine(today, datetime.max.time()),

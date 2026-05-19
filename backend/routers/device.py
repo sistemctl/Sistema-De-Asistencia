@@ -62,6 +62,21 @@ def manual_sync(_=Depends(require_admin)):
     return {"ok": True, "message": "Sincronización iniciada en segundo plano"}
 
 
+from pydantic import BaseModel
+
+class SyncHistoricRequest(BaseModel):
+    start_date: str
+    end_date: str
+
+@router.post("/sync-historic")
+def historic_sync(req: SyncHistoricRequest, _=Depends(require_admin)):
+    """Dispara la sincronización profunda e histórica con fechas."""
+    import threading
+    t = threading.Thread(target=sched.sync_historic_job, args=(req.start_date, req.end_date), daemon=True)
+    t.start()
+    return {"ok": True, "message": f"Sincronización histórica del {req.start_date} al {req.end_date} iniciada"}
+
+
 @router.post("/check-connection")
 def check_connection(db: Session = Depends(get_db), _=Depends(get_current_user)):
     """Comprueba si el dispositivo responde ahora mismo."""
@@ -73,8 +88,8 @@ def check_connection(db: Session = Depends(get_db), _=Depends(get_current_user))
     client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
     online = client.check_online()
     cfg.is_online = online
-    from datetime import datetime
-    cfg.last_check = datetime.utcnow()
+    from backend.utils import get_local_now
+    cfg.last_check = get_local_now().replace(tzinfo=None)
     db.commit()
 
     return {"is_online": online, "ip_address": cfg.ip_address}

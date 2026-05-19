@@ -138,6 +138,8 @@ class DeviceConfigUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     sync_interval_minutes: Optional[int] = None
+    entry_tolerance_minutes: Optional[int] = None
+    exit_tolerance_minutes: Optional[int] = None
 
 class DeviceConfigOut(BaseModel):
     id: int
@@ -149,6 +151,8 @@ class DeviceConfigOut(BaseModel):
     last_check: Optional[datetime]
     last_successful_sync: Optional[datetime]
     total_events_synced: int
+    entry_tolerance_minutes: int
+    exit_tolerance_minutes: int
 
     class Config:
         from_attributes = True
