@@ -5,88 +5,194 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iniciar Sesión — Sistema de Asistencia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=4" />
   <style>
-    body { display:flex; align-items:center; justify-content:center; min-height:100vh; }
-    .login-bg { position:fixed; inset:0; z-index:0;
-      background: radial-gradient(ellipse at 20% 50%,rgba(59,130,246,.15) 0%,transparent 60%),
-                  radial-gradient(ellipse at 80% 20%,rgba(139,92,246,.12) 0%,transparent 55%); }
-    .login-card { position:relative; z-index:1; background:var(--surface-1); border:1px solid var(--border);
-      border-radius:20px; padding:48px 44px; width:100%; max-width:420px;
-      box-shadow:0 25px 60px rgba(0,0,0,.4); animation:slideUp .5s ease; }
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background-color: #03050f; position:relative; overflow:hidden; }
+    
+    .login-card { 
+      position:relative; 
+      z-index:2; 
+      background: rgba(10, 16, 36, 0.42); 
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 24px; 
+      padding: 48px 44px; 
+      width: 100%; 
+      max-width: 420px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08); 
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
+      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+    }
     @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-    .logo-row { display:flex; align-items:center; gap:12px; margin-bottom:32px; }
-    .logo-icon { width:48px; height:48px; border-radius:12px;
-      background:linear-gradient(135deg,var(--accent),var(--accent-2));
-      display:flex; align-items:center; justify-content:center; font-size:22px; }
-    .logo-row h1 { font-size:1.05rem; font-weight:700; color:var(--text-1); line-height:1.2; margin:0; }
-    .logo-row p { font-size:.75rem; color:var(--text-3); margin:2px 0 0; }
-    .form-group { margin-bottom:18px; }
-    .form-group label { display:block; font-size:.78rem; font-weight:600; color:var(--text-2);
-      margin-bottom:8px; letter-spacing:.04em; text-transform:uppercase; }
-    .form-group input { width:100%; padding:12px 16px; border-radius:10px; background:var(--surface-2);
-      border:1px solid var(--border); color:var(--text-1); font-size:.95rem; font-family:inherit;
-      transition:border-color .2s,box-shadow .2s; box-sizing:border-box; }
-    .form-group input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(59,130,246,.2); }
-    .btn-login { width:100%; padding:13px; border-radius:10px; border:none; cursor:pointer;
-      background:linear-gradient(135deg,var(--accent),var(--accent-2));
-      color:#fff; font-size:1rem; font-weight:600; font-family:inherit;
-      transition:opacity .2s,transform .15s; margin-top:8px; }
-    .btn-login:hover { opacity:.9; transform:translateY(-1px); }
-    .btn-login:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-    .login-error { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3);
-      color:#f87171; border-radius:8px; padding:10px 14px; font-size:.85rem; margin-top:14px; display:none; }
-    .login-error.show { display:block; }
-    .login-footer { margin-top:24px; text-align:center; font-size:.78rem; color:var(--text-3); }
+    
+    .logo-row { display:flex; align-items:center; gap:16px; margin-bottom:36px; }
+    .logo-icon { 
+      width: 52px; 
+      height: 52px; 
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      box-shadow: 0 8px 24px rgba(0, 229, 255, 0.25); 
+    }
+    .logo-row h1 { font-size:1.15rem; font-weight:800; color:var(--text-1); line-height:1.25; margin:0; letter-spacing: -0.015em; }
+    .logo-row p { font-size:.78rem; color:var(--text-3); margin:4px 0 0; font-weight: 500; }
+    
+    .form-group { margin-bottom:22px; }
+    .form-group label { 
+      display:block; 
+      font-size:.72rem; 
+      font-weight:700; 
+      color:var(--text-2);
+      margin-bottom:8px; 
+      letter-spacing:.06em; 
+      text-transform:uppercase; 
+    }
+    .form-group input { 
+      width:100%; 
+      padding:12px 18px; 
+      border-radius:12px; 
+      background: var(--surface-2);
+      border: 1px solid var(--border); 
+      color: var(--text-1); 
+      font-size: .95rem;
+      transition: all 0.25s ease; 
+      box-sizing: border-box; 
+    }
+    .form-group input:focus { 
+      outline: none; 
+      border-color: var(--accent); 
+      box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.15); 
+      background: rgba(30, 40, 75, 0.4); 
+    }
+    .form-group input::placeholder { color: var(--text-3); }
+    
+    .btn-login { 
+      width: 100%; 
+      padding: 13px; 
+      border-radius: 12px; 
+      border: none; 
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; 
+      font-size: 0.95rem; 
+      font-weight: 700; 
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); 
+      margin-top: 12px; 
+      box-shadow: 0 6px 20px rgba(170, 0, 255, 0.25); 
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-login:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 8px 25px rgba(170, 0, 255, 0.4); 
+    }
+    .btn-login:disabled { opacity:.6; cursor:not-allowed; transform:none; box-shadow: none; }
+    
+    .btn-login::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0) 40%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0) 60%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      transform: rotate(30deg);
+      transition: transform 0.8s ease;
+      pointer-events: none;
+    }
+    .btn-login:hover::after {
+      transform: translate(15%, 15%) rotate(30deg);
+    }
+    
+    .login-error { 
+      background: rgba(255,61,0,.08); 
+      border: 1px solid rgba(255,61,0,.25);
+      color: #ff3d00; 
+      border-radius: 10px; 
+      padding: 12px 16px; 
+      font-size: .85rem; 
+      margin-top: 16px; 
+      display: none; 
+      font-weight: 500;
+    }
+    .login-error.show { display:block; animation: shake 0.4s ease; }
+    @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
+    
+    .login-footer { margin-top:28px; text-align:center; font-size:.8rem; color:var(--text-3); font-weight:500; }
   </style>
 </head>
 <body>
-  <div class="login-bg"></div>
-  <div class="login-card">
-    <div class="logo-row">
-      <div class="logo-icon">🏢</div>
-      <div><h1>Control de Asistencia</h1><p>Hikvision DS-K1T323MBWX</p></div>
+
+<!-- ── Fondo Mesh Gradient Dinámico ── -->
+<div class="mesh-glows">
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+</div>
+
+<div class="login-card">
+  <div class="logo-row">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;stroke:#fff;">
+        <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+        <line x1="9" y1="22" x2="9" y2="16"></line>
+        <line x1="15" y1="22" x2="15" y2="16"></line>
+        <line x1="9" y1="16" x2="15" y2="16"></line>
+        <circle cx="12" cy="7" r="2"></circle>
+      </svg>
     </div>
-    <p style="font-size:1.4rem;font-weight:700;color:var(--text-1);margin:0 0 4px">Bienvenido</p>
-    <p style="font-size:.875rem;color:var(--text-3);margin:0 0 28px">Ingresa tus credenciales para continuar</p>
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="username">Usuario</label>
-        <input type="text" id="username" placeholder="admin" required autofocus />
-      </div>
-      <div class="form-group">
-        <label for="password">Contraseña</label>
-        <input type="password" id="password" placeholder="••••••••" required />
-      </div>
-      <button type="submit" class="btn-login" id="btnLogin">Iniciar sesión</button>
-      <div class="login-error" id="loginError"></div>
-    </form>
-    <div class="login-footer">Sistema de Asistencia v1.0 &mdash; Sede principal</div>
+    <div><h1>Control de Asistencia</h1><p>Hikvision DS-K1T323MBWX</p></div>
   </div>
-  <script>
-    if (localStorage.getItem('token')) window.location.href = '/app';
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btnLogin');
-      const err = document.getElementById('loginError');
-      btn.disabled = true; btn.textContent = 'Entrando...'; err.classList.remove('show');
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ username: document.getElementById('username').value.trim(),
-                                 password: document.getElementById('password').value })
-        });
-        if (!res.ok) throw new Error((await res.json()).detail || 'Error');
-        const data = await res.json();
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/app';
-      } catch(e) {
-        err.textContent = e.message; err.classList.add('show');
-        btn.disabled = false; btn.textContent = 'Iniciar sesión';
-      }
-    });
-  </script>
+  <p style="font-size:1.45rem;font-weight:800;color:var(--text-1);margin:0 0 4px;letter-spacing:-0.02em;">Bienvenido</p>
+  <p style="font-size:.86rem;color:var(--text-3);margin:0 0 28px;font-weight:500;">Ingresa tus credenciales para continuar</p>
+  
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="username">Usuario</label>
+      <input type="text" id="username" placeholder="admin" required autofocus />
+    </div>
+    <div class="form-group">
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" placeholder="••••••••" required />
+    </div>
+    <button type="submit" class="btn-login" id="btnLogin">Iniciar sesión</button>
+    <div class="login-error" id="loginError"></div>
+  </form>
+  
+  <div class="login-footer">Sistema de Asistencia v1.0 &mdash; Sede principal</div>
+</div>
+
+<script>
+  if (localStorage.getItem('token')) window.location.href = '/app';
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnLogin');
+    const err = document.getElementById('loginError');
+    btn.disabled = true; btn.textContent = 'Entrando...'; err.classList.remove('show');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ username: document.getElementById('username').value.trim(),
+                               password: document.getElementById('password').value })
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Error');
+      const data = await res.json();
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      window.location.href = '/app';
+    } catch(e) {
+      err.textContent = e.message; err.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Iniciar sesión';
+    }
+  });
+</script>
 </body>
 </html>

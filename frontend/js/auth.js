@@ -46,6 +46,7 @@ const API = {
 const Auth = {
   user: () => JSON.parse(localStorage.getItem('user') || 'null'),
   isAdmin: () => Auth.user()?.role === 'admin',
+  canManageEmployees: () => ['admin', 'hr_admin'].includes(Auth.user()?.role),
 
   logout() {
     localStorage.removeItem('token');

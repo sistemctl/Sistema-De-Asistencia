@@ -189,6 +189,7 @@ class DashboardKPIs(BaseModel):
     today_present: int
     today_absent: int
     today_late: int
+    today_leaves: int
     total_employees: int
     attendance_rate: float
     last_sync: Optional[datetime]

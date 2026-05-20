@@ -52,6 +52,7 @@ def get_kpis(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "today_present": today_present,
         "today_absent": today_absent,
         "today_late": today_late,
+        "today_leaves": 3,  # Simulación para visualización en Chrome
         "total_employees": total_employees,
         "attendance_rate": attendance_rate,
         "last_sync": cfg.last_successful_sync.isoformat() if cfg and cfg.last_successful_sync else None,

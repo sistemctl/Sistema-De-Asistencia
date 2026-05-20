@@ -8,6 +8,7 @@ const PAGES = {
   employees:  { module: EmployeesPage,  title: 'Empleados',   sub: 'Gestión de personal' },
   reports:    { module: ReportsPage,    title: 'Reportes',    sub: 'Exportar datos' },
   device:     { module: DevicePage,     title: 'Dispositivo', sub: 'DS-K1T323MBWX' },
+  users:      { module: UsersPage,      title: 'Usuarios',    sub: 'Gestionar administradores' },
 };
 
 let currentPage = 'dashboard';
@@ -15,6 +16,13 @@ let devicePollInterval = null;
 
 function navigate(page) {
   if (!PAGES[page]) return;
+
+  // Control de accesos en el frontend
+  const user = Auth.user();
+  if ((page === 'users' || page === 'device') && user?.role !== 'admin') {
+    page = 'dashboard';
+  }
+
   currentPage = page;
 
   // Actualizar nav activo
@@ -26,7 +34,11 @@ function navigate(page) {
   document.getElementById('topbarSubtitle').textContent = PAGES[page].sub;
 
   // Renderizar página
+  const contentEl = document.getElementById('pageContent');
+  contentEl.classList.remove('page-fade-in');
   PAGES[page].module.render();
+  void contentEl.offsetWidth; // Force reflow
+  contentEl.classList.add('page-fade-in');
 }
 
 // ── Sidebar nav ──────────────────────────────────────────────────────────────
@@ -61,8 +73,20 @@ function loadUserInfo() {
   const user = Auth.user();
   if (!user) return;
   document.getElementById('userName').textContent  = user.full_name;
-  document.getElementById('userRole').textContent  = user.role === 'admin' ? 'Administrador' : 'Visualizador';
+  
+  const roleLabels = { admin: 'Super Admin', hr_admin: 'Gestor RRHH', viewer: 'Auditor' };
+  document.getElementById('userRole').textContent  = roleLabels[user.role] || user.role;
   document.getElementById('userAvatar').textContent = user.full_name.charAt(0).toUpperCase();
+
+  // Mostrar menú de usuarios y dispositivo solo a Super Admins
+  const navUsers = document.getElementById('nav-users');
+  if (navUsers) {
+    navUsers.style.display = user.role === 'admin' ? 'flex' : 'none';
+  }
+  const navDevice = document.getElementById('nav-device');
+  if (navDevice) {
+    navDevice.style.display = user.role === 'admin' ? 'flex' : 'none';
+  }
 }
 
 // ── Device badge en topbar ───────────────────────────────────────────────────
