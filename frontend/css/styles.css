@@ -771,6 +771,7 @@ input[type="date"] {
   position: relative;
   font-family: 'Plus Jakarta Sans', sans-serif;
   cursor: pointer;
+  color-scheme: dark; /* Fuerza al navegador a usar el popup de calendario en versión Dark Mode */
 }
 
 /* Cambiar el icono nativo de calendario por un vector SVG personalizado con brillo cian */
