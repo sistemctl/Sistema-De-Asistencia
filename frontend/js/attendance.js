@@ -8,9 +8,9 @@ const AttendancePage = {
       <div class="section-header">
         <div class="section-title">Asistencia</div>
         <div class="section-actions">
-          <input type="date" id="fDateFrom" class="field" style="padding:9px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;color:var(--text-1)" />
-          <input type="date" id="fDateTo"   class="field" style="padding:9px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;color:var(--text-1)" />
-          <select id="fType" style="padding:9px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;color:var(--text-1)">
+          <input type="date" id="fDateFrom" />
+          <input type="date" id="fDateTo" />
+          <select id="fType">
             <option value="">Todos</option><option value="entry">Entradas</option><option value="exit">Salidas</option>
           </select>
           <button class="btn btn-primary" id="btnFilter">
