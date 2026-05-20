@@ -51,5 +51,5 @@ CORS_ORIGINS = ["*"]  # En producción, restringir a la IP del servidor
 
 # ── Aplicación ────────────────────────────────────────────────────────────────
 APP_NAME    = "Sistema de Asistencia — Hikvision DS-K1T323MBWX"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.6.0"
 TIMEZONE    = os.getenv("TIMEZONE", "America/Bogota")

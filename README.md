@@ -1,4 +1,4 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.5**
+# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.6**
 
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS**.
 
