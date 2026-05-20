@@ -1,6 +1,12 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS-K1T323MBWX (v1.1)
+# 📋 Sistema de Control de Asistencia — Hikvision DS-K1T323MBWX (v1.3)
 
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS-K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS**.
+
+### 🌟 Novedades de la Versión 1.3
+* **Diseño Elite Premium Dark Mode:** Completamente rediseñado en Glassmorphism de alta fidelidad con orbes Mesh HSL animados en segundo plano, tipografía moderna (`Plus Jakarta Sans` y `JetBrains Mono`), y reemplazo al 100% de emojis por vectores SVG de alta definición.
+* **Módulo de Gestión de Usuarios y Roles (RBAC):** Control de acceso administrativo robusto. Divide las tareas en tres roles configurables: *Super Administrador* (control total), *Gestor de RRHH* (administra empleados, fotos y reportes) y *Auditor/Lector* (modo solo lectura del Dashboard).
+* **Integración Visual de Vacaciones y Permisos:** Panel expandido de 5 columnas en el Dashboard con un KPI dedicado en tono violeta para monitorear en tiempo real al personal justificado de vacaciones/permiso.
+* **Seguridad y Ocultamiento Inteligente de Sidebar:** El menú lateral y las rutas del frontend se adaptan en tiempo real ocultando secciones sensibles (Usuarios, Configuración de Red) a los roles no autorizados.
 
 ### 🌟 Novedades de la Versión 1.1
 * **Tolerancias de Entrada y Salida Configurables:** Ahora es posible definir de forma dinámica desde la web los minutos de tolerancia para la llegada de personal.
@@ -142,7 +148,7 @@ Si modificas el código (agregas nuevas funcionalidades, modificas el diseño, e
    ```
 3. **Subir los cambios al repositorio a la versión activa:**
    ```bash
-   git push origin 1.1
+   git push origin 1.3
    ```
 
 ---
