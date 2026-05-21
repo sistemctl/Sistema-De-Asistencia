@@ -78,8 +78,33 @@ class ScheduleCreate(BaseModel):
     lunch_start_time: Optional[str] = None
     lunch_end_time: Optional[str] = None
 
-class ScheduleUpdate(BaseModel):
-    name: Optional[str] = None
+class ReportPunches(BaseModel):
+    entry_1: Optional[datetime] = None
+    exit_1: Optional[datetime] = None
+    entry_2: Optional[datetime] = None
+    exit_2: Optional[datetime] = None
+
+class ReportItem(BaseModel):
+    employee_id: int
+    employee_name: str
+    employee_code: str
+    department: str
+    date: date
+    schedule_type: str
+    punches: ReportPunches
+    total_raw_events: int
+    is_present: bool
+    is_late: bool
+    missing_punches: bool
+    period_start: Optional[date] = None  # for weekly/monthly grouping
+    period_end: Optional[date] = None
+
+class ReportResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    pages: int
+    items: List[ReportItem]
     shift_type: Optional[str] = None
     work_start_time: Optional[str] = None
     work_end_time: Optional[str] = None
