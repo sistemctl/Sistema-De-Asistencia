@@ -1,8 +1,8 @@
 """
 Pydantic schemas para validación de requests y serialización de responses.
 """
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, date
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator
 
 
@@ -75,6 +75,14 @@ class ScheduleCreate(BaseModel):
     shift_type: str = "continuous"  # continuous / split
     work_start_time: str = "07:00"
     work_end_time: str = "18:00"
+    lunch_start_time: Optional[str] = None
+    lunch_end_time: Optional[str] = None
+
+class ScheduleUpdate(BaseModel):
+    name: Optional[str] = None
+    shift_type: Optional[str] = None
+    work_start_time: Optional[str] = None
+    work_end_time: Optional[str] = None
     lunch_start_time: Optional[str] = None
     lunch_end_time: Optional[str] = None
 
