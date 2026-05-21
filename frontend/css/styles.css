@@ -178,6 +178,27 @@ img { max-width: 100%; height: auto; }
   text-transform: uppercase; 
   padding: 8px 12px 6px; 
 }
+/* Sublabel dentro de una sección (ej. "Parámetros" dentro de Gestión) */
+.nav-sublabel {
+  font-size: .62rem;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 10px 12px 4px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  opacity: 0.65;
+}
+/* Nav items levemente indentados para los sub-items */
+.nav-item-sub {
+  padding-left: 20px;
+}
+.nav-item-sub svg {
+  width: 15px !important;
+  height: 15px !important;
+  opacity: 0.85;
+}
 .nav-item {
   display: flex; 
   align-items: center; 

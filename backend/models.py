@@ -38,6 +38,34 @@ class Department(Base):
     employees = relationship("Employee", back_populates="department")
 
 
+class Position(Base):
+    """Cargos / puestos de la empresa."""
+    __tablename__ = "positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    employees = relationship("Employee", back_populates="position")
+
+
+class Schedule(Base):
+    """Horarios / turnos de trabajo asignables a empleados."""
+    __tablename__ = "schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    shift_type = Column(String(30), default="continuous", nullable=False)  # continuous / split
+    work_start_time = Column(String(5), default="07:00")  # HH:MM
+    work_end_time = Column(String(5), default="18:00")     # HH:MM
+    lunch_start_time = Column(String(5), nullable=True)   # HH:MM
+    lunch_end_time = Column(String(5), nullable=True)     # HH:MM
+    created_at = Column(DateTime, default=datetime.now)
+
+    employees = relationship("Employee", back_populates="schedule")
+
+
 class Employee(Base):
     """Empleados registrados en el sistema."""
     __tablename__ = "employees"
@@ -49,8 +77,10 @@ class Employee(Base):
     last_name = Column(String(100), nullable=False)
     email = Column(String(150), nullable=True)
     phone = Column(String(30), nullable=True)
-    position = Column(String(100), nullable=True)
+    position_legacy = Column(String(100), nullable=True)
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True)
     photo_path = Column(String(500), nullable=True)       # Ruta relativa a uploads/faces/
     card_number = Column(String(50), nullable=True)       # Número de tarjeta M1
     is_active = Column(Boolean, default=True)
@@ -61,6 +91,8 @@ class Employee(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     department = relationship("Department", back_populates="employees")
+    position = relationship("Position", back_populates="employees")
+    schedule = relationship("Schedule", back_populates="employees")
     attendance_records = relationship("AttendanceRecord", back_populates="employee")
 
     @property

@@ -6,6 +6,7 @@ const PAGES = {
   dashboard:  { module: DashboardPage,  title: 'Dashboard',   sub: 'Resumen general' },
   attendance: { module: AttendancePage, title: 'Asistencia',  sub: 'Registros del dispositivo' },
   employees:  { module: EmployeesPage,  title: 'Empleados',   sub: 'Gestión de personal' },
+  parameters: { module: ParametersPage, title: 'Parámetros',  sub: 'Configuración de departamentos, cargos y horarios' },
   reports:    { module: ReportsPage,    title: 'Reportes',    sub: 'Exportar datos' },
   device:     { module: DevicePage,     title: 'Dispositivo', sub: 'DS-K1T323MBWX' },
   users:      { module: UsersPage,      title: 'Usuarios',    sub: 'Gestionar administradores' },

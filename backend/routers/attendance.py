@@ -19,6 +19,7 @@ def list_attendance(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     event_type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -35,6 +36,13 @@ def list_attendance(
     if event_type:
         q = q.filter(AttendanceRecord.event_type == event_type)
 
+    if search:
+        q = q.join(Employee).filter(
+            (Employee.first_name.ilike(f"%{search}%")) |
+            (Employee.last_name.ilike(f"%{search}%")) |
+            (Employee.employee_code.ilike(f"%{search}%"))
+        )
+
     total = q.count()
     records = q.order_by(AttendanceRecord.event_time.desc()) \
                .offset((page - 1) * page_size) \
@@ -47,6 +55,60 @@ def list_attendance(
         "page_size": page_size,
         "pages": (total + page_size - 1) // page_size,
         "items": [_serialize(r) for r in records],
+    }
+
+@router.get("/daily-summary", response_model=dict)
+def get_daily_summary(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    employee_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from backend.services.attendance_processor import process_daily_attendance_bulk
+    from datetime import timedelta
+    from backend.utils import get_local_now
+
+    if not date_from:
+        date_from = get_local_now().date()
+    if not date_to:
+        date_to = get_local_now().date()
+        
+    delta = date_to - date_from
+    days = [date_from + timedelta(days=i) for i in range(delta.days + 1)]
+    days.reverse() # newer first
+    
+    all_summaries = []
+    for d in days:
+        daily_summaries = process_daily_attendance_bulk(db, d)
+        all_summaries.extend(daily_summaries)
+        
+    # Filter
+    filtered = []
+    for s in all_summaries:
+        match = True
+        if employee_id and s["employee_id"] != employee_id:
+            match = False
+        if search:
+            search_lower = search.lower()
+            if search_lower not in s["employee_name"].lower() and search_lower not in s["employee_code"].lower():
+                match = False
+        if match:
+            filtered.append(s)
+            
+    total = len(filtered)
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": (total + page_size - 1) // page_size if page_size else 0,
+        "items": filtered[start_idx:end_idx]
     }
 
 

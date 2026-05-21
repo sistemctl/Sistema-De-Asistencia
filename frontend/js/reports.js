@@ -79,6 +79,7 @@ const ReportsPage = {
             <div class="card-sub">Estadísticas avanzadas, puntualidad y métricas del personal</div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
+            <input type="text" id="analyticsSearch" style="width:200px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:8px; padding:6px 12px; font-size:0.85rem;" placeholder="Buscar empleado..." />
             <input type="text" id="analyticsDateRange" style="width:240px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:8px; padding:6px 12px; font-size:0.85rem;" placeholder="Filtrar fecha..." />
             <button class="btn btn-sm btn-primary" onclick="ReportsPage.loadAnalytics()">Filtrar</button>
           </div>
@@ -158,7 +159,7 @@ const ReportsPage = {
 
   async loadAnalytics() {
     try {
-      const params = this.buildParams('analyticsDateRange');
+      const params = this.buildParams('analyticsDateRange', 'analyticsSearch');
       const data = await API.get(`/api/reports/analytics${params}`);
 
       document.getElementById('anTasaAsistencia').textContent = data.kpis.punctuality_rate;
@@ -278,7 +279,7 @@ const ReportsPage = {
     a.href = url; a.target = '_blank'; a.click();
   },
 
-  buildParams(rangeId) {
+  buildParams(rangeId, searchId = null) {
     const p = new URLSearchParams();
     const range = document.getElementById(rangeId).value;
     if (range) {
@@ -286,6 +287,12 @@ const ReportsPage = {
       if (dates.length > 0 && dates[0]) p.set('date_from', dates[0]);
       if (dates.length > 1 && dates[1]) p.set('date_to', dates[1]);
       else if (dates.length === 1 && dates[0]) p.set('date_to', dates[0]);
+    }
+    if (searchId) {
+      const searchInput = document.getElementById(searchId);
+      if (searchInput && searchInput.value) {
+        p.set('search', searchInput.value);
+      }
     }
     return p.toString() ? `?${p}` : '';
   },

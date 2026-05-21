@@ -10,8 +10,12 @@ from sqlalchemy.orm import Session
 from backend.auth import get_current_user, require_admin
 from backend.config import UPLOADS_DIR
 from backend.database import get_db
-from backend.models import Department, Employee
-from backend.schemas import EmployeeCreate, EmployeeOut, EmployeeUpdate, DepartmentCreate, DepartmentOut
+from backend.models import Department, Position, Employee
+from backend.schemas import (
+    EmployeeCreate, EmployeeOut, EmployeeUpdate,
+    DepartmentCreate, DepartmentOut,
+    PositionCreate, PositionOut
+)
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
@@ -40,6 +44,33 @@ def delete_department(dept_id: int, db: Session = Depends(get_db), _=Depends(req
     if not dept:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
     db.delete(dept)
+    db.commit()
+
+
+# ── Cargos (Positions) ────────────────────────────────────────────────────────
+
+@router.get("/positions", response_model=list[PositionOut])
+def list_positions(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    return db.query(Position).order_by(Position.name).all()
+
+
+@router.post("/positions", response_model=PositionOut, status_code=201)
+def create_position(data: PositionCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+    if db.query(Position).filter(Position.name == data.name).first():
+        raise HTTPException(status_code=400, detail="El cargo ya existe")
+    pos = Position(**data.model_dump())
+    db.add(pos)
+    db.commit()
+    db.refresh(pos)
+    return pos
+
+
+@router.delete("/positions/{pos_id}", status_code=204)
+def delete_position(pos_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+    pos = db.query(Position).filter(Position.id == pos_id).first()
+    if not pos:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    db.delete(pos)
     db.commit()
 
 
@@ -94,7 +125,7 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
-    for field, value in data.model_dump(exclude_none=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         setattr(emp, field, value)
     db.commit()
     db.refresh(emp)

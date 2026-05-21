@@ -19,30 +19,13 @@ def get_kpis(db: Session = Depends(get_db), _=Depends(get_current_user)):
     today_start = datetime.combine(today, datetime.min.time())
     today_end = datetime.combine(today, datetime.max.time())
 
-    total_employees = db.query(Employee).filter(Employee.is_active == True).count()
-
-    # Presentes hoy (al menos un registro de entrada)
-    present_ids = (
-        db.query(AttendanceRecord.employee_id)
-        .filter(
-            AttendanceRecord.event_time >= today_start,
-            AttendanceRecord.event_time <= today_end,
-            AttendanceRecord.event_type == "entry",
-            AttendanceRecord.employee_id.isnot(None),
-        )
-        .distinct()
-        .subquery()
-    )
-    today_present = db.query(func.count()).select_from(present_ids).scalar() or 0
-    today_absent = max(total_employees - today_present, 0)
-
-    # Tardanzas hoy
-    today_late = db.query(AttendanceRecord).filter(
-        AttendanceRecord.event_time >= today_start,
-        AttendanceRecord.event_time <= today_end,
-        AttendanceRecord.is_late == True,
-        AttendanceRecord.event_type == "entry",
-    ).count()
+    from backend.services.attendance_processor import process_daily_attendance_bulk
+    
+    summaries = process_daily_attendance_bulk(db, today)
+    total_employees = len(summaries)
+    today_present = sum(1 for s in summaries if s["is_present"])
+    today_absent = total_employees - today_present
+    today_late = sum(1 for s in summaries if s["is_late"])
 
     attendance_rate = round((today_present / total_employees * 100) if total_employees else 0, 1)
 
@@ -66,28 +49,16 @@ def get_weekly_data(db: Session = Depends(get_db), _=Depends(get_current_user)):
     today = get_local_now().date()
     labels, present_list, absent_list, late_list = [], [], [], []
 
+    from backend.services.attendance_processor import process_daily_attendance_bulk
+    
     total_employees = db.query(Employee).filter(Employee.is_active == True).count()
 
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
-        day_start = datetime.combine(day, datetime.min.time())
-        day_end = datetime.combine(day, datetime.max.time())
-
-        present = (
-            db.query(func.count(func.distinct(AttendanceRecord.employee_id)))
-            .filter(
-                AttendanceRecord.event_time >= day_start,
-                AttendanceRecord.event_time <= day_end,
-                AttendanceRecord.event_type == "entry",
-                AttendanceRecord.employee_id.isnot(None),
-            )
-            .scalar() or 0
-        )
-        late = db.query(AttendanceRecord).filter(
-            AttendanceRecord.event_time >= day_start,
-            AttendanceRecord.event_time <= day_end,
-            AttendanceRecord.is_late == True,
-        ).count()
+        
+        summaries = process_daily_attendance_bulk(db, day)
+        present = sum(1 for s in summaries if s["is_present"])
+        late = sum(1 for s in summaries if s["is_late"])
 
         labels.append(day.strftime("%a %d/%m"))
         present_list.append(present)

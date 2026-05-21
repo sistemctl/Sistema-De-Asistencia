@@ -54,6 +54,52 @@ class DepartmentOut(DepartmentCreate):
         from_attributes = True
 
 
+# ── Positions ─────────────────────────────────────────────────────────────────
+
+class PositionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class PositionOut(PositionCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Schedules ─────────────────────────────────────────────────────────────────
+
+class ScheduleCreate(BaseModel):
+    name: str
+    shift_type: str = "continuous"  # continuous / split
+    work_start_time: str = "07:00"
+    work_end_time: str = "18:00"
+    lunch_start_time: Optional[str] = None
+    lunch_end_time: Optional[str] = None
+
+class ScheduleUpdate(BaseModel):
+    name: Optional[str] = None
+    shift_type: Optional[str] = None
+    work_start_time: Optional[str] = None
+    work_end_time: Optional[str] = None
+    lunch_start_time: Optional[str] = None
+    lunch_end_time: Optional[str] = None
+
+class ScheduleOut(BaseModel):
+    id: int
+    name: str
+    shift_type: str
+    work_start_time: str
+    work_end_time: str
+    lunch_start_time: Optional[str] = None
+    lunch_end_time: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ── Employees ─────────────────────────────────────────────────────────────────
 
 class EmployeeCreate(BaseModel):
@@ -62,8 +108,9 @@ class EmployeeCreate(BaseModel):
     last_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
-    position: Optional[str] = None
+    position_id: Optional[int] = None
     department_id: Optional[int] = None
+    schedule_id: Optional[int] = None
     card_number: Optional[str] = None
     work_start_time: str = "07:00"
     work_end_time: str = "18:00"
@@ -73,8 +120,9 @@ class EmployeeUpdate(BaseModel):
     last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-    position: Optional[str] = None
+    position_id: Optional[int] = None
     department_id: Optional[int] = None
+    schedule_id: Optional[int] = None
     card_number: Optional[str] = None
     work_start_time: Optional[str] = None
     work_end_time: Optional[str] = None
@@ -89,9 +137,12 @@ class EmployeeOut(BaseModel):
     full_name: str
     email: Optional[str]
     phone: Optional[str]
-    position: Optional[str]
+    position_id: Optional[int]
+    position: Optional[PositionOut]
     department_id: Optional[int]
     department: Optional[DepartmentOut]
+    schedule_id: Optional[int]
+    schedule: Optional[ScheduleOut]
     photo_path: Optional[str]
     card_number: Optional[str]
     is_active: bool

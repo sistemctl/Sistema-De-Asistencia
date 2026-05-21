@@ -77,6 +77,7 @@ def export_consolidated(
 def get_analytics(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -93,11 +94,43 @@ def get_analytics(
     df = datetime.combine(date_from, datetime.min.time())
     dt = datetime.combine(date_to, datetime.max.time())
 
-    total_employees = db.query(Employee).filter(Employee.is_active == True).count()
+    employee_query = db.query(Employee).filter(Employee.is_active == True)
+    if search:
+        employee_query = employee_query.filter(
+            (Employee.first_name.ilike(f"%{search}%")) |
+            (Employee.last_name.ilike(f"%{search}%")) |
+            (Employee.employee_code.ilike(f"%{search}%"))
+        )
+    
+    total_employees = employee_query.count()
+    employee_ids = [e.id for e in employee_query.all()]
+
+    if not employee_ids:
+        # Si la búsqueda no coincide con ningún empleado, retornar resultados vacíos.
+        return {
+            "kpis": {
+                "punctuality_rate": "100%",
+                "total_lates": 0,
+                "avg_entry_time": "--:--",
+                "critical_day": "Ninguno"
+            },
+            "distribution": {
+                "ontime": 0,
+                "late": 0,
+                "absent": 0,
+                "leaves": 0
+            },
+            "trend": {
+                "labels": [],
+                "present": [],
+                "late": []
+            }
+        }
 
     records = db.query(AttendanceRecord).filter(
         AttendanceRecord.event_time >= df,
         AttendanceRecord.event_time <= dt,
+        AttendanceRecord.employee_id.in_(employee_ids)
     ).all()
 
     entries = [r for r in records if r.event_type == "entry"]

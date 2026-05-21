@@ -259,7 +259,7 @@ def generate_consolidated_excel(
             emp.department.name if emp.department else "-",
             entry_time_str,
             exit_time_str,
-            f"{emp.work_start_time} - {emp.work_end_time}",
+            f"{emp.schedule.name} ({emp.schedule.work_start_time}-{emp.schedule.work_end_time})" if emp.schedule_id and emp.schedule else f"{emp.work_start_time} - {emp.work_end_time}",
             is_late_str
         ]
         ws.append(row)

@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from backend.config import APP_NAME, APP_VERSION, CORS_ORIGINS, FRONTEND_DIR
 from backend.database import init_db
 from backend.services.scheduler import start_scheduler, stop_scheduler
-from backend.routers import auth, employees, attendance, device, dashboard, reports
+from backend.routers import auth, employees, attendance, device, dashboard, reports, schedules
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,6 +53,7 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
 app.include_router(employees.router)
+app.include_router(schedules.router)
 app.include_router(attendance.router)
 app.include_router(device.router)
 app.include_router(dashboard.router)

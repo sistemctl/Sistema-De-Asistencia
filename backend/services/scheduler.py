@@ -255,27 +255,70 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
         except Exception:
             event_time = get_local_now().replace(tzinfo=None)
 
-        # Determinar tipo de evento (entrada/salida por hora)
-        hour = event_time.hour
-        event_type = "entry" if 5 <= hour < 13 else "exit"
-
-        # Detectar tardanza (o salida temprana) según la tolerancia de DeviceConfig
+        # Determinar tipo de evento (entrada/salida) y tardanza según el tipo de jornada
         is_late = False
+        event_type = "entry"
         if employee:
             try:
-                if event_type == "entry":
-                    h, m = map(int, employee.work_start_time.split(":"))
-                    target = event_time.replace(hour=h, minute=m, second=0)
-                    diff_mins = (event_time - target).total_seconds() / 60.0
-                    is_late = diff_mins > cfg.entry_tolerance_minutes
+                # 1. Definir los checkpoints (horas objetivo y su tipo 'entry' o 'exit')
+                checkpoints = []
+                
+                if employee.schedule_id and employee.schedule:
+                    sched = employee.schedule
+                    if sched.shift_type == "split":
+                        # Jornada partida (4 checkpoints)
+                        checkpoints = [
+                            {"time": sched.work_start_time, "type": "entry"},
+                            {"time": sched.lunch_start_time, "type": "exit"},
+                            {"time": sched.lunch_end_time, "type": "entry"},
+                            {"time": sched.work_end_time, "type": "exit"}
+                        ]
+                    else:
+                        # Jornada continua (2 checkpoints)
+                        checkpoints = [
+                            {"time": sched.work_start_time, "type": "entry"},
+                            {"time": sched.work_end_time, "type": "exit"}
+                        ]
                 else:
-                    h, m = map(int, employee.work_end_time.split(":"))
-                    target = event_time.replace(hour=h, minute=m, second=0)
-                    diff_mins = (event_time - target).total_seconds() / 60.0
-                    # Salida temprana (negativo significa antes de la hora)
-                    is_late = diff_mins < -cfg.exit_tolerance_minutes
+                    # Horario personalizado (2 checkpoints)
+                    checkpoints = [
+                        {"time": employee.work_start_time, "type": "entry"},
+                        {"time": employee.work_end_time, "type": "exit"}
+                    ]
+                
+                # 2. Encontrar el checkpoint más cercano al event_time de forma dinámica
+                closest_checkpoint = None
+                min_diff_mins = float('inf')
+                
+                for cp in checkpoints:
+                    if cp["time"]:
+                        h, m = map(int, cp["time"].split(":"))
+                        target = event_time.replace(hour=h, minute=m, second=0)
+                        diff = (event_time - target).total_seconds() / 60.0
+                        if abs(diff) < abs(min_diff_mins):
+                            min_diff_mins = diff
+                            closest_checkpoint = cp
+                
+                if closest_checkpoint:
+                    event_type = closest_checkpoint["type"]
+                    # 3. Calcular si es tardanza o salida temprana
+                    if event_type == "entry":
+                        is_late = min_diff_mins > cfg.entry_tolerance_minutes
+                    else:
+                        # Salida temprana (negativo significa que salió antes de la hora)
+                        is_late = min_diff_mins < -cfg.exit_tolerance_minutes
+                else:
+                    # Fallback si no hay checkpoints
+                    hour = event_time.hour
+                    event_type = "entry" if 5 <= hour < 13 else "exit"
             except Exception:
-                pass
+                # Fallback general
+                hour = event_time.hour
+                event_type = "entry" if 5 <= hour < 13 else "exit"
+        else:
+            # Fallback para eventos sin empleado asociado
+            hour = event_time.hour
+            event_type = "entry" if 5 <= hour < 13 else "exit"
 
         record = AttendanceRecord(
             employee_id=employee.id if employee else None,
