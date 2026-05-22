@@ -122,6 +122,58 @@ const ReportsPage = {
         </div>
       </div>
 
+      <!-- DETAILED ATTENDANCE REPORT WITH GRANULARITY AND EMPLOYEE FILTERS -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Visualizador de Reportes de Asistencia (Schedules)
+            </div>
+            <div class="card-sub">Reporte estructurado según jornada laboral (continua/partida) y granularidad</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <select id="repEmployee" style="width:180px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:8px; padding:6px 12px; font-size:0.85rem;">
+              <option value="">Todos los empleados</option>
+            </select>
+            <select id="repGranularity" style="width:120px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:8px; padding:6px 12px; font-size:0.85rem;" onchange="ReportsPage.onGranularityChange()">
+              <option value="daily">Diario</option>
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensual</option>
+            </select>
+            <input type="text" id="repDateRange" style="width:220px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:8px; padding:6px 12px; font-size:0.85rem;" placeholder="Filtrar fecha..." />
+            <button class="btn btn-sm btn-primary" onclick="ReportsPage.loadReportTable(1)">Buscar</button>
+            <button class="btn btn-sm btn-success" onclick="ReportsPage.exportReport('excel')">Excel</button>
+            <button class="btn btn-sm btn-primary" onclick="ReportsPage.exportReport('pdf')" style="background:var(--accent)">PDF</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px;">
+          <table>
+            <thead id="repTableHead">
+              <tr>
+                <th>Empleado</th>
+                <th>Código</th>
+                <th>Departamento</th>
+                <th>Fecha</th>
+                <th>Horario</th>
+                <th>Entrada</th>
+                <th>Sal. Alm.</th>
+                <th>Ret. Alm.</th>
+                <th>Salida</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="repTableBody">
+              <tr>
+                <td colspan="10" style="text-align:center; color:var(--text-3);">Cargando reporte...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="repPagination" style="margin-top:16px;"></div>
+      </div>
+
       <div class="card" style="margin-top:24px">
         <div class="card-header">
           <div class="card-title">
@@ -130,9 +182,9 @@ const ReportsPage = {
           </div>
         </div>
         <p style="color:var(--text-2);font-size:.875rem;line-height:1.7">
-          Los reportes incluyen todos los registros de asistencia dentro del rango de fechas seleccionado.<br>
-          Si no seleccionas fechas, se exportarán <strong>todos los registros</strong>.<br>
-          El archivo se descargará automáticamente.
+          Los reportes y exportaciones se calculan dinámicamente según el tipo de horario del empleado asignado (Jornada Continua: 1 entrada / 1 salida; Jornada Partida: 2 entradas / 2 salidas).<br>
+          Para reportes Semanales y Mensuales, el estado muestra si se detectó alguna anomalía en el período correspondiente.<br>
+          El archivo se descargará automáticamente al presionar los botones Excel o PDF.
         </p>
       </div>`;
 
@@ -142,19 +194,36 @@ const ReportsPage = {
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
 
-    ['xlDateRange', 'pdfDateRange', 'consDateRange', 'analyticsDateRange'].forEach(id => {
+    ['xlDateRange', 'pdfDateRange', 'consDateRange', 'analyticsDateRange', 'repDateRange'].forEach(id => {
       flatpickr(`#${id}`, { 
         mode: "range", 
         locale: "es", 
-        showMonths: id === 'analyticsDateRange' ? 1 : 2,
+        showMonths: id === 'analyticsDateRange' || id === 'repDateRange' ? 1 : 2,
         dateFormat: "Y-m-d", 
         altInput: true, 
         altFormat: "d M Y", 
-        defaultDate: id === 'analyticsDateRange' ? [thirtyDaysAgo, todayStr] : [firstDay, todayStr] 
+        defaultDate: id === 'analyticsDateRange' || id === 'repDateRange' ? [thirtyDaysAgo, todayStr] : [firstDay, todayStr] 
       });
     });
 
+    // Cargar selector de empleados
+    try {
+      const emps = await API.get('/api/employees');
+      const repEmp = document.getElementById('repEmployee');
+      if (repEmp && emps) {
+        emps.forEach(e => {
+          const opt = document.createElement('option');
+          opt.value = e.id;
+          opt.textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+          repEmp.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.error("Error loading employees for report selector", e);
+    }
+
     await this.loadAnalytics();
+    await this.loadReportTable(1);
   },
 
   async loadAnalytics() {
@@ -338,4 +407,180 @@ const ReportsPage = {
       })
       .catch(() => Toast.show('Error generando Consolidado', 'error'));
   },
+
+  reportPage: 1,
+
+  async loadReportTable(page = 1) {
+    this.reportPage = page;
+    const repEmployee = document.getElementById('repEmployee').value;
+    const repGranularity = document.getElementById('repGranularity').value;
+    const range = document.getElementById('repDateRange').value;
+    
+    const params = new URLSearchParams({
+      page: this.reportPage,
+      page_size: 15,
+      granularity: repGranularity
+    });
+
+    if (repEmployee) params.set('employee_id', repEmployee);
+    
+    if (range) {
+      const dates = range.split(range.includes(' a ') ? ' a ' : ' to ');
+      if (dates.length > 0 && dates[0]) params.set('date_from', dates[0]);
+      if (dates.length > 1 && dates[1]) params.set('date_to', dates[1]);
+      else if (dates.length === 1 && dates[0]) params.set('date_to', dates[0]);
+    }
+
+    const tbody = document.getElementById('repTableBody');
+    tbody.innerHTML = Array.from({length: 5}).map(() => `<tr>
+      <td colspan="10"><div class="skeleton sk-text w-100" style="height:20px;"></div></td>
+    </tr>`).join('');
+
+    try {
+      const data = await API.get(`/api/reports/report?${params}`);
+      const thead = document.getElementById('repTableHead');
+      
+      if (repGranularity === 'daily') {
+        thead.innerHTML = `
+          <tr>
+            <th>Empleado</th>
+            <th>Código</th>
+            <th>Departamento</th>
+            <th>Fecha</th>
+            <th>Horario</th>
+            <th>Entrada</th>
+            <th>Sal. Alm.</th>
+            <th>Ret. Alm.</th>
+            <th>Salida</th>
+            <th>Estado</th>
+          </tr>
+        `;
+      } else {
+        thead.innerHTML = `
+          <tr>
+            <th>Empleado</th>
+            <th>Código</th>
+            <th>Departamento</th>
+            <th>Período</th>
+            <th>Horario</th>
+            <th>Presente</th>
+            <th>Tardanzas</th>
+            <th>Incompletos</th>
+            <th>Eventos Totales</th>
+          </tr>
+        `;
+      }
+
+      if (!data?.items?.length) {
+        tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><h3>Sin registros</h3><p>No se encontraron datos para los filtros especificados.</p></div></td></tr>`;
+        document.getElementById('repPagination').innerHTML = '';
+        return;
+      }
+
+      const formatTime = (isoString) => {
+        if (!isoString) return '-';
+        return new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'});
+      };
+
+      tbody.innerHTML = data.items.map(r => {
+        if (repGranularity === 'daily') {
+          let statusBadge = '<span class="badge badge-green">OK</span>';
+          if (!r.is_present) statusBadge = '<span class="badge badge-red">Ausente</span>';
+          else if (r.missing_punches) statusBadge = '<span class="badge badge-yellow">Incompleto</span>';
+          else if (r.is_late) statusBadge = '<span class="badge badge-yellow">Tardanza</span>';
+
+          const isSplit = r.schedule_type === 'split';
+
+          return `
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px">
+                <div class="emp-avatar">${r.employee_name.charAt(0)}</div>
+                <span style="font-weight:600">${r.employee_name}</span>
+              </div></td>
+              <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem;">${r.employee_code}</code></td>
+              <td style="color:var(--text-2)">${r.department}</td>
+              <td style="color:var(--text-2)">${new Date(r.date + "T00:00:00").toLocaleDateString('es')}</td>
+              <td>${isSplit ? 'Partido' : (r.schedule_type === 'continuous' ? 'Continuo' : 'Sin Horario')}</td>
+              <td style="font-weight:600;font-family:monospace;">${formatTime(r.punches.entry_1)}</td>
+              <td style="color:var(--text-2);font-family:monospace;">${isSplit ? formatTime(r.punches.exit_1) : '—'}</td>
+              <td style="color:var(--text-2);font-family:monospace;">${isSplit ? formatTime(r.punches.entry_2) : '—'}</td>
+              <td style="font-weight:600;font-family:monospace;">${isSplit ? formatTime(r.punches.exit_2) : formatTime(r.punches.exit_1)}</td>
+              <td>${statusBadge}</td>
+            </tr>
+          `;
+        } else {
+          const pStart = new Date(r.period_start + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'2-digit'});
+          const pEnd = new Date(r.period_end + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'2-digit', year:'numeric'});
+          
+          return `
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px">
+                <div class="emp-avatar">${r.employee_name.charAt(0)}</div>
+                <span style="font-weight:600">${r.employee_name}</span>
+              </div></td>
+              <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem;">${r.employee_code}</code></td>
+              <td style="color:var(--text-2)">${r.department}</td>
+              <td style="color:var(--text-2)">${pStart} - ${pEnd}</td>
+              <td>${r.schedule_type === 'split' ? 'Partido' : (r.schedule_type === 'continuous' ? 'Continuo' : 'Sin Horario')}</td>
+              <td>${r.is_present ? '<span class="badge badge-green">Sí</span>' : '<span class="badge badge-red">No</span>'}</td>
+              <td>${r.is_late ? '<span class="badge badge-yellow">Sí</span>' : '<span class="badge badge-green">No</span>'}</td>
+              <td>${r.missing_punches ? '<span class="badge badge-yellow">Sí</span>' : '<span class="badge badge-green">No</span>'}</td>
+              <td style="font-weight:600;">${r.total_raw_events}</td>
+            </tr>
+          `;
+        }
+      }).join('');
+
+      const pag = document.getElementById('repPagination');
+      pag.innerHTML = `
+        <span class="pagination-info">${data.total} registros — Página ${data.page} de ${data.pages}</span>
+        <div class="pagination-btns">
+          <button class="page-btn" ${data.page <= 1 ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page - 1})">← Anterior</button>
+          <button class="page-btn" ${data.page >= data.pages ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page + 1})">Siguiente →</button>
+        </div>
+      `;
+
+    } catch (e) {
+      console.error(e);
+      Toast.show('Error cargando tabla de reportes', 'error');
+    }
+  },
+
+  onGranularityChange() {
+    this.loadReportTable(1);
+  },
+
+  exportReport(format) {
+    const token = API.token();
+    const repEmployee = document.getElementById('repEmployee').value;
+    const repGranularity = document.getElementById('repGranularity').value;
+    const range = document.getElementById('repDateRange').value;
+    
+    const params = new URLSearchParams({
+      granularity: repGranularity,
+      export: format
+    });
+
+    if (repEmployee) params.set('employee_id', repEmployee);
+    
+    if (range) {
+      const dates = range.split(range.includes(' a ') ? ' a ' : ' to ');
+      if (dates.length > 0 && dates[0]) params.set('date_from', dates[0]);
+      if (dates.length > 1 && dates[1]) params.set('date_to', dates[1]);
+      else if (dates.length === 1 && dates[0]) params.set('date_to', dates[0]);
+    }
+
+    fetch(`/api/reports/report?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const ext = format === 'excel' ? 'xlsx' : 'pdf';
+        a.download = `reporte_asistencia_${repGranularity}_${new Date().toISOString().split('T')[0]}.${ext}`;
+        a.click();
+        Toast.show(`Reporte ${format.toUpperCase()} descargado`, 'success');
+      })
+      .catch(() => Toast.show(`Error generando reporte ${format.toUpperCase()}`, 'error'));
+  }
 };

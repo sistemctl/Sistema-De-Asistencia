@@ -9,9 +9,79 @@ import io
 
 from backend.auth import get_current_user
 from backend.database import get_db
-from backend.services.report_generator import generate_excel_report, generate_pdf_report, generate_consolidated_excel
+from backend.services.report_generator import (
+    generate_excel_report,
+    generate_pdf_report,
+    generate_consolidated_excel,
+    generate_attendance_excel,
+    generate_attendance_pdf,
+)
+from backend.schemas import ReportResponse
+from backend.services.attendance_processor import process_attendance_report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+
+@router.get("/report")
+def get_attendance_report(
+    employee_id: Optional[int] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    granularity: str = Query("daily"),
+    search: Optional[str] = Query(None),
+    export: Optional[str] = Query(None),  # 'excel' or 'pdf'
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from backend.utils import get_local_now
+    from datetime import timedelta
+
+    if not date_from:
+        date_from = (get_local_now() - timedelta(days=30)).date()
+    if not date_to:
+        date_to = get_local_now().date()
+
+    results = process_attendance_report(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        employee_id=employee_id,
+        search=search,
+        granularity=granularity
+    )
+
+    if export == "excel":
+        content = generate_attendance_excel(results, granularity)
+        filename = f"reporte_asistencia_{granularity}_{date.today().isoformat()}.xlsx"
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    elif export == "pdf":
+        content = generate_attendance_pdf(results, granularity)
+        filename = f"reporte_asistencia_{granularity}_{date.today().isoformat()}.pdf"
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    total = len(results)
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    items = results[start_idx:end_idx]
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": (total + page_size - 1) // page_size if page_size else 0,
+        "items": items
+    }
+
 
 
 @router.get("/excel")

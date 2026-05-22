@@ -282,3 +282,280 @@ def generate_consolidated_excel(
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def generate_attendance_excel(summaries: list, granularity: str) -> bytes:
+    """Genera un reporte consolidado con horarios y granularidad en Excel."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Reporte {granularity.capitalize()}"
+
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill("solid", fgColor="1e3a5f")
+    center = Alignment(horizontal="center", vertical="center")
+    thin = Side(style="thin", color="CCCCCC")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    if granularity == "daily":
+        headers = [
+            "Empleado", "Código", "Departamento", "Fecha", "Horario",
+            "Entrada", "Salida Almuerzo", "Retorno Almuerzo", "Salida", "Estado"
+        ]
+    else:
+        headers = [
+            "Empleado", "Código", "Departamento", "Período", "Horario",
+            "Asistente", "Incidencias Tardanza", "Punches Incompletos", "Eventos Totales"
+        ]
+
+    ws.append(headers)
+
+    for col_idx, _ in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+        cell.border = border
+
+    row_num = 2
+    for s in summaries:
+        if granularity == "daily":
+            def format_time(iso_str):
+                if not iso_str:
+                    return "-"
+                try:
+                    return datetime.fromisoformat(iso_str).strftime("%H:%M")
+                except:
+                    return "-"
+
+            is_split = s["schedule_type"] == "split"
+            entry_1 = format_time(s["punches"]["entry_1"])
+            exit_1 = format_time(s["punches"]["exit_1"]) if is_split else "-"
+            entry_2 = format_time(s["punches"]["entry_2"]) if is_split else "-"
+            exit_2 = format_time(s["punches"]["exit_2"]) if is_split else format_time(s["punches"]["exit_1"])
+
+            status = "OK"
+            if not s["is_present"]:
+                status = "Ausente"
+            elif s["missing_punches"]:
+                status = "Incompleto"
+            elif s["is_late"]:
+                status = "Tardanza"
+
+            try:
+                formatted_date = datetime.strptime(s["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
+            except:
+                formatted_date = s["date"]
+
+            row = [
+                s["employee_name"],
+                s["employee_code"],
+                s["department"],
+                formatted_date,
+                "Partido" if is_split else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
+                entry_1,
+                exit_1,
+                entry_2,
+                exit_2,
+                status
+            ]
+        else:
+            try:
+                p_start = datetime.strptime(s["period_start"], "%Y-%m-%d").strftime("%d/%m/%Y")
+                p_end = datetime.strptime(s["period_end"], "%Y-%m-%d").strftime("%d/%m/%Y")
+                period_str = f"{p_start} - {p_end}"
+            except:
+                period_str = f"{s['period_start']} - {s['period_end']}"
+
+            row = [
+                s["employee_name"],
+                s["employee_code"],
+                s["department"],
+                period_str,
+                "Partido" if s["schedule_type"] == "split" else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
+                "Sí" if s["is_present"] else "No",
+                "Sí" if s["is_late"] else "No",
+                "Sí" if s["missing_punches"] else "No",
+                s["total_raw_events"]
+            ]
+
+        ws.append(row)
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_num, column=col_idx)
+            cell.alignment = center
+            cell.border = border
+            if granularity == "daily" and col_idx == 10:
+                if status == "Ausente":
+                    cell.font = Font(color="FF3D00", bold=True)
+                elif status == "Tardanza":
+                    cell.font = Font(color="FFB300", bold=True)
+                elif status == "Incompleto":
+                    cell.font = Font(color="FFA000", bold=True)
+                else:
+                    cell.font = Font(color="00E676", bold=True)
+            elif granularity != "daily":
+                if col_idx == 7 and s["is_late"]:
+                    cell.font = Font(color="FFB300", bold=True)
+                elif col_idx == 8 and s["missing_punches"]:
+                    cell.font = Font(color="FFA000", bold=True)
+
+        row_num += 1
+
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 10)
+
+    ws.freeze_panes = "A2"
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def generate_attendance_pdf(summaries: list, granularity: str) -> bytes:
+    """Genera un reporte consolidado con horarios y granularidad en PDF."""
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.units import cm
+    from backend.utils import get_local_now
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=landscape(A4),
+        topMargin=1.5*cm, bottomMargin=1.5*cm, leftMargin=1*cm, rightMargin=1*cm
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("title", parent=styles["Title"], fontSize=16, textColor=colors.HexColor("#1e3a5f"))
+    sub_style = ParagraphStyle("sub", parent=styles["Normal"], fontSize=9, textColor=colors.grey)
+
+    elements = [
+        Paragraph(f"Reporte de Asistencia - Granularidad: {granularity.capitalize()}", title_style),
+        Paragraph(f"Generado: {get_local_now().strftime('%d/%m/%Y %H:%M')} — Total registros: {len(summaries)}", sub_style),
+        Spacer(1, 0.5*cm),
+    ]
+
+    if granularity == "daily":
+        headers = [
+            "Empleado", "Código", "Departamento", "Fecha", "Horario",
+            "Entrada", "Sal. Alm.", "Ret. Alm.", "Salida", "Estado"
+        ]
+        data = [headers]
+        for s in summaries:
+            def format_time(iso_str):
+                if not iso_str:
+                    return "-"
+                try:
+                    return datetime.fromisoformat(iso_str).strftime("%H:%M")
+                except:
+                    return "-"
+
+            is_split = s["schedule_type"] == "split"
+            entry_1 = format_time(s["punches"]["entry_1"])
+            exit_1 = format_time(s["punches"]["exit_1"]) if is_split else "-"
+            entry_2 = format_time(s["punches"]["entry_2"]) if is_split else "-"
+            exit_2 = format_time(s["punches"]["exit_2"]) if is_split else format_time(s["punches"]["exit_1"])
+
+            status = "OK"
+            if not s["is_present"]:
+                status = "Ausente"
+            elif s["missing_punches"]:
+                status = "Incompleto"
+            elif s["is_late"]:
+                status = "Tardanza"
+
+            try:
+                formatted_date = datetime.strptime(s["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
+            except:
+                formatted_date = s["date"]
+
+            data.append([
+                s["employee_name"],
+                s["employee_code"],
+                s["department"],
+                formatted_date,
+                "Partido" if is_split else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
+                entry_1,
+                exit_1,
+                entry_2,
+                exit_2,
+                status
+            ])
+    else:
+        headers = [
+            "Empleado", "Código", "Departamento", "Período", "Horario",
+            "Presente", "Tardanza", "Incompleto", "Eventos"
+        ]
+        data = [headers]
+        for s in summaries:
+            try:
+                p_start = datetime.strptime(s["period_start"], "%Y-%m-%d").strftime("%d/%m/%Y")
+                p_end = datetime.strptime(s["period_end"], "%Y-%m-%d").strftime("%d/%m/%Y")
+                period_str = f"{p_start}\n-{p_end}"
+            except:
+                period_str = f"{s['period_start']}\n-{s['period_end']}"
+
+            data.append([
+                s["employee_name"],
+                s["employee_code"],
+                s["department"],
+                period_str,
+                "Partido" if s["schedule_type"] == "split" else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
+                "Sí" if s["is_present"] else "No",
+                "Sí" if s["is_late"] else "No",
+                "Sí" if s["missing_punches"] else "No",
+                str(s["total_raw_events"])
+            ])
+
+    table = Table(data, repeatRows=1)
+    
+    t_style = TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e3a5f")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ])
+
+    for r in range(1, len(data)):
+        bg = colors.white if r % 2 == 1 else colors.HexColor("#f0f4f8")
+        t_style.add("BACKGROUND", (0, r), (-1, r), bg)
+        
+        if granularity == "daily":
+            status_val = data[r][9]
+            if status_val == "Ausente":
+                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#FF3D00"))
+                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
+            elif status_val == "Tardanza":
+                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#FFB300"))
+                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
+            elif status_val == "Incompleto":
+                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#FFA000"))
+                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
+            else:
+                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#00E676"))
+                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
+        else:
+            if data[r][6] == "Sí":
+                t_style.add("TEXTCOLOR", (6, r), (6, r), colors.HexColor("#FFB300"))
+                t_style.add("FONTNAME", (6, r), (6, r), "Helvetica-Bold")
+            if data[r][7] == "Sí":
+                t_style.add("TEXTCOLOR", (7, r), (7, r), colors.HexColor("#FFA000"))
+                t_style.add("FONTNAME", (7, r), (7, r), "Helvetica-Bold")
+
+    table.setStyle(t_style)
+    elements.append(table)
+
+    doc.build(elements)
+    return buf.getvalue()
+

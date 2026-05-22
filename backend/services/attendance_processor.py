@@ -171,3 +171,161 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
         summaries.append(summary)
         
     return summaries
+
+
+def process_attendance_report(
+    db: Session,
+    date_from: date,
+    date_to: date,
+    employee_id: Optional[int] = None,
+    search: Optional[str] = None,
+    granularity: str = "daily"
+) -> List[Dict]:
+    """
+    Processes and aggregates attendance summaries for a range of dates,
+    with daily, weekly, or monthly granularity.
+    """
+    from backend.models import Employee, AttendanceRecord, DeviceConfig
+    from collections import defaultdict
+    from datetime import timedelta
+
+    # 1. Build employee query
+    employee_query = db.query(Employee).filter(Employee.is_active == True)
+    if employee_id:
+        employee_query = employee_query.filter(Employee.id == employee_id)
+    if search:
+        search_lower = search.lower()
+        employee_query = employee_query.filter(
+            (Employee.first_name.ilike(f"%{search}%")) |
+            (Employee.last_name.ilike(f"%{search}%")) |
+            (Employee.employee_code.ilike(f"%{search}%"))
+        )
+    employees = employee_query.all()
+    emp_ids = [emp.id for emp in employees]
+
+    if not emp_ids:
+        return []
+
+    # 2. Get list of days in range
+    delta = date_to - date_from
+    days = [date_from + timedelta(days=i) for i in range(delta.days + 1)]
+
+    start_dt = datetime.combine(date_from, datetime.min.time())
+    end_dt = datetime.combine(date_to, datetime.max.time())
+
+    # 3. Fetch all attendance records for this period in a single query
+    records = db.query(AttendanceRecord).filter(
+        AttendanceRecord.event_time >= start_dt,
+        AttendanceRecord.event_time <= end_dt,
+        AttendanceRecord.employee_id.in_(emp_ids)
+    ).all()
+
+    config = db.query(DeviceConfig).first()
+
+    # Group records by (employee_id, date)
+    records_by_emp_day = defaultdict(list)
+    for r in records:
+        if r.employee_id:
+            r_date = r.event_time.date()
+            records_by_emp_day[(r.employee_id, r_date)].append(r)
+
+    # 4. Generate daily summaries
+    daily_summaries = []
+    for emp in employees:
+        for d in days:
+            emp_records = records_by_emp_day.get((emp.id, d), [])
+            summary = calculate_daily_summary(emp, emp_records, d, config)
+            daily_summaries.append(summary)
+
+    if granularity == "daily":
+        daily_summaries.sort(key=lambda s: (s["date"], s["employee_name"]), reverse=True)
+        return daily_summaries
+
+    elif granularity == "weekly":
+        # Group by employee_id, year, and week
+        weekly_groups = defaultdict(list)
+        for s in daily_summaries:
+            s_date = date.fromisoformat(s["date"])
+            iso_yr, iso_wk, _ = s_date.isocalendar()
+            weekly_groups[(s["employee_id"], iso_yr, iso_wk)].append(s)
+
+        weekly_summaries = []
+        for (emp_id, yr, wk), day_sums in weekly_groups.items():
+            first = day_sums[0]
+            p_start = date.fromisocalendar(yr, wk, 1)
+            p_end = date.fromisocalendar(yr, wk, 7)
+
+            total_raw = sum(x["total_raw_events"] for x in day_sums)
+            is_present = any(x["is_present"] for x in day_sums)
+            is_late = any(x["is_late"] for x in day_sums)
+            missing_punches = any(x["missing_punches"] for x in day_sums)
+
+            weekly_summaries.append({
+                "employee_id": emp_id,
+                "employee_name": first["employee_name"],
+                "employee_code": first["employee_code"],
+                "department": first["department"],
+                "date": p_start.isoformat(),
+                "schedule_type": first["schedule_type"],
+                "punches": {
+                    "entry_1": None,
+                    "exit_1": None,
+                    "entry_2": None,
+                    "exit_2": None
+                },
+                "total_raw_events": total_raw,
+                "is_present": is_present,
+                "is_late": is_late,
+                "missing_punches": missing_punches,
+                "period_start": p_start.isoformat(),
+                "period_end": p_end.isoformat(),
+            })
+
+        weekly_summaries.sort(key=lambda s: (s["period_start"], s["employee_name"]), reverse=True)
+        return weekly_summaries
+
+    elif granularity == "monthly":
+        # Group by employee_id, year, and month
+        monthly_groups = defaultdict(list)
+        for s in daily_summaries:
+            s_date = date.fromisoformat(s["date"])
+            monthly_groups[(s["employee_id"], s_date.year, s_date.month)].append(s)
+
+        monthly_summaries = []
+        for (emp_id, yr, mo), day_sums in monthly_groups.items():
+            first = day_sums[0]
+            p_start = date(yr, mo, 1)
+            if mo == 12:
+                p_end = date(yr + 1, 1, 1) - timedelta(days=1)
+            else:
+                p_end = date(yr, mo + 1, 1) - timedelta(days=1)
+
+            total_raw = sum(x["total_raw_events"] for x in day_sums)
+            is_present = any(x["is_present"] for x in day_sums)
+            is_late = any(x["is_late"] for x in day_sums)
+            missing_punches = any(x["missing_punches"] for x in day_sums)
+
+            monthly_summaries.append({
+                "employee_id": emp_id,
+                "employee_name": first["employee_name"],
+                "employee_code": first["employee_code"],
+                "department": first["department"],
+                "date": p_start.isoformat(),
+                "schedule_type": first["schedule_type"],
+                "punches": {
+                    "entry_1": None,
+                    "exit_1": None,
+                    "entry_2": None,
+                    "exit_2": None
+                },
+                "total_raw_events": total_raw,
+                "is_present": is_present,
+                "is_late": is_late,
+                "missing_punches": missing_punches,
+                "period_start": p_start.isoformat(),
+                "period_end": p_end.isoformat(),
+            })
+
+        monthly_summaries.sort(key=lambda s: (s["period_start"], s["employee_name"]), reverse=True)
+        return monthly_summaries
+
