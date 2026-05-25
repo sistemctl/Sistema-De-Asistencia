@@ -89,3 +89,4 @@ def get_recent_events(limit: int = 8, db: Session = Depends(get_db), _=Depends(g
             "is_late": r.is_late,
         })
     return result
+

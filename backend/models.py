@@ -61,6 +61,7 @@ class Schedule(Base):
     work_end_time = Column(String(5), default="18:00")     # HH:MM
     lunch_start_time = Column(String(5), nullable=True)   # HH:MM
     lunch_end_time = Column(String(5), nullable=True)     # HH:MM
+    work_days = Column(String(100), default="1,2,3,4,5", nullable=False) # Lunes a Viernes (1=Lunes, 7=Domingo)
     created_at = Column(DateTime, default=datetime.now)
 
     employees = relationship("Employee", back_populates="schedule")
@@ -155,3 +156,20 @@ class SyncLog(Base):
     events_new = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     is_mock = Column(Boolean, default=False)          # True si fue sincronización simulada
+
+
+class SystemConfig(Base):
+    """Configuración de personalización y parámetros generales del software."""
+    __tablename__ = "system_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    system_name = Column(String(100), default="Control de Asistencia")
+    company_name = Column(String(100), default="Hikvision DS-K1T323MBWX")
+    logo_path = Column(String(500), nullable=True)
+    primary_color = Column(String(30), default="#1e3a5f")
+    accent_color = Column(String(30), default="#00e676")
+    work_days = Column(String(100), default="1,2,3,4,5") # Lunes a Viernes (1=Lunes, 7=Domingo)
+    time_format = Column(String(10), default="24h") # 12h / 24h
+    entry_tolerance_minutes = Column(Integer, default=10)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+

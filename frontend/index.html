@@ -141,15 +141,16 @@
 <div class="login-card">
   <div class="logo-row">
     <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;stroke:#fff;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;stroke:#fff;" id="loginLogoSvg">
         <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
         <line x1="9" y1="22" x2="9" y2="16"></line>
         <line x1="15" y1="22" x2="15" y2="16"></line>
         <line x1="9" y1="16" x2="15" y2="16"></line>
         <circle cx="12" cy="7" r="2"></circle>
       </svg>
+      <img id="loginLogoImg" style="display: none; width: 32px; height: 32px; object-fit: contain;" />
     </div>
-    <div><h1>Control de Asistencia</h1><p>Hikvision DS-K1T323MBWX</p></div>
+    <div><h1 id="loginSystemName">Control de Asistencia</h1><p id="loginCompanyName">Hikvision DS-K1T323MBWX</p></div>
   </div>
   <p style="font-size:1.45rem;font-weight:800;color:var(--text-1);margin:0 0 4px;letter-spacing:-0.02em;">Bienvenido</p>
   <p style="font-size:.86rem;color:var(--text-3);margin:0 0 28px;font-weight:500;">Ingresa tus credenciales para continuar</p>
@@ -167,11 +168,46 @@
     <div class="login-error" id="loginError"></div>
   </form>
   
-  <div class="login-footer">Sistema de Asistencia v1.0 &mdash; Sede principal</div>
+  <div class="login-footer" id="loginFooter">Sistema de Asistencia v1.0 &mdash; Sede principal</div>
 </div>
 
 <script>
   if (localStorage.getItem('token')) window.location.href = '/app';
+  
+  // Cargar branding del sistema
+  (async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.system_name) {
+          document.title = `Iniciar Sesión — ${data.system_name}`;
+          document.getElementById('loginSystemName').textContent = data.system_name;
+        }
+        if (data.company_name) {
+          document.getElementById('loginCompanyName').textContent = data.company_name;
+          document.getElementById('loginFooter').innerHTML = `${data.company_name} &mdash; Control de Asistencia`;
+        }
+        if (data.logo_path) {
+          document.getElementById('loginLogoSvg').style.display = 'none';
+          const img = document.getElementById('loginLogoImg');
+          img.src = data.logo_path;
+          img.style.display = 'block';
+        }
+        if (data.primary_color) {
+          document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, ${data.primary_color}26 0%, #03050f 100%)`;
+        }
+        if (data.accent_color) {
+          document.documentElement.style.setProperty('--accent', data.accent_color);
+          const logoIcon = document.querySelector('.logo-icon');
+          if (logoIcon) logoIcon.style.boxShadow = `0 8px 24px ${data.accent_color}40`;
+        }
+      }
+    } catch(e) {
+      console.error('Error al cargar settings de marca', e);
+    }
+  })();
+
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnLogin');

@@ -179,7 +179,10 @@ def process_attendance_report(
     date_to: date,
     employee_id: Optional[int] = None,
     search: Optional[str] = None,
-    granularity: str = "daily"
+    granularity: str = "daily",
+    department_id: Optional[int] = None,
+    position_id: Optional[int] = None,
+    schedule_id: Optional[int] = None
 ) -> List[Dict]:
     """
     Processes and aggregates attendance summaries for a range of dates,
@@ -193,8 +196,13 @@ def process_attendance_report(
     employee_query = db.query(Employee).filter(Employee.is_active == True)
     if employee_id:
         employee_query = employee_query.filter(Employee.id == employee_id)
+    if department_id:
+        employee_query = employee_query.filter(Employee.department_id == department_id)
+    if position_id:
+        employee_query = employee_query.filter(Employee.position_id == position_id)
+    if schedule_id:
+        employee_query = employee_query.filter(Employee.schedule_id == schedule_id)
     if search:
-        search_lower = search.lower()
         employee_query = employee_query.filter(
             (Employee.first_name.ilike(f"%{search}%")) |
             (Employee.last_name.ilike(f"%{search}%")) |

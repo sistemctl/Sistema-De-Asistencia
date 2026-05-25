@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from backend.config import APP_NAME, APP_VERSION, CORS_ORIGINS, FRONTEND_DIR
 from backend.database import init_db
 from backend.services.scheduler import start_scheduler, stop_scheduler
-from backend.routers import auth, employees, attendance, device, dashboard, reports, schedules
+from backend.routers import auth, employees, attendance, device, dashboard, reports, schedules, settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,6 +58,7 @@ app.include_router(attendance.router)
 app.include_router(device.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
+app.include_router(settings.router)
 
 # ── Archivos estáticos del frontend ──────────────────────────────────────────
 if FRONTEND_DIR.exists():

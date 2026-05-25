@@ -77,6 +77,7 @@ class ScheduleCreate(BaseModel):
     work_end_time: str = "18:00"
     lunch_start_time: Optional[str] = None
     lunch_end_time: Optional[str] = None
+    work_days: str = "1,2,3,4,5"
 
 class ScheduleUpdate(BaseModel):
     name: Optional[str] = None
@@ -85,6 +86,7 @@ class ScheduleUpdate(BaseModel):
     work_end_time: Optional[str] = None
     lunch_start_time: Optional[str] = None
     lunch_end_time: Optional[str] = None
+    work_days: Optional[str] = None
 
 class ReportPunches(BaseModel):
     entry_1: Optional[datetime] = None
@@ -127,6 +129,7 @@ class ScheduleOut(BaseModel):
     work_end_time: str
     lunch_start_time: Optional[str] = None
     lunch_end_time: Optional[str] = None
+    work_days: str
     created_at: datetime
 
     class Config:

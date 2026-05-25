@@ -38,8 +38,8 @@ def init_db():
 
 
 def _seed_initial_data():
-    """Crea el usuario admin y la config del dispositivo si no existen."""
-    from backend.models import User, DeviceConfig, Department
+    """Crea el usuario admin, la config del dispositivo y del sistema si no existen."""
+    from backend.models import User, DeviceConfig, Department, SystemConfig
     from backend.auth import get_password_hash
     from backend.config import (
         DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD,
@@ -58,7 +58,7 @@ def _seed_initial_data():
                 role="admin",
                 is_active=True,
             ))
-            print(f"✅ Admin creado: {DEFAULT_ADMIN_USERNAME} / {DEFAULT_ADMIN_PASSWORD}")
+            print(f"Admin creado: {DEFAULT_ADMIN_USERNAME} / {DEFAULT_ADMIN_PASSWORD}")
 
         # Configuración del dispositivo
         if not db.query(DeviceConfig).first():
@@ -69,7 +69,20 @@ def _seed_initial_data():
                 password=DEVICE_PASSWORD,
                 sync_interval_minutes=SYNC_INTERVAL_MINUTES,
             ))
-            print(f"✅ Config dispositivo creada: {DEVICE_IP}:{DEVICE_PORT}")
+            print(f"Config dispositivo creada: {DEVICE_IP}:{DEVICE_PORT}")
+
+        # Configuración del sistema por defecto
+        if not db.query(SystemConfig).first():
+            db.add(SystemConfig(
+                system_name="Control de Asistencia",
+                company_name="Hikvision DS-K1T323MBWX",
+                primary_color="#1e3a5f",
+                accent_color="#00e676",
+                work_days="1,2,3,4,5",
+                time_format="24h",
+                entry_tolerance_minutes=10,
+            ))
+            print("Configuracion de sistema inicial creada")
 
         # Departamento por defecto
         if not db.query(Department).first():
@@ -78,6 +91,8 @@ def _seed_initial_data():
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"⚠️  Error en seed inicial: {e}")
+        print(f"Error en seed inicial: {e}")
     finally:
         db.close()
+
+

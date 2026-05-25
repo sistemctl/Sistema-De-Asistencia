@@ -24,12 +24,12 @@ Este documento recopila las propuestas de expansión y optimización técnica pa
 
 ---
 
-## 3. Gestión de Horarios Flexibles y Turnos Rotativos
-* **Objetivo:** Soportar esquemas laborales complejos fuera del horario de oficina estándar (07:00 a 18:00).
-* **Problema que resuelve:** Las empresas industriales, de salud o de seguridad física operan con turnos cambiantes o nocturnos. Una tolerancia fija o un horario único genera alertas falsas de tardanzas.
+## 3. Integración de Alertas vía Webhooks
+* **Objetivo:** Enviar notificaciones automáticas a canales externos (Slack, Microsoft Teams, Webhook personalizado) cuando ocurran eventos críticos.
+* **Problema que resuelve:** Permite a los administradores estar al tanto de los problemas sin tener que abrir la aplicación.
 * **Detalles de Implementación:**
-  * **Base de Datos:** Crear la tabla `shifts` (id, name, start_time, end_time, tolerance_minutes) y relacionarla con departamentos o empleados de forma dinámica.
-  * **Lógica de Sincronización:** El algoritmo que evalúa si un registro es `is_late = True` comparará la hora del evento contra el turno dinámico asignado al empleado para ese día específico de la semana.
+  * **Configuración:** Crear un panel de configuración de Webhooks donde el usuario pueda pegar la URL de destino.
+  * **Disparadores (Triggers):** Implementar lógica para disparar eventos ante: desconexión de dispositivos, detección de intentos de acceso no autorizados o cuando un empleado supere un límite de ausencias.
 
 ---
 

@@ -1,4 +1,4 @@
-"""Router de reportes: exportar Excel y PDF."""
+"""Router de reportes: exportar Excel, PDF y Analíticas Avanzadas por Grupo."""
 from datetime import date, datetime
 from typing import Optional
 
@@ -16,7 +16,6 @@ from backend.services.report_generator import (
     generate_attendance_excel,
     generate_attendance_pdf,
 )
-from backend.schemas import ReportResponse
 from backend.services.attendance_processor import process_attendance_report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -29,6 +28,9 @@ def get_attendance_report(
     date_to: Optional[date] = Query(None),
     granularity: str = Query("daily"),
     search: Optional[str] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
     export: Optional[str] = Query(None),  # 'excel' or 'pdf'
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -49,7 +51,10 @@ def get_attendance_report(
         date_to=date_to,
         employee_id=employee_id,
         search=search,
-        granularity=granularity
+        granularity=granularity,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
     )
 
     if export == "excel":
@@ -83,19 +88,29 @@ def get_attendance_report(
     }
 
 
-
 @router.get("/excel")
 def export_excel(
     employee_id: Optional[int] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     df = datetime.combine(date_from, datetime.min.time()) if date_from else None
     dt = datetime.combine(date_to, datetime.max.time()) if date_to else None
 
-    content = generate_excel_report(db, employee_id=employee_id, date_from=df, date_to=dt)
+    content = generate_excel_report(
+        db, 
+        employee_id=employee_id, 
+        date_from=df, 
+        date_to=dt,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
     filename = f"asistencia_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
         io.BytesIO(content),
@@ -109,13 +124,24 @@ def export_pdf(
     employee_id: Optional[int] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     df = datetime.combine(date_from, datetime.min.time()) if date_from else None
     dt = datetime.combine(date_to, datetime.max.time()) if date_to else None
 
-    content = generate_pdf_report(db, employee_id=employee_id, date_from=df, date_to=dt)
+    content = generate_pdf_report(
+        db, 
+        employee_id=employee_id, 
+        date_from=df, 
+        date_to=dt,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
     filename = f"asistencia_{date.today().isoformat()}.pdf"
     return StreamingResponse(
         io.BytesIO(content),
@@ -128,13 +154,23 @@ def export_pdf(
 def export_consolidated(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     df = datetime.combine(date_from, datetime.min.time()) if date_from else None
     dt = datetime.combine(date_to, datetime.max.time()) if date_to else None
 
-    content = generate_consolidated_excel(db, date_from=df, date_to=dt)
+    content = generate_consolidated_excel(
+        db, 
+        date_from=df, 
+        date_to=dt,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
     filename = f"consolidado_asistencia_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
         io.BytesIO(content),
@@ -148,12 +184,14 @@ def get_analytics(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     search: Optional[str] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     from backend.utils import get_local_now
     from datetime import datetime, timedelta
-    from sqlalchemy import func
     from backend.models import Employee, AttendanceRecord
 
     if not date_from:
@@ -171,12 +209,19 @@ def get_analytics(
             (Employee.last_name.ilike(f"%{search}%")) |
             (Employee.employee_code.ilike(f"%{search}%"))
         )
+    if department_id:
+        employee_query = employee_query.filter(Employee.department_id == department_id)
+    if position_id:
+        employee_query = employee_query.filter(Employee.position_id == position_id)
+    if schedule_id:
+        employee_query = employee_query.filter(Employee.schedule_id == schedule_id)
     
-    total_employees = employee_query.count()
-    employee_ids = [e.id for e in employee_query.all()]
+    employees = employee_query.all()
+    total_employees = len(employees)
+    employee_ids = [e.id for e in employees]
 
     if not employee_ids:
-        # Si la búsqueda no coincide con ningún empleado, retornar resultados vacíos.
+        # Si no coincide con ningún empleado, retornar resultados vacíos.
         return {
             "kpis": {
                 "punctuality_rate": "100%",
@@ -235,15 +280,34 @@ def get_analytics(
             present_by_date[d_str] = set()
         present_by_date[d_str].add(r.employee_id)
 
+    from backend.models import SystemConfig
+    sys_config = db.query(SystemConfig).first()
+    default_work_days = [int(x) for x in sys_config.work_days.split(",")] if sys_config and sys_config.work_days else [1, 2, 3, 4, 5]
+
+    # Pre-parse workdays for each employee
+    emp_work_days = {}
+    for emp in employees:
+        if emp.schedule and emp.schedule.work_days:
+            try:
+                emp_work_days[emp.id] = [int(x) for x in emp.schedule.work_days.split(",")]
+            except Exception:
+                emp_work_days[emp.id] = default_work_days
+        else:
+            emp_work_days[emp.id] = default_work_days
+
     total_absent = 0
     current_day = date_from
     while current_day <= date_to:
-        if current_day.weekday() < 5:
-            d_str = current_day.isoformat()
-            present_count = len(present_by_date.get(d_str, []))
-            absent_count = max(total_employees - present_count, 0)
-            total_absent += absent_count
+        d_str = current_day.isoformat()
+        present_set = present_by_date.get(d_str, set())
+        weekday = current_day.weekday() + 1
+        
+        for emp in employees:
+            if emp.id not in present_set:
+                if weekday in emp_work_days[emp.id]:
+                    total_absent += 1
         current_day += timedelta(days=1)
+
 
     entries_by_day = {}
     late_by_day = {}

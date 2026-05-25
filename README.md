@@ -1,6 +1,17 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.6**
+# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.8.0**
 
-Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS**.
+Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS** en Glassmorphism Premium.
+
+### 🌟 Novedades de la Versión 1.8.0
+* **Personalización de Marca y Branding Corporativo:** Incorporación de un panel de configuración del sistema (`settings`) que permite personalizar el nombre de la aplicación, el nombre de la empresa, los colores primarios y de acento en el frontend (actualizando dinámicamente los orbes Mesh HSL del fondo), y subir un logotipo corporativo personalizado (PNG, JPG, JPEG, SVG) visible en la pantalla de inicio de sesión y en la barra lateral.
+* **Persistencia en Base de Datos:** Guardado y recuperación de la personalización de marca a través de la nueva tabla `system_config` en PostgreSQL.
+
+### 🌟 Novedades de la Versión 1.6.0
+* **Panel de Reportes y Analíticas Unificado:** Rediseño completo de la experiencia de usuario (UX). Se eliminaron múltiples selectores de fecha redundantes a favor de una **Topbar de Filtros Única**. Al filtrar por fecha, empleado o granularidad, se actualizan simultáneamente las tarjetas de KPI premium, los gráficos de Chart.js y el listado de asistencia en tiempo real.
+* **Botonera de Exportación en un Clic (Excel, PDF, Consolidado):** Descargas estructuradas automáticas aplicando los filtros del panel superior de forma inmediata.
+* **Gestión de Horarios y Jornadas Flexibles:** Soporte completo en base de datos (`schedules` CRUD) y visualización para turnos de **Jornada Continua** y **Jornada Partida** (doble marcación con control de almuerzo y tolerancia configurable).
+* **Cargos y Posiciones Estructuradas:** Nueva tabla `positions` con relación de clave foránea en la tabla de empleados, reemplazando la columna de texto plano por cargos normalizados.
+* **Scripts de Migración Segura:** Herramientas automáticas en la raíz del proyecto para actualizar la base de datos de versiones anteriores sin riesgo de pérdida de datos.
 
 ### 🌟 Novedades de la Versión 1.5
 * **Rediseño con Flatpickr:** Incorporación de selectores de rango de fechas profesionales (`flatpickr`) en los módulos de Asistencia y Reportes, con total integración visual al ecosistema Dark Mode.
@@ -113,17 +124,20 @@ sudo systemctl start asistencia
 
 ## 🧰 4️⃣  Scripts y utilidades de soporte
 
-- `import_historic.py`: extrae datos históricos del biométrico.
-- `clear_db.py`: limpia tablas de asistencia y empleados.
-- `add_columns.py`: agrega columnas nuevas a la base de datos.
+- `import_historic.py`: Extrae datos históricos de eventos directamente desde el biométrico Hikvision.
+- `clear_db.py`: Limpia de forma segura todas las tablas de asistencia y empleados en la base de datos.
+- `seed_test_data.py`: Genera departamentos, cargos, horarios y registros de asistencia simulados con fines de desarrollo y demostración.
+- `migration_positions.py`: Crea la tabla `positions` y migra automáticamente los cargos antiguos de texto plano (`position`) a la tabla estructurada.
+- `migration_schedules.py`: Crea e inicializa la tabla de horarios `schedules` enlazándola con los empleados.
+- `migration_split_shifts.py`: Agrega las columnas de soporte para jornada partida y almuerzo a la tabla `schedules`.
 ---
 
 ## 🐙 5️⃣  Subir cambios a GitHub
 
 ```bash
 git add .
-git commit -m "Actualiza documentación para la versión 1.5"
-git push origin 1.5
+git commit -m "Actualiza documentación para la versión 1.8"
+git push origin 1.8
 ```
 ---
 

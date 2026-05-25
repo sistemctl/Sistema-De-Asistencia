@@ -90,6 +90,50 @@ function loadUserInfo() {
   }
 }
 
+// ── Branding del Sistema ──────────────────────────────────────────────────────
+async function loadSystemBranding() {
+  try {
+    const data = await API.get('/api/settings');
+    
+    // Actualizar nombre de la pestaña/título
+    document.title = data.system_name || 'Sistema de Asistencia';
+    
+    // Actualizar textos en sidebar
+    const sysNameEl = document.getElementById('sidebarSystemName');
+    const compNameEl = document.getElementById('sidebarCompanyName');
+    if (sysNameEl) sysNameEl.textContent = data.system_name;
+    if (compNameEl) compNameEl.textContent = data.company_name;
+    
+    // Actualizar logotipo en sidebar
+    const logoSvg = document.getElementById('sidebarLogoSvg');
+    const logoImg = document.getElementById('sidebarLogoImg');
+    if (logoSvg && logoImg) {
+      if (data.logo_path) {
+        logoSvg.style.display = 'none';
+        logoImg.src = data.logo_path;
+        logoImg.style.display = 'block';
+      } else {
+        logoSvg.style.display = 'block';
+        logoImg.style.display = 'none';
+      }
+    }
+    
+    // Inyectar colores en el DOM
+    if (data.primary_color) {
+      document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, ${data.primary_color}26 0%, #03050f 100%)`;
+    }
+    if (data.accent_color) {
+      document.documentElement.style.setProperty('--accent', data.accent_color);
+      document.documentElement.style.setProperty('--accent-glow', `${data.accent_color}1f`);
+    }
+  } catch(e) {
+    console.error('Error al cargar branding', e);
+  }
+}
+
+// Exponer globalmente para que system_settings.js lo pueda invocar tras guardar
+window.loadSystemBranding = loadSystemBranding;
+
 // ── Device badge en topbar ───────────────────────────────────────────────────
 async function updateDeviceBadge() {
   try {
@@ -107,8 +151,10 @@ async function updateDeviceBadge() {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadUserInfo();
+loadSystemBranding();
 updateDeviceBadge();
 navigate('dashboard');
 
 // Actualizar badge cada 60 seg
 devicePollInterval = setInterval(updateDeviceBadge, 60000);
+

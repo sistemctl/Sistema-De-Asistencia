@@ -117,6 +117,25 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _=Depen
     db.add(emp)
     db.commit()
     db.refresh(emp)
+
+    # Sincronizar automáticamente con el dispositivo si está online
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            if client.check_online():
+                device_uid = emp.employee_code
+                client.create_user(device_uid, emp.full_name, emp.card_number)
+                emp.device_user_id = device_uid
+                emp.synced_to_device = True
+                db.commit()
+                db.refresh(emp)
+    except Exception as e:
+        print(f"Error en auto-sincronizacion de nuevo empleado al dispositivo: {e}")
+
     return emp
 
 
@@ -129,6 +148,25 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
         setattr(emp, field, value)
     db.commit()
     db.refresh(emp)
+
+    # Sincronizar automáticamente la actualización con el dispositivo
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            if client.check_online():
+                device_uid = emp.device_user_id or emp.employee_code
+                client.create_user(device_uid, emp.full_name, emp.card_number)
+                emp.device_user_id = device_uid
+                emp.synced_to_device = True
+                db.commit()
+                db.refresh(emp)
+    except Exception as e:
+        print(f"Error en auto-sincronizacion al actualizar empleado: {e}")
+
     return emp
 
 
@@ -166,6 +204,24 @@ async def upload_photo(
 
     emp.photo_path = f"faces/{filename}"
     db.commit()
+
+    # Sincronizar automáticamente la foto de perfil con el biométrico
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            if client.check_online():
+                device_uid = emp.device_user_id or emp.employee_code
+                with open(dest, "rb") as image_file:
+                    photo_bytes = image_file.read()
+                client.upload_face_photo(device_uid, photo_bytes)
+                print(f"Foto de {emp.employee_code} auto-sincronizada con éxito al biométrico.")
+    except Exception as e:
+        print(f"Error en auto-sincronizacion de foto de perfil al biométrico: {e}")
+
     return {"photo_path": emp.photo_path}
 
 
