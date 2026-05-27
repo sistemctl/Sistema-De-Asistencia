@@ -1,6 +1,13 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.9.0**
+# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.10.0**
 
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS** en Glassmorphism Premium.
+
+### 🌟 Novedades de la Versión 1.10.0
+* **Rediseño Premium de la Pantalla de Login:** Nueva interfaz de pantalla dividida (`split-screen`) con panel de credenciales a la izquierda y un panel oscuro interactivo a la derecha que exhibe una malla facial biométrica animada (SVG) con nodos pulsantes y línea de escaneo láser en movimiento (CSS de alta fluidez).
+* **Adaptación y Auto-escalado de Logotipos (Fin del efecto "Descuadrado"):** Optimización en el renderizado de logotipos corporativos cargados por el usuario. Al subir una imagen de marca, el contenedor oculta el degradado morado y sombra por defecto y ajusta su ancho proporcionalmente (`width: auto`, `object-fit: contain`). Compatible en login, barra lateral y previsualización de parámetros.
+* **Diálogos de Confirmación Premium Globales:** Reemplazo de todos los diálogos `confirm()` emergentes nativos del navegador por el componente premium `Modal.confirm` con animaciones de pulso de color para peligro (`'danger'` en eliminaciones) y advertencia (`'warning'` en salida del sistema e importación desde el dispositivo).
+* **Enrutamiento por Hash en SPA (Persistencia de Estado):** Enrutador basado en Hash (`URL Hash Routing`) para persistir la sección activa al recargar la página (F5), otorgar soporte a los botones de Atrás/Adelante del navegador y habilitar enlaces compartibles, con control de acceso restrictivo en el frontend.
+* **Herramientas de Consola de Desarrollo:** Incorporación de scripts de soporte de base de datos y red (`migration_attendance_rules.py` y `check_sync.py`).
 
 ### 🌟 Novedades de la Versión 1.9.0
 * **Rediseño Visual Premium (Light Mode):** Evolución hacia un entorno limpio y sofisticado en tonalidades claras (`#f8fafc`), conservando elementos modernos de diseño y mejorando la legibilidad.
@@ -134,14 +141,16 @@ sudo systemctl start asistencia
 - `migration_positions.py`: Crea la tabla `positions` y migra automáticamente los cargos antiguos de texto plano (`position`) a la tabla estructurada.
 - `migration_schedules.py`: Crea e inicializa la tabla de horarios `schedules` enlazándola con los empleados.
 - `migration_split_shifts.py`: Agrega las columnas de soporte para jornada partida y almuerzo a la tabla `schedules`.
+- `migration_attendance_rules.py`: Crea e inicializa columnas para reglas avanzadas de asistencia y tolerancias en la tabla `system_config`.
+- `check_sync.py`: Verifica conectividad con el biométrico, muestra el estado del enlace y lista los últimos 10 logs de sincronización de eventos de la base de datos.
 ---
 
 ## 🐙 5️⃣  Subir cambios a GitHub
 
 ```bash
 git add .
-git commit -m "Actualiza documentación para la versión 1.9"
-git push origin 1.9
+git commit -m "Actualiza documentación para la versión 1.10"
+git push origin 1.10
 ```
 ---
 
