@@ -175,6 +175,34 @@ def delete_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(requir
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    # 1. Eliminar foto local si existe
+    if emp.photo_path:
+        try:
+            path = UPLOADS_DIR.parent / emp.photo_path
+            if path.exists():
+                path.unlink()
+                print(f"Foto de perfil eliminada localmente: {path}")
+        except Exception as e:
+            print(f"Error al eliminar la foto de perfil del empleado {emp.employee_code}: {e}")
+
+    # 2. Sincronizar la eliminación con el dispositivo biométrico si está online
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            if client.check_online():
+                device_uid = emp.device_user_id or emp.employee_code
+                if device_uid:
+                    client.delete_user(device_uid)
+                    print(f"Empleado {emp.first_name} {emp.last_name} ({device_uid}) eliminado del dispositivo biométrico.")
+    except Exception as e:
+        print(f"Error en la eliminación automática del empleado {emp.employee_code} del dispositivo: {e}")
+
+    # 3. Eliminar de la base de datos
     db.delete(emp)
     db.commit()
 

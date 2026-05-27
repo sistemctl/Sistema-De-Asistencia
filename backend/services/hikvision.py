@@ -54,7 +54,19 @@ class HikvisionClient:
             timeout=self.timeout,
         )
         r.raise_for_status()
-        return r.json()
+        try:
+            return r.json()
+        except Exception:
+            try:
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(r.content)
+                info = {}
+                for child in root:
+                    tag = child.tag.split('}')[-1]
+                    info[tag] = child.text
+                return {"DeviceInfo": info}
+            except Exception as xml_err:
+                raise ValueError(f"Failed to parse response as JSON or XML: {xml_err}") from xml_err
 
     # ── Usuarios ──────────────────────────────────────────────────────────────
 
@@ -174,7 +186,9 @@ class HikvisionClient:
                     timeout=self.timeout,
                 )
                 r.raise_for_status()
-            except Exception:
+            except Exception as e:
+                if position == 0:
+                    raise e
                 # Si falla o hay timeout en la página N, devolver lo que ya logramos obtener
                 break
 

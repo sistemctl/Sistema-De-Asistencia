@@ -92,7 +92,10 @@ const EmployeesPage = {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
                 <button class="btn btn-icon btn-sm" onclick="EmployeesPage.uploadPhoto(${e.id},'${e.employee_code}')" title="Foto">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2 2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                </button>
+                <button class="btn btn-icon btn-sm btn-danger" onclick="EmployeesPage.deleteEmployee(${e.id}, '${e.first_name} ${e.last_name}')" title="Eliminar">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>` : ''}
             </div>
           </td>
@@ -281,24 +284,30 @@ const EmployeesPage = {
   },
 
   async deleteDept(id) {
-    if (!confirm('¿Estás seguro de eliminar este departamento? Los empleados en él quedarán sin departamento.')) return;
-    try {
-      await API.delete(`/api/employees/departments/${id}`);
-      Toast.show('Departamento eliminado', 'success');
-      
-      const depts = await API.get('/api/employees/departments') || [];
-      this.depts = depts;
-      const listContainer = document.getElementById('deptListContainer');
-      listContainer.innerHTML = depts.map(d => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--text-1);">${d.name}</span>
-          <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deleteDept(${d.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>`).join('');
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
+    Modal.confirm(
+      '¿Eliminar Departamento?',
+      '¿Estás seguro de eliminar este departamento? Los empleados en él quedarán sin departamento.',
+      async () => {
+        try {
+          await API.delete(`/api/employees/departments/${id}`);
+          Toast.show('Departamento eliminado', 'success');
+          
+          const depts = await API.get('/api/employees/departments') || [];
+          this.depts = depts;
+          const listContainer = document.getElementById('deptListContainer');
+          listContainer.innerHTML = depts.map(d => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
+              <span style="font-weight:600; color:var(--text-1);">${d.name}</span>
+              <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deleteDept(${d.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>`).join('');
+        } catch (e) {
+          Toast.show(e.message, 'error');
+        }
+      },
+      'danger'
+    );
   },
 
   async managePositions() {
@@ -375,24 +384,30 @@ const EmployeesPage = {
   },
 
   async deletePos(id) {
-    if (!confirm('¿Estás seguro de eliminar este cargo? Los empleados con él quedarán sin cargo.')) return;
-    try {
-      await API.delete(`/api/employees/positions/${id}`);
-      Toast.show('Cargo eliminado', 'success');
-      
-      const positions = await API.get('/api/employees/positions') || [];
-      this.positions = positions;
-      const listContainer = document.getElementById('posListContainer');
-      listContainer.innerHTML = positions.map(p => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--text-1);">${p.name}</span>
-          <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deletePos(${p.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>`).join('');
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
+    Modal.confirm(
+      '¿Eliminar Cargo?',
+      '¿Estás seguro de eliminar este cargo? Los empleados con él quedarán sin cargo.',
+      async () => {
+        try {
+          await API.delete(`/api/employees/positions/${id}`);
+          Toast.show('Cargo eliminado', 'success');
+          
+          const positions = await API.get('/api/employees/positions') || [];
+          this.positions = positions;
+          const listContainer = document.getElementById('posListContainer');
+          listContainer.innerHTML = positions.map(p => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
+              <span style="font-weight:600; color:var(--text-1);">${p.name}</span>
+              <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deletePos(${p.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>`).join('');
+        } catch (e) {
+          Toast.show(e.message, 'error');
+        }
+      },
+      'danger'
+    );
   },
 
   async restoreEmployeeForm(state) {
@@ -478,19 +493,41 @@ const EmployeesPage = {
   },
 
   async importFromDevice() {
-    if (!confirm("¿Deseas importar todos los empleados registrados en el dispositivo biométrico? Esto agregará a los empleados nuevos y actualizará los existentes.")) return;
-    
-    Toast.show('Iniciando importación desde el dispositivo...', 'info');
-    try {
-      const res = await API.post('/api/employees/import-from-device');
-      if (res.status === 'success') {
-        Toast.show(`Importación finalizada: ${res.imported} creados, ${res.updated} actualizados (Total: ${res.total_device_users} en dispositivo).`, 'success');
-        this.loadTable();
-      } else {
-        Toast.show('Error al importar empleados', 'error');
-      }
-    } catch(e) {
-      Toast.show(e.message || 'Error de conexión', 'error');
-    }
+    Modal.confirm(
+      '¿Importar Empleados?',
+      '¿Deseas importar todos los empleados registrados en el dispositivo biométrico? Esto agregará a los empleados nuevos y actualizará los existentes.',
+      async () => {
+        Toast.show('Iniciando importación desde el dispositivo...', 'info');
+        try {
+          const res = await API.post('/api/employees/import-from-device');
+          if (res.status === 'success') {
+            Toast.show(`Importación finalizada: ${res.imported} creados, ${res.updated} actualizados (Total: ${res.total_device_users} en dispositivo).`, 'success');
+            this.loadTable();
+          } else {
+            Toast.show('Error al importar empleados', 'error');
+          }
+        } catch(e) {
+          Toast.show(e.message || 'Error de conexión', 'error');
+        }
+      },
+      'warning'
+    );
+  },
+
+  async deleteEmployee(id, name) {
+    Modal.confirm(
+      '¿Eliminar Empleado?',
+      `¿Estás seguro de que deseas eliminar al empleado <strong>${name}</strong>? Esta acción no se puede deshacer y también intentará eliminarlo del dispositivo biométrico si está conectado.`,
+      async () => {
+        try {
+          await API.delete(`/api/employees/${id}`);
+          Toast.show('Empleado eliminado con éxito', 'success');
+          this.loadTable();
+        } catch(e) {
+          Toast.show(e.message || 'Error al eliminar empleado', 'error');
+        }
+      },
+      'danger'
+    );
   },
 };

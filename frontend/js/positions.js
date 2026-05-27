@@ -99,13 +99,19 @@ const PositionsPage = {
   },
 
   async deletePos(id, name) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el cargo "${name}"? Los empleados con este cargo quedarán clasificados como "Sin cargo".`)) return;
-    try {
-      await API.delete(`/api/employees/positions/${id}`);
-      Toast.show('Cargo eliminado con éxito', 'success');
-      this.loadTable();
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
+    Modal.confirm(
+      '¿Eliminar Cargo?',
+      `¿Estás seguro de que deseas eliminar el cargo <strong>${name}</strong>? Los empleados con este cargo quedarán clasificados como "Sin cargo".`,
+      async () => {
+        try {
+          await API.delete(`/api/employees/positions/${id}`);
+          Toast.show('Cargo eliminado con éxito', 'success');
+          this.loadTable();
+        } catch (e) {
+          Toast.show(e.message, 'error');
+        }
+      },
+      'danger'
+    );
   }
 };

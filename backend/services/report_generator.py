@@ -526,14 +526,14 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
         sizes.append(1)
         colors_list.append("#E2E8F0")
 
-    fig, ax = plt.subplots(figsize=(2.5, 2.5), dpi=150)
+    fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=150)
     wedges, texts, autotexts = ax.pie(
         sizes, labels=labels, autopct='%1.0f%%', startangle=90,
-        colors=colors_list, textprops=dict(color="#1e293b", size=7, weight="bold"),
+        colors=colors_list, textprops=dict(color="#1e293b", size=5.5, weight="bold"),
         wedgeprops=dict(width=0.35, edgecolor='white')
     )
-    plt.setp(autotexts, size=7, weight="bold", color="white")
-    ax.set_title("Distribución de Estados", fontsize=9, weight="bold", color=primary_color, pad=10)
+    plt.setp(autotexts, size=5.5, weight="bold", color="white")
+    ax.set_title("Distribución de Estados", fontsize=7, weight="bold", color=primary_color, pad=8)
     fig.tight_layout()
     
     img_buf_1 = io.BytesIO()
@@ -561,9 +561,9 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
     dates = dates[-12:]
     entry_minutes = entry_minutes[-12:]
 
-    fig2, ax2 = plt.subplots(figsize=(4.2, 2.5), dpi=150)
+    fig2, ax2 = plt.subplots(figsize=(3.2, 1.8), dpi=150)
     if entry_minutes and granularity == "daily":
-        ax2.plot(dates, entry_minutes, marker='o', color=primary_color, linewidth=2, markersize=4, label='Entrada')
+        ax2.plot(dates, entry_minutes, marker='o', color=primary_color, linewidth=1.5, markersize=3, label='Entrada')
         ax2.fill_between(dates, entry_minutes, color=primary_color, alpha=0.08)
         
         def format_min_to_hm(x, pos):
@@ -573,17 +573,17 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
         
         from matplotlib.ticker import FuncFormatter
         ax2.yaxis.set_major_formatter(FuncFormatter(format_min_to_hm))
-        ax2.axhline(y=480, color='#FF3D00', linestyle='--', linewidth=1, alpha=0.7, label='Límite (08:00)')
+        ax2.axhline(y=480, color='#FF3D00', linestyle='--', linewidth=0.75, alpha=0.7, label='Límite (08:00)')
+        ax2.legend(fontsize=5.5, loc='upper right', framealpha=0.8)
     else:
         msg = 'Tendencia disponible en vista Diaria' if granularity != "daily" else 'Sin entradas registradas'
-        ax2.text(0.5, 0.5, msg, horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, color="#64748b", fontsize=8)
+        ax2.text(0.5, 0.5, msg, horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, color="#64748b", fontsize=7)
 
-    ax2.set_title("Puntualidad en Entradas (Últimos 12 Días)", fontsize=9, weight="bold", color=primary_color, pad=10)
-    ax2.tick_params(axis='both', which='major', labelsize=7, labelcolor="#475569")
+    ax2.set_title("Puntualidad en Entradas (Últimos 12 Días)", fontsize=7, weight="bold", color=primary_color, pad=8)
+    ax2.tick_params(axis='both', which='major', labelsize=6, labelcolor="#475569")
     for label in ax2.get_xticklabels():
         label.set_rotation(30)
     ax2.grid(True, linestyle=':', alpha=0.3, color="#94a3b8")
-    ax2.legend(fontsize=6.5, loc='upper right', framealpha=0.8)
     for spine in ['top', 'right']:
         ax2.spines[spine].set_visible(False)
     ax2.spines['left'].set_color('#cbd5e1')
@@ -599,13 +599,12 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
     return img_buf_1, img_buf_2
 
 
-def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
-    """Genera un reporte PDF con diseño ejecutivo vertical para un empleado individual."""
+def _get_employee_flowables(summaries: list, granularity: str, schedules_map: dict = None) -> list:
+    """Genera la lista de flowables (elementos de ReportLab) para un empleado individual."""
     import os
-    from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.units import cm
     from backend.utils import get_local_now
 
@@ -613,23 +612,27 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
     primary_color_hex = cfg.get("primary_color") or "#1e3a5f"
     accent_color_hex = cfg.get("accent_color") or "#00e676"
     
-    # Intenta obtener los dias laborables especificos del empleado de la BD
-    work_days = [int(x) for x in cfg.get("work_days", "1,2,3,4,5").split(",")]
-    first_record = summaries[0]
+    first_record = summaries[0] if summaries else {}
+    emp_id = first_record.get("employee_id")
     
-    from backend.database import SessionLocal
-    from backend.models import Employee
-    db = SessionLocal()
-    try:
-        emp_id = first_record.get("employee_id")
+    work_days = None
+    if schedules_map is not None and emp_id in schedules_map:
+        work_days = schedules_map[emp_id]
+        
+    if work_days is None:
+        work_days = [int(x) for x in cfg.get("work_days", "1,2,3,4,5").split(",")]
         if emp_id:
-            emp = db.query(Employee).filter(Employee.id == emp_id).first()
-            if emp and emp.schedule and emp.schedule.work_days:
-                work_days = [int(x) for x in emp.schedule.work_days.split(",")]
-    except Exception as e:
-        print(f"Error cargando dias laborales del empleado en reporte PDF: {e}")
-    finally:
-        db.close()
+            from backend.database import SessionLocal
+            from backend.models import Employee
+            db = SessionLocal()
+            try:
+                emp = db.query(Employee).filter(Employee.id == emp_id).first()
+                if emp and emp.schedule and emp.schedule.work_days:
+                    work_days = [int(x) for x in emp.schedule.work_days.split(",")]
+            except Exception as e:
+                print(f"Error cargando dias laborales del empleado en reporte PDF: {e}")
+            finally:
+                db.close()
 
     primary_color = colors.HexColor(primary_color_hex)
     accent_color = colors.HexColor(accent_color_hex)
@@ -662,16 +665,10 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
         ontime_days = present_days - late_days
         punctuality_rate = f"{round((ontime_days / present_days) * 100, 1)}%"
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        topMargin=1.2*cm, bottomMargin=1.2*cm, leftMargin=1.2*cm, rightMargin=1.2*cm
-    )
-
     styles = getSampleStyleSheet()
     
     title_style = ParagraphStyle(
-        "BannerTitle",
+        "BannerTitle_" + str(employee_code),
         parent=styles["Title"],
         fontSize=14,
         leading=16,
@@ -681,7 +678,7 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
     )
     
     banner_meta_style = ParagraphStyle(
-        "BannerMeta",
+        "BannerMeta_" + str(employee_code),
         parent=styles["Normal"],
         fontSize=9,
         leading=13,
@@ -690,45 +687,45 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
     )
     
     section_title = ParagraphStyle(
-        "SecTitle",
+        "SecTitle_" + str(employee_code),
         parent=styles["Heading2"],
         fontSize=10,
         leading=13,
         textColor=primary_color,
         fontName="Helvetica-Bold",
-        spaceBefore=12,
-        spaceAfter=6
+        spaceBefore=6,
+        spaceAfter=3
     )
 
     kpi_num_style = ParagraphStyle(
-        "KpiNum",
+        "KpiNum_" + str(employee_code),
         fontName="Helvetica-Bold",
-        fontSize=15,
-        leading=17,
+        fontSize=13,
+        leading=15,
         textColor=primary_color,
         alignment=1
     )
 
     kpi_lbl_style = ParagraphStyle(
-        "KpiLbl",
+        "KpiLbl_" + str(employee_code),
         fontName="Helvetica",
-        fontSize=8,
-        leading=10,
+        fontSize=7.5,
+        leading=9,
         textColor=colors.HexColor("#475569"),
         alignment=1
     )
 
     cell_style = ParagraphStyle(
-        "CellNormal",
+        "CellNormal_" + str(employee_code),
         fontName="Helvetica",
-        fontSize=8,
-        leading=10,
+        fontSize=7.0,
+        leading=8.5,
         textColor=colors.HexColor("#334155"),
         alignment=1
     )
 
     cell_bold_style = ParagraphStyle(
-        "CellBold",
+        "CellBold_" + str(employee_code),
         parent=cell_style,
         fontName="Helvetica-Bold"
     )
@@ -754,7 +751,7 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
             pass
 
     sys_title_style = ParagraphStyle(
-        "SysTitle",
+        "SysTitle_" + str(employee_code),
         parent=title_style,
         fontSize=12 if has_logo else 15,
         leading=14 if has_logo else 17
@@ -778,12 +775,12 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
         ("BOTTOMBORDER", (0, 0), (-1, -1), 3, accent_color),
     ]))
     elements.append(banner_table)
-    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Spacer(1, 0.15*cm))
 
     # Info de generación
     gen_time_str = get_local_now().strftime('%d/%m/%Y %H:%M')
     elements.append(Paragraph(f"<font color='#64748b'>Reporte generado en: {gen_time_str} — Periodo de análisis: {total_days} días analizados (Ausencias calculadas sobre días laborales laborados)</font>", banner_meta_style))
-    elements.append(Spacer(1, 0.4*cm))
+    elements.append(Spacer(1, 0.2*cm))
 
     # 2. KPIs METRICS CARDS
     kpis_data = [
@@ -807,21 +804,21 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ("TOPPADDING", (0, 0), (-1, 0), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
-        ("TOPPADDING", (0, 1), (-1, 1), 2),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
+        ("TOPPADDING", (0, 1), (-1, 1), 1),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 6),
     ]))
     elements.append(kpi_table)
 
     # 3. CHARTS CONTAINER
     try:
         chart_doughnut_buf, chart_trend_buf = _generate_matplotlib_charts(summaries, granularity)
-        img_doughnut = Image(chart_doughnut_buf, width=7.0*cm, height=7.0*cm)
-        img_trend = Image(chart_trend_buf, width=10.6*cm, height=6.2*cm)
+        img_doughnut = Image(chart_doughnut_buf, width=3.8*cm, height=3.8*cm)
+        img_trend = Image(chart_trend_buf, width=7.6*cm, height=3.8*cm)
         
         charts_data = [[img_doughnut, img_trend]]
-        charts_table = Table(charts_data, colWidths=[7.5*cm, 11.1*cm])
+        charts_table = Table(charts_data, colWidths=[4.2*cm, 14.4*cm])
         charts_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
@@ -841,13 +838,13 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
     
     if granularity == "daily":
         headers = [
-            Paragraph("<b>Fecha</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Horario</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Entrada</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Sal. Alm.</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Ret. Alm.</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Salida</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Estado</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white))
+            Paragraph("<b>Fecha</b>", ParagraphStyle("H_F_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Horario</b>", ParagraphStyle("H_S_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Entrada</b>", ParagraphStyle("H_E_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Sal. Alm.</b>", ParagraphStyle("H_SA_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Ret. Alm.</b>", ParagraphStyle("H_RA_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Salida</b>", ParagraphStyle("H_O_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Estado</b>", ParagraphStyle("H_ST_" + str(employee_code), parent=cell_bold_style, textColor=colors.white))
         ]
         data = [headers]
         col_widths = [2.6*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 3.5*cm]
@@ -909,12 +906,12 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
             ])
     else:
         headers = [
-            Paragraph("<b>Período</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Horario</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Asistió</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Tardanza</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Incompleto</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Eventos</b>", ParagraphStyle("H", parent=cell_bold_style, textColor=colors.white))
+            Paragraph("<b>Período</b>", ParagraphStyle("H_P_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Horario</b>", ParagraphStyle("H_H_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Asistió</b>", ParagraphStyle("H_A_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Tardanza</b>", ParagraphStyle("H_T_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Incompleto</b>", ParagraphStyle("H_I_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
+            Paragraph("<b>Eventos</b>", ParagraphStyle("H_E2_" + str(employee_code), parent=cell_bold_style, textColor=colors.white))
         ]
         data = [headers]
         col_widths = [3.6*cm, 3.0*cm, 3.0*cm, 3.0*cm, 3.0*cm, 3.0*cm]
@@ -930,9 +927,9 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
             row = [
                 Paragraph(period_str, cell_style),
                 Paragraph("Partido" if s.get("schedule_type") == "split" else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
-                Paragraph("Sí" if s.get("is_present") else "No", ParagraphStyle("B", parent=cell_bold_style, textColor=colors.HexColor("#00E676") if s.get("is_present") else colors.HexColor("#FF3D00"))),
-                Paragraph("Sí" if s.get("is_late") else "No", ParagraphStyle("B", parent=cell_bold_style, textColor=colors.HexColor("#FFB300") if s.get("is_late") else colors.HexColor("#00E676"))),
-                Paragraph("Sí" if s.get("missing_punches") else "No", ParagraphStyle("B", parent=cell_bold_style, textColor=colors.HexColor("#FFA000") if s.get("missing_punches") else colors.HexColor("#00E676"))),
+                Paragraph("Sí" if s.get("is_present") else "No", ParagraphStyle("B_P_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#00E676") if s.get("is_present") else colors.HexColor("#FF3D00"))),
+                Paragraph("Sí" if s.get("is_late") else "No", ParagraphStyle("B_T_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFB300") if s.get("is_late") else colors.HexColor("#00E676"))),
+                Paragraph("Sí" if s.get("missing_punches") else "No", ParagraphStyle("B_I_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFA000") if s.get("missing_punches") else colors.HexColor("#00E676"))),
                 Paragraph(str(s.get("total_raw_events", 0)), cell_style)
             ]
             data.append(row)
@@ -943,8 +940,8 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
     ])
 
     for r in range(1, len(data)):
@@ -954,166 +951,118 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
     table.setStyle(t_style)
     elements.append(table)
 
-    doc.build(elements)
-    return buf.getvalue()
+    return elements
 
 
-
-def generate_attendance_pdf(summaries: list, granularity: str) -> bytes:
-    """Genera un reporte consolidado con horarios y granularidad en PDF."""
-    # Detectar si es un reporte individual de empleado
-    is_single_employee = False
-    if summaries:
-        emp_ids = {s.get("employee_id") for s in summaries if s.get("employee_id") is not None}
-        if len(emp_ids) == 1:
-            is_single_employee = True
-        else:
-            emp_codes = {s.get("employee_code") for s in summaries if s.get("employee_code") is not None}
-            if len(emp_codes) == 1:
-                is_single_employee = True
-
-    if is_single_employee:
-        return _generate_individual_pdf(summaries, granularity)
-
-    from reportlab.lib.pagesizes import landscape, A4
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
+    """Genera un reporte PDF con diseño ejecutivo vertical para un empleado individual."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate
     from reportlab.lib.units import cm
-    from backend.utils import get_local_now
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=landscape(A4),
-        topMargin=1.5*cm, bottomMargin=1.5*cm, leftMargin=1*cm, rightMargin=1*cm
+        buf, pagesize=A4,
+        topMargin=0.8*cm, bottomMargin=0.8*cm, leftMargin=0.8*cm, rightMargin=0.8*cm
+    )
+    elements = _get_employee_flowables(summaries, granularity)
+    doc.build(elements)
+    return doc.filename if hasattr(doc, 'filename') else buf.getvalue()
+
+
+def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback = None) -> bytes:
+    """Genera un reporte PDF unificado con diseño ejecutivo vertical por persona separado por PageBreaks."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, PageBreak, Paragraph, Spacer
+    from reportlab.lib.units import cm
+    from collections import defaultdict
+
+    if not summaries:
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buf, pagesize=A4,
+            topMargin=2*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm
+        )
+        styles = getSampleStyleSheet()
+        elements = [
+            Paragraph("Reporte de Asistencia Vacío", ParagraphStyle("TitleEmpty", parent=styles["Title"], textColor=colors.HexColor("#1e3a5f"))),
+            Spacer(1, 1*cm),
+            Paragraph("No se encontraron registros de asistencia para los filtros y fechas seleccionadas.", ParagraphStyle("BodyEmpty", parent=styles["Normal"], textColor=colors.HexColor("#64748b")))
+        ]
+        doc.build(elements)
+        if progress_callback:
+            try:
+                progress_callback(100)
+            except:
+                pass
+        return buf.getvalue()
+
+    # Precargar horarios de empleados de la BD en una sola consulta para evitar N+1 queries
+    from backend.database import SessionLocal
+    from backend.models import Employee
+    from sqlalchemy.orm import joinedload
+    
+    schedules_map = {}
+    db = SessionLocal()
+    try:
+        # Cargamos todos los empleados con sus horarios asociados
+        employees = db.query(Employee).options(joinedload(Employee.schedule)).all()
+        for emp in employees:
+            if emp.schedule and emp.schedule.work_days:
+                schedules_map[emp.id] = [int(x) for x in emp.schedule.work_days.split(",")]
+    except Exception as e:
+        print(f"Error precargando horarios de empleados en reporte PDF: {e}")
+    finally:
+        db.close()
+
+    # Agrupar por ID de empleado
+    grouped = defaultdict(list)
+    for s in summaries:
+        emp_id = s.get("employee_id")
+        if emp_id is not None:
+            grouped[emp_id].append(s)
+
+    # Ordenar empleados por nombre alfabéticamente
+    sorted_emp_ids = sorted(
+        grouped.keys(),
+        key=lambda eid: grouped[eid][0].get("employee_name", "").lower()
     )
 
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle("title", parent=styles["Title"], fontSize=16, textColor=colors.HexColor("#1e3a5f"))
-    sub_style = ParagraphStyle("sub", parent=styles["Normal"], fontSize=9, textColor=colors.grey)
-
-    elements = [
-        Paragraph(f"Reporte de Asistencia - Granularidad: {granularity.capitalize()}", title_style),
-        Paragraph(f"Generado: {get_local_now().strftime('%d/%m/%Y %H:%M')} — Total registros: {len(summaries)}", sub_style),
-        Spacer(1, 0.5*cm),
-    ]
-
-    if granularity == "daily":
-        headers = [
-            "Empleado", "Código", "Departamento", "Fecha", "Horario",
-            "Entrada", "Sal. Alm.", "Ret. Alm.", "Salida", "Estado"
-        ]
-        data = [headers]
-        for s in summaries:
-            def format_time(iso_str):
-                if not iso_str:
-                    return "-"
-                try:
-                    return datetime.fromisoformat(iso_str).strftime("%H:%M")
-                except:
-                    return "-"
-
-            is_split = s["schedule_type"] == "split"
-            entry_1 = format_time(s["punches"]["entry_1"])
-            exit_1 = format_time(s["punches"]["exit_1"]) if is_split else "-"
-            entry_2 = format_time(s["punches"]["entry_2"]) if is_split else "-"
-            exit_2 = format_time(s["punches"]["exit_2"]) if is_split else format_time(s["punches"]["exit_1"])
-
-            status = "OK"
-            if not s["is_present"]:
-                status = "Ausente"
-            elif s["missing_punches"]:
-                status = "Incompleto"
-            elif s["is_late"]:
-                status = "Tardanza"
-
-            try:
-                formatted_date = datetime.strptime(s["date"], "%Y-%m-%d").strftime("%d/%m/%Y")
-            except:
-                formatted_date = s["date"]
-
-            data.append([
-                s["employee_name"],
-                s["employee_code"],
-                s["department"],
-                formatted_date,
-                "Partido" if is_split else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
-                entry_1,
-                exit_1,
-                entry_2,
-                exit_2,
-                status
-            ])
-    else:
-        headers = [
-            "Empleado", "Código", "Departamento", "Período", "Horario",
-            "Presente", "Tardanza", "Incompleto", "Eventos"
-        ]
-        data = [headers]
-        for s in summaries:
-            try:
-                p_start = datetime.strptime(s["period_start"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                p_end = datetime.strptime(s["period_end"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                period_str = f"{p_start}\n-{p_end}"
-            except:
-                period_str = f"{s['period_start']}\n-{s['period_end']}"
-
-            data.append([
-                s["employee_name"],
-                s["employee_code"],
-                s["department"],
-                period_str,
-                "Partido" if s["schedule_type"] == "split" else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
-                "Sí" if s["is_present"] else "No",
-                "Sí" if s["is_late"] else "No",
-                "Sí" if s["missing_punches"] else "No",
-                str(s["total_raw_events"])
-            ])
-
-    table = Table(data, repeatRows=1)
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        topMargin=0.8*cm, bottomMargin=0.8*cm, leftMargin=0.8*cm, rightMargin=0.8*cm
+    )
     
-    t_style = TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e3a5f")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ])
-
-    for r in range(1, len(data)):
-        bg = colors.white if r % 2 == 1 else colors.HexColor("#f0f4f8")
-        t_style.add("BACKGROUND", (0, r), (-1, r), bg)
+    elements = []
+    total_emps = len(sorted_emp_ids)
+    for idx, emp_id in enumerate(sorted_emp_ids):
+        emp_summaries = grouped[emp_id]
+        # Ordenar registros cronológicamente
+        emp_summaries = sorted(emp_summaries, key=lambda x: x.get("date", ""))
         
-        if granularity == "daily":
-            status_val = data[r][9]
-            if status_val == "Ausente":
-                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#FF3D00"))
-                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
-            elif status_val == "Tardanza":
-                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#FFB300"))
-                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
-            elif status_val == "Incompleto":
-                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#FFA000"))
-                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
-            else:
-                t_style.add("TEXTCOLOR", (9, r), (9, r), colors.HexColor("#00E676"))
-                t_style.add("FONTNAME", (9, r), (9, r), "Helvetica-Bold")
-        else:
-            if data[r][6] == "Sí":
-                t_style.add("TEXTCOLOR", (6, r), (6, r), colors.HexColor("#FFB300"))
-                t_style.add("FONTNAME", (6, r), (6, r), "Helvetica-Bold")
-            if data[r][7] == "Sí":
-                t_style.add("TEXTCOLOR", (7, r), (7, r), colors.HexColor("#FFA000"))
-                t_style.add("FONTNAME", (7, r), (7, r), "Helvetica-Bold")
-
-    table.setStyle(t_style)
-    elements.append(table)
-
+        emp_flowables = _get_employee_flowables(emp_summaries, granularity, schedules_map=schedules_map)
+        elements.extend(emp_flowables)
+        
+        # Añadir salto de página si no es el último empleado
+        if idx < total_emps - 1:
+            elements.append(PageBreak())
+            
+        if progress_callback:
+            try:
+                progress_callback(int((idx + 1) / total_emps * 100))
+            except Exception as pe:
+                print(f"Error en progress_callback: {pe}")
+            
     doc.build(elements)
     return buf.getvalue()
+
+
+def generate_attendance_pdf(summaries: list, granularity: str, progress_callback = None) -> bytes:
+    """Genera un reporte de asistencia unificado en PDF (agrupado por persona si hay varios)."""
+    return _generate_grouped_pdf(summaries, granularity, progress_callback=progress_callback)
+
 
 

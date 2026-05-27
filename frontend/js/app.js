@@ -26,6 +26,11 @@ function navigate(page) {
 
   currentPage = page;
 
+  // Sincronizar el hash de la URL si es diferente
+  if (window.location.hash !== '#' + page) {
+    window.location.hash = page;
+  }
+
   // Actualizar nav activo
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.getElementById(`nav-${page}`)?.classList.add('active');
@@ -44,12 +49,27 @@ function navigate(page) {
 
 // ── Sidebar nav ──────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
-  el.addEventListener('click', () => navigate(el.dataset.page));
+  el.addEventListener('click', () => {
+    window.location.hash = el.dataset.page;
+  });
+});
+
+// Listener global para cambios de hash
+window.addEventListener('hashchange', () => {
+  const page = window.location.hash.slice(1);
+  if (page && PAGES[page] && page !== currentPage) {
+    navigate(page);
+  }
 });
 
 // ── Logout ───────────────────────────────────────────────────────────────────
 document.getElementById('logoutBtn').addEventListener('click', () => {
-  if (confirm('¿Cerrar sesión?')) Auth.logout();
+  Modal.confirm(
+    '¿Cerrar Sesión?',
+    '¿Estás seguro de que deseas salir del sistema? Tendrás que volver a ingresar tus credenciales para acceder.',
+    () => Auth.logout(),
+    'warning'
+  );
 });
 
 // ── Sync button en topbar ────────────────────────────────────────────────────
@@ -108,13 +128,37 @@ async function loadSystemBranding() {
     const logoSvg = document.getElementById('sidebarLogoSvg');
     const logoImg = document.getElementById('sidebarLogoImg');
     if (logoSvg && logoImg) {
+      const brandIconContainer = document.getElementById('sidebarLogoContainer');
       if (data.logo_path) {
         logoSvg.style.display = 'none';
         logoImg.src = data.logo_path;
         logoImg.style.display = 'block';
+        if (brandIconContainer) {
+          brandIconContainer.style.background = 'none';
+          brandIconContainer.style.boxShadow = 'none';
+          brandIconContainer.style.width = 'auto';
+          brandIconContainer.style.height = '36px';
+          brandIconContainer.style.borderRadius = '0';
+          
+          logoImg.style.width = 'auto';
+          logoImg.style.height = '100%';
+          logoImg.style.maxWidth = '140px';
+          logoImg.style.objectFit = 'contain';
+        }
       } else {
         logoSvg.style.display = 'block';
         logoImg.style.display = 'none';
+        if (brandIconContainer) {
+          brandIconContainer.style.background = '';
+          brandIconContainer.style.boxShadow = '';
+          brandIconContainer.style.width = '';
+          brandIconContainer.style.height = '';
+          brandIconContainer.style.borderRadius = '';
+          logoImg.style.width = '';
+          logoImg.style.height = '';
+          logoImg.style.maxWidth = '';
+          logoImg.style.objectFit = '';
+        }
       }
     }
     
@@ -153,7 +197,10 @@ async function updateDeviceBadge() {
 loadUserInfo();
 loadSystemBranding();
 updateDeviceBadge();
-navigate('dashboard');
+
+// Determinar la página inicial basada en el hash de la URL
+const initialPage = window.location.hash.slice(1) || 'dashboard';
+navigate(initialPage);
 
 // Actualizar badge cada 60 seg
 devicePollInterval = setInterval(updateDeviceBadge, 60000);

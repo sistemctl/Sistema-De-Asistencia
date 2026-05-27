@@ -17,7 +17,7 @@ const ParametersPage = {
         </button>
         ${Auth.user()?.role === 'admin' ? `
         <button class="tab-btn" data-tab="settings" onclick="ParametersPage.switchTab('settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Ajustes del Sistema
+          Reglas de Asistencia
         </button>
         ` : ''}
       </div>
@@ -28,7 +28,7 @@ const ParametersPage = {
         .tab-btn:hover { color: var(--text-1) !important; }
       </style>
       <div id="paramContent">
-        <!-- Contenido dinámico (Departamentos, Cargos, Horarios) -->
+        <!-- Contenido dinámico (Departamentos, Cargos, Horarios, Configuración) -->
       </div>
     `;
 
@@ -52,8 +52,10 @@ const ParametersPage = {
     } else if (tab === 'schedules') {
       if (typeof SchedulesPage !== 'undefined') await SchedulesPage.render();
     } else if (tab === 'settings') {
-      if (typeof SystemSettingsPage !== 'undefined') await SystemSettingsPage.render();
+      if (typeof SystemSettingsPage !== 'undefined') await SystemSettingsPage.render('settings');
     }
   }
 };
+
+
 

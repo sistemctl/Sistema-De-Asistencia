@@ -171,5 +171,32 @@ class SystemConfig(Base):
     work_days = Column(String(100), default="1,2,3,4,5") # Lunes a Viernes (1=Lunes, 7=Domingo)
     time_format = Column(String(10), default="24h") # 12h / 24h
     entry_tolerance_minutes = Column(Integer, default=10)
+    exit_tolerance_minutes = Column(Integer, default=10)
+    require_checkin = Column(Boolean, default=True)
+    require_checkout = Column(Boolean, default=True)
+    
+    # Turno normal tardanzas/ausencias
+    mark_late_enable = Column(Boolean, default=True)
+    mark_late_limit_minutes = Column(Integer, default=0)
+    
+    mark_absent_if_late_enable = Column(Boolean, default=False)
+    mark_absent_if_late_limit_minutes = Column(Integer, default=60)
+    
+    mark_early_departure_enable = Column(Boolean, default=True)
+    mark_early_departure_limit_minutes = Column(Integer, default=0)
+    
+    mark_absent_if_early_checkout_enable = Column(Boolean, default=False)
+    mark_absent_if_early_checkout_limit_minutes = Column(Integer, default=60)
+    
+    # Sin registros
+    no_checkin_enable = Column(Boolean, default=True)
+    no_checkin_status = Column(String(20), default="Absent")
+    no_checkout_enable = Column(Boolean, default=True)
+    no_checkout_status = Column(String(20), default="Absent")
+    
+    # Turno flexible rango de horas
+    flexible_shift_start = Column(String(10), default="09:00:00")
+    flexible_shift_end = Column(String(10), default="18:00:00")
+    
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

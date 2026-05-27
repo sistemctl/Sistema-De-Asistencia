@@ -61,7 +61,8 @@ def _seed_initial_data():
             print(f"Admin creado: {DEFAULT_ADMIN_USERNAME} / {DEFAULT_ADMIN_PASSWORD}")
 
         # Configuración del dispositivo
-        if not db.query(DeviceConfig).first():
+        device_cfg = db.query(DeviceConfig).first()
+        if not device_cfg:
             db.add(DeviceConfig(
                 ip_address=DEVICE_IP,
                 port=DEVICE_PORT,
@@ -70,6 +71,10 @@ def _seed_initial_data():
                 sync_interval_minutes=SYNC_INTERVAL_MINUTES,
             ))
             print(f"Config dispositivo creada: {DEVICE_IP}:{DEVICE_PORT}")
+        else:
+            if device_cfg.password == "admin123" and DEVICE_PASSWORD != "admin123":
+                device_cfg.password = DEVICE_PASSWORD
+                print("Config dispositivo actualizada desde .env con nueva contraseña")
 
         # Configuración del sistema por defecto
         if not db.query(SystemConfig).first():

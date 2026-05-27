@@ -1,71 +1,213 @@
 /* device.js — Estado y configuración del dispositivo */
 
 const DevicePage = {
-  async render() {
+  currentTab: 'device_status',
+  settings: {},
+  pollInterval: null,
+
+  async render(tab = 'device_status') {
+    this.currentTab = tab;
+
     document.getElementById('pageContent').innerHTML = `
-      <div class="section-header">
-        <div class="section-title">Dispositivo</div>
-        <div class="section-actions">
-          <button class="btn btn-secondary" onclick="DevicePage.checkConnection()">
-            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            Verificar conexión
-          </button>
-          ${Auth.isAdmin() ? `
-            <button class="btn btn-primary" onclick="DevicePage.manualSync()" id="btnManualSync">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-              Sync manual
+      <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
+        <button class="tab-btn active" data-tab="device_status" onclick="DevicePage.switchTab('device_status')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+          Biométrico / Conexión
+        </button>
+        <button class="tab-btn" data-tab="sync_history" onclick="DevicePage.switchTab('sync_history')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+          Historial de Sincronización
+        </button>
+        ${Auth.user()?.role === 'admin' ? `
+        <button class="tab-btn" data-tab="branding" onclick="DevicePage.switchTab('branding')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+          Personalización de Marca
+        </button>
+        ` : ''}
+      </div>
+      <style>
+        .tab-btn.active { color: var(--accent) !important; }
+        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
+        .tab-btn.active::after { transform: scaleX(1); }
+        .tab-btn:hover { color: var(--text-1) !important; }
+      </style>
+      <div id="deviceTabContent">
+      </div>
+    `;
+
+    await this.switchTab(tab);
+  },
+
+  async switchTab(tab) {
+    this.currentTab = tab;
+    
+    // Cleanup any running poll interval from history tab if we switch
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    const contentEl = document.getElementById('deviceTabContent');
+    if (tab === 'device_status') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Dispositivo</div>
+          <div class="section-actions">
+            <button class="btn btn-secondary" onclick="DevicePage.checkConnection()">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              Verificar conexión
             </button>
-            <button class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent-3), #00b0ff); color:#000; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.25);" onclick="DevicePage.historicSync()" id="btnHistoricSync">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Importar Histórico
-            </button>` : ''}
-        </div>
-      </div>
-      
-      <div id="syncProgressBar" style="display:none; margin-bottom: 24px; background: var(--surface-2); padding: 18px; border-radius: 12px; border: 1px solid var(--border);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <strong style="color:var(--accent); font-size:0.9rem;">Sincronizando con el biométrico...</strong>
-          <span style="font-size:0.8rem; color:var(--text-3); font-weight:500;" id="syncProgressText">Procesando datos en segundo plano</span>
-        </div>
-        <div style="width: 100%; height: 6px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
-          <div style="width: 100%; height: 100%; background-color: var(--accent); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
-        </div>
-        <style>
-          @keyframes progressIndeterminate {
-            0% { transform: scaleX(0); opacity: 1; }
-            50% { transform: scaleX(0.5); opacity: 0.8; }
-            100% { transform: scaleX(1); opacity: 0; }
-          }
-        </style>
-      </div>
-
-      <div class="grid-2" style="margin-bottom:24px">
-        <div class="card" id="deviceStatusCard"><div class="loading-overlay"><div class="spinner"></div></div></div>
-        ${Auth.isAdmin() ? `<div class="card" id="deviceConfigCard"><div class="loading-overlay"><div class="spinner"></div></div></div>` : '<div></div>'}
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M12 8v4l3 3M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>
-            Historial de sincronización
+            ${Auth.isAdmin() ? `
+              <button class="btn btn-primary" onclick="DevicePage.manualSync()" id="btnManualSync">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                Sync manual
+              </button>
+              <button class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent-3), #00b0ff); color:#000; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.25);" onclick="DevicePage.historicSync()" id="btnHistoricSync">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Importar Histórico
+              </button>` : ''}
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Fecha/Hora</th><th>Estado</th><th>Eventos obtenidos</th><th>Eventos nuevos</th><th>Modo</th><th>Detalle</th></tr></thead>
-            <tbody id="logsTable"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
-          </table>
-        </div>
-      </div>`;
 
-    await Promise.all([this.loadStatus(), this.loadConfig(), this.loadLogs()]);
+        <div class="grid-2" style="margin-bottom:24px; margin-top: 16px;">
+          <div class="card" id="deviceStatusCard"><div class="loading-overlay"><div class="spinner"></div></div></div>
+          ${Auth.isAdmin() ? `<div class="card" id="deviceConfigCard"><div class="loading-overlay"><div class="spinner"></div></div></div>` : '<div></div>'}
+        </div>
+      `;
+      await Promise.all([this.loadStatus(), this.loadConfig()]);
+    } else if (tab === 'sync_history') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Historial de Sincronización</div>
+        </div>
+        
+        <div id="syncProgressBar" style="display:none; margin-bottom: 24px; background: var(--surface-2); padding: 18px; border-radius: 12px; border: 1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong style="color:var(--accent); font-size:0.9rem;">Sincronizando con el biométrico...</strong>
+            <span style="font-size:0.8rem; color:var(--text-3); font-weight:500;" id="syncProgressText">Procesando datos en segundo plano</span>
+          </div>
+          <div style="width: 100%; height: 6px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
+            <div style="width: 100%; height: 100%; background-color: var(--accent); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+          </div>
+          <style>
+            @keyframes progressIndeterminate {
+              0% { transform: scaleX(0); opacity: 1; }
+              50% { transform: scaleX(0.5); opacity: 0.8; }
+              100% { transform: scaleX(1); opacity: 0; }
+            }
+          </style>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M12 8v4l3 3M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>
+              Logs de Comunicación
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha/Hora</th><th>Estado</th><th>Eventos obtenidos</th><th>Eventos nuevos</th><th>Modo</th><th>Detalle</th></tr></thead>
+              <tbody id="logsTable"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      await this.loadLogs();
+    } else if (tab === 'branding') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Personalización de Marca</div>
+        </div>
+        
+        <div style="max-width: 600px; margin-top: 16px;">
+          <div class="card">
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              Branding del Sistema
+            </div>
+            
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Nombre del Sistema</label>
+              <input id="sysSystemName" type="text" placeholder="Ej. Control de Asistencia" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Nombre de la Empresa / Sede</label>
+              <input id="sysCompanyName" type="text" placeholder="Ej. Mi Empresa S.A.C." style="width: 100%; box-sizing: border-box;" />
+            </div>
+            
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+              <div class="field" style="flex: 1;">
+                <label>Color Primario (Tema)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input id="sysPrimaryColor" type="color" style="width: 40px; height: 40px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px;" />
+                  <span id="sysPrimaryColorHex" style="font-family: monospace; font-size: 0.85rem; color: var(--text-2);">#1E3A5F</span>
+                </div>
+              </div>
+              <div class="field" style="flex: 1;">
+                <label>Color de Acento / Realce</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input id="sysAccentColor" type="color" style="width: 40px; height: 40px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px;" />
+                  <span id="sysAccentColorHex" style="font-family: monospace; font-size: 0.85rem; color: var(--text-2);">#00E676</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Logotipo del Sistema (PNG, JPG o SVG)</label>
+              <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 12px; border-radius: 12px; border: 1px dashed var(--border);">
+                <div id="sysLogoPreviewContainer" style="width: 60px; height: 60px; border-radius: 8px; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" id="sysLogoSvgDefault"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><circle cx="12" cy="7" r="2"></circle></svg>
+                  <img id="sysLogoImgPreview" style="display: none; width: 100%; height: 100%; object-fit: contain;" />
+                </div>
+                <div style="flex: 1;">
+                  <input id="sysLogoFileInput" type="file" accept=".png,.jpg,.jpeg,.svg" style="display: none;" />
+                  <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sysLogoFileInput').click()" style="margin-bottom: 4px;">Seleccionar archivo</button>
+                  <div style="font-size: 0.72rem; color: var(--text-3);">Formato recomendado: PNG transparente o SVG. Máx. 2MB</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="text-align: right; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 24px;">
+              <button class="btn btn-primary" id="btnSaveBranding" style="width: 100%; padding: 12px; font-weight: bold;">
+                Guardar cambios de personalización
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Setup color picker sync
+      const pColor = document.getElementById('sysPrimaryColor');
+      const aColor = document.getElementById('sysAccentColor');
+      if (pColor && aColor) {
+        pColor.addEventListener('input', (e) => {
+          document.getElementById('sysPrimaryColorHex').textContent = e.target.value.toUpperCase();
+        });
+        aColor.addEventListener('input', (e) => {
+          document.getElementById('sysAccentColorHex').textContent = e.target.value.toUpperCase();
+        });
+      }
+
+      // Setup file upload listener
+      const logoInput = document.getElementById('sysLogoFileInput');
+      if (logoInput) {
+        logoInput.addEventListener('change', (e) => this.handleLogoUpload(e));
+      }
+
+      document.getElementById('btnSaveBranding')?.addEventListener('click', () => this.saveBranding());
+      
+      await this.loadBranding();
+    }
   },
 
   async loadStatus() {
     try {
       const s = await API.get('/api/device/status');
       const card = document.getElementById('deviceStatusCard');
+      if (!card) return;
       card.innerHTML = `
         <div class="card-header">
           <div class="card-title">
@@ -98,14 +240,19 @@ const DevicePage = {
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
             Dispositivo no disponible en la red. El sistema genera datos simulados automáticamente. Cuando el dispositivo esté en línea en <strong>${s.ip_address}</strong>, la sincronización real comenzará automáticamente.</div>` : ''}
         </div>`;
-    } catch(e) { document.getElementById('deviceStatusCard').innerHTML = `<p style="color:var(--danger)">Error cargando estado</p>`; }
+    } catch(e) { 
+      const card = document.getElementById('deviceStatusCard');
+      if (card) card.innerHTML = `<p style="color:var(--danger)">Error cargando estado</p>`; 
+    }
   },
 
   async loadConfig() {
     if (!Auth.isAdmin()) return;
     try {
       const c = await API.get('/api/device/config');
-      document.getElementById('deviceConfigCard').innerHTML = `
+      const card = document.getElementById('deviceConfigCard');
+      if (!card) return;
+      card.innerHTML = `
         <div class="card-header">
           <div class="card-title">
             <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -148,6 +295,7 @@ const DevicePage = {
     try {
       const logs = await API.get('/api/device/logs?limit=20');
       const tbody = document.getElementById('logsTable');
+      if (!tbody) return;
       if (!logs?.length) { 
         tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -171,7 +319,7 @@ const DevicePage = {
       }).join('');
       
       this.toggleProgress(isRunning);
-      if (isRunning && !this.pollInterval) {
+      if (isRunning && this.currentTab === 'sync_history' && !this.pollInterval) {
         this.pollInterval = setInterval(() => this.loadLogs(), 4000);
       } else if (!isRunning && this.pollInterval) {
         clearInterval(this.pollInterval);
@@ -202,7 +350,8 @@ const DevicePage = {
     try {
       await API.post('/api/device/sync', {});
       Toast.show('Sincronización iniciada', 'info');
-      setTimeout(() => this.loadLogs(), 1000);
+      // Switch automatically to history tab to track progress
+      this.switchTab('sync_history');
     } catch(e) { Toast.show(e.message, 'error'); }
   },
 
@@ -230,7 +379,7 @@ const DevicePage = {
     document.getElementById('modalBox').className = 'modal modal-sm';
     document.getElementById('modalOverlay').classList.add('open');
 
-    // Inicializar Flatpickr con localización en español para la sincronización histórica
+    // Inicializar Flatpickr
     flatpickr("#syncDateRange", { 
       mode: "range", 
       locale: "es", 
@@ -257,12 +406,153 @@ const DevicePage = {
       try {
         await API.post('/api/device/sync-historic', { start_date: start, end_date: end });
         Toast.show('Importación histórica iniciada', 'info');
-        setTimeout(() => DevicePage.loadLogs(), 1000);
+        // Switch automatically to history tab to track progress
+        DevicePage.switchTab('sync_history');
       } catch(e) { Toast.show(e.message, 'error'); }
     };
   },
+
+  async loadBranding() {
+    try {
+      const data = await API.get('/api/settings');
+      this.settings = data;
+
+      document.getElementById('sysSystemName').value = data.system_name || '';
+      document.getElementById('sysCompanyName').value = data.company_name || '';
+      document.getElementById('sysPrimaryColor').value = data.primary_color || '#1e3a5f';
+      document.getElementById('sysPrimaryColorHex').textContent = (data.primary_color || '#1e3a5f').toUpperCase();
+      document.getElementById('sysAccentColor').value = data.accent_color || '#00e676';
+      document.getElementById('sysAccentColorHex').textContent = (data.accent_color || '#00e676').toUpperCase();
+
+      const svgDef = document.getElementById('sysLogoSvgDefault');
+      const imgPrev = document.getElementById('sysLogoImgPreview');
+      const prevContainer = document.getElementById('sysLogoPreviewContainer');
+      if (data.logo_path) {
+        svgDef.style.display = 'none';
+        imgPrev.src = data.logo_path;
+        imgPrev.style.display = 'block';
+        if (prevContainer) {
+          prevContainer.style.background = 'none';
+          prevContainer.style.width = 'auto';
+          prevContainer.style.height = '50px';
+          prevContainer.style.border = 'none';
+          imgPrev.style.width = 'auto';
+          imgPrev.style.height = '100%';
+          imgPrev.style.maxWidth = '150px';
+        }
+      } else {
+        svgDef.style.display = 'block';
+        imgPrev.style.display = 'none';
+        if (prevContainer) {
+          prevContainer.style.background = '';
+          prevContainer.style.width = '';
+          prevContainer.style.height = '';
+          prevContainer.style.border = '';
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      Toast.show('Error al cargar la personalización', 'error');
+    }
+  },
+
+  async handleLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    Toast.show('Subiendo logotipo...', 'info');
+
+    try {
+      const data = await API.postForm('/api/settings/logo', formData);
+      Toast.show('Logotipo actualizado con éxito', 'success');
+      
+      const svgDef = document.getElementById('sysLogoSvgDefault');
+      const imgPrev = document.getElementById('sysLogoImgPreview');
+      const prevContainer = document.getElementById('sysLogoPreviewContainer');
+      svgDef.style.display = 'none';
+      imgPrev.src = data.logo_path;
+      imgPrev.style.display = 'block';
+      if (prevContainer) {
+        prevContainer.style.background = 'none';
+        prevContainer.style.width = 'auto';
+        prevContainer.style.height = '50px';
+        prevContainer.style.border = 'none';
+        imgPrev.style.width = 'auto';
+        imgPrev.style.height = '100%';
+        imgPrev.style.maxWidth = '150px';
+      }
+
+      if (window.loadSystemBranding) {
+        await window.loadSystemBranding();
+      }
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message, 'error');
+    }
+  },
+
+  async saveBranding() {
+    const systemName = document.getElementById('sysSystemName').value.trim();
+    const companyName = document.getElementById('sysCompanyName').value.trim();
+    const primaryColor = document.getElementById('sysPrimaryColor').value;
+    const accentColor = document.getElementById('sysAccentColor').value;
+
+    if (!systemName) {
+      Toast.show('Por favor, ingresa el nombre del sistema', 'warning');
+      return;
+    }
+    if (!companyName) {
+      Toast.show('Por favor, ingresa el nombre de la empresa', 'warning');
+      return;
+    }
+
+    try {
+      if (!this.settings.work_days) {
+        const currentData = await API.get('/api/settings');
+        this.settings = currentData;
+      }
+
+      await API.put('/api/settings', {
+        system_name: systemName,
+        company_name: companyName,
+        primary_color: primaryColor,
+        accent_color: accentColor,
+        work_days: this.settings.work_days || '1,2,3,4,5',
+        time_format: this.settings.time_format || '24h',
+        entry_tolerance_minutes: this.settings.entry_tolerance_minutes ?? 10,
+        exit_tolerance_minutes: this.settings.exit_tolerance_minutes ?? 10,
+        require_checkin: this.settings.require_checkin ?? true,
+        require_checkout: this.settings.require_checkout ?? true,
+        mark_late_enable: this.settings.mark_late_enable ?? true,
+        mark_late_limit_minutes: this.settings.mark_late_limit_minutes ?? 0,
+        mark_absent_if_late_enable: this.settings.mark_absent_if_late_enable ?? false,
+        mark_absent_if_late_limit_minutes: this.settings.mark_absent_if_late_limit_minutes ?? 60,
+        mark_early_departure_enable: this.settings.mark_early_departure_enable ?? true,
+        mark_early_departure_limit_minutes: this.settings.mark_early_departure_limit_minutes ?? 0,
+        mark_absent_if_early_checkout_enable: this.settings.mark_absent_if_early_checkout_enable ?? false,
+        mark_absent_if_early_checkout_limit_minutes: this.settings.mark_absent_if_early_checkout_limit_minutes ?? 60,
+        no_checkin_enable: this.settings.no_checkin_enable ?? true,
+        no_checkin_status: this.settings.no_checkin_status || 'Absent',
+        no_checkout_enable: this.settings.no_checkout_enable ?? true,
+        no_checkout_status: this.settings.no_checkout_status || 'Absent',
+        flexible_shift_start: this.settings.flexible_shift_start || '09:00:00',
+        flexible_shift_end: this.settings.flexible_shift_end || '18:00:00'
+      });
+
+      Toast.show('Personalización de marca guardada', 'success');
+
+      if (window.loadSystemBranding) {
+        await window.loadSystemBranding();
+      }
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message, 'error');
+    }
+  },
   
-  // Limpieza al desmontar la vista
   destroy() {
     if (this.pollInterval) clearInterval(this.pollInterval);
   }

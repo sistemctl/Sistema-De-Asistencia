@@ -939,23 +939,147 @@ const ReportsPage = {
       }
     }
 
-    Toast.show(`Generando reporte ${format.toUpperCase()}...`, 'info');
+    if (format === 'excel') {
+      Toast.show('Generando reporte EXCEL...', 'info');
+      fetch(`/api/reports/report?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => {
+          if (!r.ok) throw new Error();
+          return r.blob();
+        })
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `reporte_${repGranularity}_${new Date().toISOString().split('T')[0]}.xlsx`;
+          a.click();
+          Toast.show('Reporte EXCEL descargado con éxito', 'success');
+        })
+        .catch(() => Toast.show('Error al generar reporte EXCEL', 'error'));
+      return;
+    }
 
-    fetch(`/api/reports/report?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    // PDF Asíncrono
+    Toast.show('Iniciando generación de PDF...', 'info');
+    
+    // Quitar export de los params de async
+    params.delete('export');
+
+    fetch(`/api/reports/report/async?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
-        if (!r.ok) throw new Error();
-        return r.blob();
+        if (!r.ok) throw new Error('Error al iniciar generación de reporte');
+        return r.json();
       })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const ext = format === 'excel' ? 'xlsx' : 'pdf';
-        a.download = `reporte_${repGranularity}_${new Date().toISOString().split('T')[0]}.${ext}`;
-        a.click();
-        Toast.show(`Reporte ${format.toUpperCase()} descargado con éxito`, 'success');
+      .then(data => {
+        const taskId = data.task_id;
+        
+        // Abrir Modal de Progreso
+        Modal.open(
+          'Generando Reporte PDF',
+          `
+          <div style="text-align: center; padding: 15px 10px;">
+            <p style="font-weight: 600; font-size: 1rem; color: #1e293b; margin-bottom: 8px;">
+              Generando reporte de asistencia con gráficos individuales...
+            </p>
+            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">
+              Esto puede demorar unos segundos. Por favor, no cierre esta ventana.
+            </p>
+            <div style="background-color: #f1f5f9; border-radius: 9999px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0;">
+              <div id="reportProgressBar" style="background-color: var(--accent, #7c3aed); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+            <div id="reportProgressPercent" style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">0%</div>
+          </div>
+          `,
+          `
+          <button class="btn btn-secondary" id="cancelReportBtn" style="width: 100%; background: #64748b; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer;">Cancelar</button>
+          `
+        );
+
+        // Ocultar botón de cerrar modal para evitar cierres accidentales
+        const closeBtn = document.getElementById('modalClose');
+        if (closeBtn) closeBtn.style.display = 'none';
+
+        let isPolling = true;
+        const pollInterval = setInterval(() => {
+          if (!isPolling) return;
+
+          fetch(`/api/reports/report/status/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(statusData => {
+              if (statusData.status === 'processing') {
+                const progress = statusData.progress || 0;
+                const bar = document.getElementById('reportProgressBar');
+                const pct = document.getElementById('reportProgressPercent');
+                if (bar) bar.style.width = `${progress}%`;
+                if (pct) pct.textContent = `${progress}%`;
+              } else if (statusData.status === 'completed') {
+                isPolling = false;
+                clearInterval(pollInterval);
+                
+                // Actualizar a 100%
+                const bar = document.getElementById('reportProgressBar');
+                const pct = document.getElementById('reportProgressPercent');
+                if (bar) bar.style.width = '100%';
+                if (pct) pct.textContent = '100% - Descargando...';
+
+                // Descargar archivo
+                setTimeout(() => {
+                  fetch(`/api/reports/report/download/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
+                    .then(res => {
+                      if (!res.ok) throw new Error();
+                      return res.blob();
+                    })
+                    .then(blob => {
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `reporte_${repGranularity}_${new Date().toISOString().split('T')[0]}.pdf`;
+                      a.click();
+                      
+                      if (closeBtn) closeBtn.style.display = 'block';
+                      Modal.close();
+                      Toast.show('Reporte PDF descargado con éxito', 'success');
+                    })
+                    .catch(() => {
+                      if (closeBtn) closeBtn.style.display = 'block';
+                      Modal.close();
+                      Toast.show('Error al descargar el archivo PDF', 'error');
+                    });
+                }, 500);
+
+              } else if (statusData.status === 'failed' || statusData.status === 'not_found') {
+                isPolling = false;
+                clearInterval(pollInterval);
+                if (closeBtn) closeBtn.style.display = 'block';
+                Modal.close();
+                Toast.show(`Falla al generar reporte: ${statusData.error || 'Desconocido'}`, 'error');
+              }
+            })
+            .catch(() => {
+              isPolling = false;
+              clearInterval(pollInterval);
+              if (closeBtn) closeBtn.style.display = 'block';
+              Modal.close();
+              Toast.show('Error de conexión al verificar estado del reporte', 'error');
+            });
+        }, 1500);
+
+        // Si el usuario cancela
+        const handleCancel = () => {
+          isPolling = false;
+          clearInterval(pollInterval);
+          if (closeBtn) closeBtn.style.display = 'block';
+          Modal.close();
+          Toast.show('Generación de reporte cancelada', 'warning');
+        };
+
+        const cancelBtn = document.getElementById('cancelReportBtn');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', handleCancel);
+        }
       })
-      .catch(() => Toast.show(`Error al generar reporte ${format.toUpperCase()}`, 'error'));
+      .catch(err => {
+        Toast.show(err.message || 'Error al solicitar reporte PDF', 'error');
+      });
   },
 
   // Exportar Excel Consolidado unificado

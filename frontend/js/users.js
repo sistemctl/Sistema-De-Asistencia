@@ -101,6 +101,9 @@ const UsersPage = {
                 <button class="btn btn-icon btn-sm" onclick="UsersPage.openChangePassword(${u.id}, '${u.username}')" title="Cambiar Contraseña">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                 </button>
+                <button class="btn btn-icon btn-sm btn-danger" onclick="UsersPage.deleteUser(${u.id}, '${u.username}')" title="Eliminar Usuario">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
               </div>
             </td>
           </tr>`;
@@ -212,5 +215,28 @@ const UsersPage = {
       Toast.show('Contraseña actualizada correctamente', 'success');
       Modal.close();
     } catch(e) { Toast.show(e.message, 'error'); }
+  },
+
+  async deleteUser(id, username) {
+    const currentUser = Auth.user();
+    if (currentUser && currentUser.id === id) {
+      Toast.show('No puedes eliminar tu propia cuenta de usuario', 'warning');
+      return;
+    }
+
+    Modal.confirm(
+      '¿Eliminar Usuario?',
+      `¿Estás seguro de que deseas eliminar la cuenta de usuario <strong>${username}</strong>? Esta acción es irreversible y el usuario perderá el acceso de forma inmediata.`,
+      async () => {
+        try {
+          await API.delete(`/api/auth/users/${id}`);
+          Toast.show('Usuario del sistema eliminado con éxito', 'success');
+          this.loadTable();
+        } catch(e) {
+          Toast.show(e.message || 'Error al eliminar usuario', 'error');
+        }
+      },
+      'danger'
+    );
   }
 };

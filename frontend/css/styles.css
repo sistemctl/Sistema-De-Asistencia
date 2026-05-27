@@ -38,7 +38,13 @@
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; scroll-behavior: smooth; }
+html { 
+  font-size: 16px; 
+  scroll-behavior: smooth; 
+  overflow: hidden; 
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
 body { 
   font-family: 'Plus Jakarta Sans', sans-serif; 
   background: var(--bg-base); 
@@ -47,7 +53,7 @@ body {
   line-height: 1.6; 
   -webkit-font-smoothing: antialiased; 
   background-image: none;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 a { color: var(--accent); text-decoration: none; transition: color .2s; }
 a:hover { color: #312e81; }
@@ -56,13 +62,15 @@ input, select, textarea { font-family: inherit; }
 img { max-width: 100%; height: auto; }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.15); border-radius: 99px; }
 ::-webkit-scrollbar-thumb { 
-  background: var(--surface-3); 
+  background: rgba(255, 255, 255, 0.12); 
   border-radius: 99px; 
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent) !important; }
 
 /* ── Background Mesh Glows ── */
 .mesh-glows {
@@ -514,14 +522,18 @@ tbody td { padding: 14px 20px; color: var(--text-1); vertical-align: middle; }
 }
 
 .btn-secondary { 
-  background: var(--surface-3); 
-  color: var(--text-1); 
+  background: #ffffff; 
+  color: var(--text-2); 
   border: 1px solid var(--border); 
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
 }
 .btn-secondary:hover { 
   background: var(--surface-2); 
+  color: var(--text-1);
   border-color: var(--border-light); 
-  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 .btn-danger { 
   background: rgba(220, 38, 38, 0.08); 
@@ -531,6 +543,11 @@ tbody td { padding: 14px 20px; color: var(--text-1); vertical-align: middle; }
 .btn-danger:hover { 
   background: rgba(220, 38, 38, 0.15); 
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
+}
+.btn-danger.btn-icon:hover {
+  background: rgba(220, 38, 38, 0.2) !important;
+  color: var(--danger) !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
 }
 .btn-success { 
   background: rgba(22, 163, 74, 0.08); 
@@ -999,3 +1016,33 @@ span.flatpickr-weekday {
 .flatpickr-calendar.arrowDown:before {
   border-top-color: rgba(255, 255, 255, 0.12) !important;
 }
+
+/* Prevenir encogimiento en inputs de Flatpickr */
+.section-actions input.flatpickr-input {
+  min-width: 240px !important;
+  flex-shrink: 0;
+}
+
+/* Ocultar título redundante en el cuerpo del contenido ya que está en la Topbar */
+.content .section-header .section-title {
+  display: none;
+}
+
+/* Animación de pulso para confirmaciones premium */
+@keyframes confirmPulse {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+@keyframes confirmWarningPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 179, 0, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(255, 179, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 179, 0, 0); }
+}
+.confirm-icon-pulse {
+  animation: confirmPulse 2s infinite;
+}
+.confirm-icon-pulse.warning {
+  animation: confirmWarningPulse 2s infinite;
+}
+

@@ -2,14 +2,56 @@
 
 const AttendancePage = {
   page: 1, filters: {},
+  currentTab: 'records',
 
-  async render() {
+  async render(tab = 'records') {
+    this.currentTab = tab;
+
     document.getElementById('pageContent').innerHTML = `
       <div class="section-header">
-        <div class="section-title">Asistencia</div>
-        <div class="section-actions">
-          <input type="text" id="fSearch" placeholder="Buscar empleado o código" style="width: 250px;" />
-          <input type="text" id="fDateRange" placeholder="Rango de fechas" style="width: 260px;" />
+        <div>
+          <div class="section-title">Asistencia</div>
+          <div style="color:var(--text-3);font-size:.8rem;margin-top:2px">Control y seguimiento de entradas y salidas</div>
+        </div>
+      </div>
+
+      <!-- Tab Nav -->
+      <div style="margin-bottom:24px; border-bottom:1px solid var(--border); display:flex; gap:24px;">
+        <button class="att-tab-btn active" data-tab="records" onclick="AttendancePage.switchTab('records')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.95rem;cursor:pointer;position:relative;transition:color 0.2s;">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          Registros de Asistencia
+        </button>
+        <button class="att-tab-btn" data-tab="recent" onclick="AttendancePage.switchTab('recent')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.95rem;cursor:pointer;position:relative;transition:color 0.2s;">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          Últimas Entradas del Dispositivo
+        </button>
+      </div>
+      <style>
+        .att-tab-btn.active { color: var(--accent) !important; }
+        .att-tab-btn::after { content:''; position:absolute; bottom:-1px; left:0; width:100%; height:2px; background:var(--accent); transform:scaleX(0); transition:transform 0.2s ease; }
+        .att-tab-btn.active::after { transform:scaleX(1); }
+        .att-tab-btn:hover { color:var(--text-1) !important; }
+      </style>
+
+      <div id="attTabContent"></div>
+    `;
+
+    await this.switchTab(tab);
+  },
+
+  async switchTab(tab) {
+    this.currentTab = tab;
+    document.querySelectorAll('.att-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    const content = document.getElementById('attTabContent');
+
+    if (tab === 'records') {
+      content.innerHTML = `
+        <div class="section-actions" style="margin-bottom:20px; flex-wrap:wrap; display:flex; gap:10px; align-items:center;">
+          <input type="text" id="fSearch" placeholder="Buscar empleado o código" style="width:250px;" />
+          <input type="text" id="fDateRange" placeholder="Rango de fechas" style="width:260px;" />
           <select id="fType">
             <option value="">Todos</option><option value="entry">Entradas</option><option value="exit">Salidas</option>
           </select>
@@ -18,57 +60,72 @@ const AttendancePage = {
             Filtrar
           </button>
         </div>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>Empleado</th>
-              <th>Código</th>
-              <th>Departamento</th>
-              <th>Fecha</th>
-              <th>Horario</th>
-              <th>Entrada</th>
-              <th>Sal. Almuerzo</th>
-              <th>Ret. Almuerzo</th>
-              <th>Salida</th>
-              <th>Estado</th>
-            </tr></thead>
-            <tbody id="attTable">
-              ${[1,2,3,4,5].map(() => `<tr>
-                <td><div style="display:flex;gap:10px;align-items:center"><div class="skeleton sk-avatar"></div><div class="skeleton sk-text w-75" style="margin:0"></div></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-75"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-        <div class="pagination" id="attPag"></div>
-      </div>`;
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Empleado</th><th>Código</th><th>Departamento</th><th>Fecha</th><th>Horario</th>
+                <th>Entrada</th><th>Sal. Almuerzo</th><th>Ret. Almuerzo</th><th>Salida</th><th>Estado</th>
+              </tr></thead>
+              <tbody id="attTable">
+                ${[1,2,3,4,5].map(() => `<tr>
+                  <td><div style="display:flex;gap:10px;align-items:center"><div class="skeleton sk-avatar"></div><div class="skeleton sk-text w-75" style="margin:0"></div></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-75"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                  <td><div class="skeleton sk-text w-50"></div></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="attPag"></div>
+        </div>`;
 
-    // Inicializar Flatpickr con localización en español y formato estético de rango
-    const today = new Date().toISOString().split('T')[0];
-    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-    flatpickr("#fDateRange", { 
-      mode: "range", 
-      locale: "es", 
-      showMonths: 2,
-      dateFormat: "Y-m-d", 
-      altInput: true, 
-      altFormat: "d M Y", 
-      defaultDate: [firstDay, today] 
-    });
+      const today = new Date().toISOString().split('T')[0];
+      const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      flatpickr('#fDateRange', {
+        mode: 'range', locale: 'es', showMonths: 2,
+        dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y',
+        defaultDate: [firstDay, today]
+      });
+      document.getElementById('btnFilter').addEventListener('click', () => { this.page = 1; this.loadTable(); });
+      await this.loadTable();
 
-    document.getElementById('btnFilter').addEventListener('click', () => { this.page = 1; this.loadTable(); });
-    await this.loadTable();
+    } else if (tab === 'recent') {
+      content.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Últimas Entradas del Dispositivo
+              </div>
+              <div class="card-sub">Movimientos registrados hoy en el biométrico</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="AttendancePage.loadRecent()">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="event-list" id="recentListAtt" style="max-height:600px;overflow-y:auto;">
+            ${[1,2,3,4,5,6].map(() => `
+              <div class="event-item">
+                <div class="skeleton sk-avatar"></div>
+                <div style="flex:1"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-text w-75"></div></div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+
+      await this.loadRecent();
+    }
   },
+
+
 
   async loadTable() {
     const p = new URLSearchParams({ page: this.page, page_size: 50 });
@@ -142,5 +199,34 @@ const AttendancePage = {
   methodLabel(m) {
     const map = { faceNotCompare: '👤 Facial', cardNotCompare: '💳 Tarjeta', faceAndCard: '👤+💳 Ambos' };
     return map[m] || m || '-';
+  },
+
+  async loadRecent() {
+    try {
+      const items = await API.get('/api/dashboard/recent-events');
+      const list = document.getElementById('recentListAtt');
+      if (!list) return;
+      if (!items?.length) {
+        list.innerHTML = `<div class="empty-state" style="padding:24px"><div class="icon">✨</div><h3>¡Día tranquilo!</h3><p>Aún no hay movimientos registrados hoy.</p></div>`;
+        return;
+      }
+      list.innerHTML = items.map(e => `
+        <div class="event-item">
+          <div class="emp-avatar">${e.employee_name.charAt(0)}</div>
+          <div style="flex:1">
+            <div class="event-name">${e.employee_name}</div>
+            <div class="event-sub">${e.event_type === 'entry' ? '<span style="color:var(--success)">🟢 Entrada</span>' : '<span style="color:var(--danger)">🔴 Salida</span>'}${e.is_late ? ' · <span style="color:var(--warning);font-weight:600;">Tardanza</span>' : ''}</div>
+          </div>
+          <div class="event-time">${this.timeAgo(e.event_time)}</div>
+        </div>`).join('');
+    } catch(e) {}
+  },
+
+  timeAgo(iso) {
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60) return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+    return new Date(iso).toLocaleDateString('es');
   },
 };

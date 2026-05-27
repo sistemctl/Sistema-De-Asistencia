@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
-from backend.models import Employee, AttendanceRecord, Schedule, DeviceConfig
+from backend.models import Employee, AttendanceRecord, Schedule, DeviceConfig, SystemConfig
 
 def parse_time(time_str: str) -> Optional[datetime.time]:
     if not time_str:
@@ -11,9 +11,9 @@ def parse_time(time_str: str) -> Optional[datetime.time]:
     except ValueError:
         return None
 
-def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: DeviceConfig) -> Dict:
+def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: SystemConfig) -> Dict:
     """
-    Calculates the valid punches for an employee on a specific date, based on their schedule.
+    Calculates the valid punches for an employee on a specific date, based on their schedule and system rules.
     """
     # Filter records for the target date
     day_records = [r for r in records if r.event_time.date() == target_date]
@@ -53,7 +53,29 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         return summary
 
     summary["schedule_type"] = schedule.shift_type
+    
+    # Load advanced rules from SystemConfig
     entry_tolerance = config.entry_tolerance_minutes if config else 10
+    exit_tolerance = config.exit_tolerance_minutes if config else 10
+    require_checkin = config.require_checkin if config else True
+    require_checkout = config.require_checkout if config else True
+    
+    mark_late_enable = config.mark_late_enable if config else True
+    mark_late_limit_minutes = config.mark_late_limit_minutes if config else 0
+    
+    mark_absent_if_late_enable = config.mark_absent_if_late_enable if config else False
+    mark_absent_if_late_limit_minutes = config.mark_absent_if_late_limit_minutes if config else 60
+    
+    mark_early_departure_enable = config.mark_early_departure_enable if config else True
+    mark_early_departure_limit_minutes = config.mark_early_departure_limit_minutes if config else 0
+    
+    mark_absent_if_early_checkout_enable = config.mark_absent_if_early_checkout_enable if config else False
+    mark_absent_if_early_checkout_limit_minutes = config.mark_absent_if_early_checkout_limit_minutes if config else 60
+    
+    no_checkin_enable = config.no_checkin_enable if config else True
+    no_checkin_status = config.no_checkin_status if config else "Absent"
+    no_checkout_enable = config.no_checkout_enable if config else True
+    no_checkout_status = config.no_checkout_status if config else "Absent"
 
     if schedule.shift_type == "continuous":
         # 1 Entry, 1 Exit
@@ -63,13 +85,8 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         if not work_start or not work_end:
             return summary
 
-        # Find closest to start time for entry
         target_start = datetime.combine(target_date, work_start)
         target_end = datetime.combine(target_date, work_end)
-
-        # Let's say entry window is [start - 3 hours, start + 4 hours]
-        # Exit window is [end - 4 hours, end + 4 hours]
-        # For simplicity, we just split the day in half between start and end.
         mid_point = target_start + (target_end - target_start) / 2
 
         entries = [r for r in day_records if r.event_time <= mid_point]
@@ -80,17 +97,37 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
             summary["is_present"] = True
             
-            # Check late
-            tolerance_limit = target_start + timedelta(minutes=entry_tolerance)
-            if best_entry.event_time > tolerance_limit:
+            # Check late/absent based on delay
+            diff_minutes = (best_entry.event_time - target_start).total_seconds() / 60.0
+            if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
+                summary["is_present"] = False
+            elif mark_late_enable and diff_minutes > mark_late_limit_minutes:
                 summary["is_late"] = True
+        else:
+            if require_checkin:
+                if no_checkin_enable:
+                    if no_checkin_status == "Absent":
+                        summary["is_present"] = False
+                    elif no_checkin_status in ["Present", "Normal"]:
+                        summary["is_present"] = True
+            else:
+                summary["is_present"] = True
 
         if exits:
             best_exit = min(exits, key=lambda r: abs((r.event_time - target_end).total_seconds()))
             summary["punches"]["exit_1"] = best_exit.event_time.isoformat()
-
-        if not entries or not exits:
-            summary["missing_punches"] = True
+            
+            # Check early checkout
+            diff_minutes = (target_end - best_exit.event_time).total_seconds() / 60.0
+            if diff_minutes > 0: # Left early
+                if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
+                    summary["is_present"] = False
+        else:
+            if require_checkout:
+                if no_checkout_enable:
+                    if no_checkout_status == "Absent":
+                        summary["is_present"] = False
+                summary["missing_punches"] = True
 
     elif schedule.shift_type == "split":
         # 2 Entries, 2 Exits
@@ -116,30 +153,56 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         w3_events = [r for r in day_records if mid_lunch < r.event_time <= mid_afternoon]
         w4_events = [r for r in day_records if r.event_time > mid_afternoon]
 
+        # Entry 1
         if w1_events:
             best = min(w1_events, key=lambda r: abs((r.event_time - t_start).total_seconds()))
             summary["punches"]["entry_1"] = best.event_time.isoformat()
             summary["is_present"] = True
-            tolerance_limit = t_start + timedelta(minutes=entry_tolerance)
-            if best.event_time > tolerance_limit:
+            
+            diff_minutes = (best.event_time - t_start).total_seconds() / 60.0
+            if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
+                summary["is_present"] = False
+            elif mark_late_enable and diff_minutes > mark_late_limit_minutes:
                 summary["is_late"] = True
+        else:
+            if require_checkin:
+                if no_checkin_enable:
+                    if no_checkin_status == "Absent":
+                        summary["is_present"] = False
+                    elif no_checkin_status in ["Present", "Normal"]:
+                        summary["is_present"] = True
+            else:
+                summary["is_present"] = True
 
+        # Exit 1 (Lunch out)
         if w2_events:
             best = min(w2_events, key=lambda r: abs((r.event_time - t_lunch_s).total_seconds()))
             summary["punches"]["exit_1"] = best.event_time.isoformat()
 
+        # Entry 2 (Lunch return)
         if w3_events:
             best = min(w3_events, key=lambda r: abs((r.event_time - t_lunch_e).total_seconds()))
             summary["punches"]["entry_2"] = best.event_time.isoformat()
 
+        # Exit 2
         if w4_events:
             best = min(w4_events, key=lambda r: abs((r.event_time - t_end).total_seconds()))
             summary["punches"]["exit_2"] = best.event_time.isoformat()
+            
+            diff_minutes = (t_end - best.event_time).total_seconds() / 60.0
+            if diff_minutes > 0: # Left early
+                if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
+                    summary["is_present"] = False
+        else:
+            if require_checkout:
+                if no_checkout_enable:
+                    if no_checkout_status == "Absent":
+                        summary["is_present"] = False
 
-        # Check missing
+        # Check missing punches
         punches = summary["punches"]
         if not punches["entry_1"] or not punches["exit_1"] or not punches["entry_2"] or not punches["exit_2"]:
-            if punches["entry_1"]: # only mark missing if they actually showed up
+            if punches["entry_1"] or punches["exit_1"] or punches["entry_2"] or punches["exit_2"]:
                 summary["missing_punches"] = True
 
     return summary
@@ -155,7 +218,7 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
         AttendanceRecord.event_time <= end_dt
     ).all()
     
-    config = db.query(DeviceConfig).first()
+    config = db.query(SystemConfig).first()
     
     # group by employee
     from collections import defaultdict
@@ -228,7 +291,7 @@ def process_attendance_report(
         AttendanceRecord.employee_id.in_(emp_ids)
     ).all()
 
-    config = db.query(DeviceConfig).first()
+    config = db.query(SystemConfig).first()
 
     # Group records by (employee_id, date)
     records_by_emp_day = defaultdict(list)

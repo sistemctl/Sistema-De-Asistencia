@@ -99,13 +99,19 @@ const DepartmentsPage = {
   },
 
   async deleteDept(id, name) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el departamento "${name}"? Los empleados en este departamento quedarán clasificados como "Sin departamento".`)) return;
-    try {
-      await API.delete(`/api/employees/departments/${id}`);
-      Toast.show('Departamento eliminado con éxito', 'success');
-      this.loadTable();
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
+    Modal.confirm(
+      '¿Eliminar Departamento?',
+      `¿Estás seguro de que deseas eliminar el departamento <strong>${name}</strong>? Los empleados en este departamento quedarán clasificados como "Sin departamento".`,
+      async () => {
+        try {
+          await API.delete(`/api/employees/departments/${id}`);
+          Toast.show('Departamento eliminado con éxito', 'success');
+          this.loadTable();
+        } catch (e) {
+          Toast.show(e.message, 'error');
+        }
+      },
+      'danger'
+    );
   }
 };

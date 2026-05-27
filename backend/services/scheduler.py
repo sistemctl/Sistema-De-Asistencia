@@ -180,7 +180,9 @@ def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
                     except Exception as e:
                         time.sleep(1)
                         
-                if events_page is None or not events_page:
+                if events_page is None:
+                    raise Exception("Error de comunicación con el biométrico después de 3 intentos.")
+                if not events_page:
                     break
                     
                 total_downloaded += len(events_page)

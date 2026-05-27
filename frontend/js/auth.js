@@ -83,4 +83,88 @@ const Modal = {
   close() {
     document.getElementById('modalOverlay').classList.remove('open');
   },
+  confirm(title, message, onConfirm, type = 'danger') {
+    const colors = {
+      danger: {
+        iconColor: 'var(--danger)',
+        btnClass: 'btn-danger',
+        bgLight: 'rgba(220, 38, 38, 0.08)',
+        pulseClass: 'confirm-icon-pulse'
+      },
+      warning: {
+        iconColor: 'var(--warning)',
+        btnClass: 'btn-primary',
+        bgLight: 'rgba(255, 179, 0, 0.08)',
+        pulseClass: 'confirm-icon-pulse warning'
+      }
+    };
+    const style = colors[type] || colors.danger;
+    const modalBox = document.getElementById('modalBox');
+    
+    // Configurar tamaño
+    modalBox.classList.add('modal-sm');
+    
+    const iconHTML = `
+      <div style="display:flex; justify-content:center; margin-bottom:20px;">
+        <div class="${style.pulseClass}" style="width:64px; height:64px; border-radius:50%; background:${style.bgLight}; display:flex; align-items:center; justify-content:center; color:${style.iconColor}; border: 1px solid rgba(255, 255, 255, 0.1);">
+          ${type === 'danger' ? `
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          ` : `
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          `}
+        </div>
+      </div>
+    `;
+
+    const bodyHTML = `
+      ${iconHTML}
+      <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-1); text-align:center; margin-bottom:12px;">${title}</h3>
+      <p style="font-size:0.88rem; color:var(--text-2); text-align:center; line-height:1.5; margin:0;">${message}</p>
+    `;
+    
+    const modalHeader = document.querySelector('.modal-header');
+    if (modalHeader) modalHeader.style.display = 'none';
+
+    const footerHTML = `
+      <button class="btn btn-secondary" id="btnConfirmCancel" style="flex:1;">Cancelar</button>
+      <button class="btn ${style.btnClass}" id="btnConfirmAccept" style="flex:1;">Aceptar</button>
+    `;
+
+    this.open('', bodyHTML, footerHTML);
+
+    const modalFooter = document.getElementById('modalFooter');
+    modalFooter.style.display = 'flex';
+    modalFooter.style.gap = '12px';
+    modalFooter.style.marginTop = '24px';
+    modalFooter.style.paddingTop = '16px';
+
+    const cleanUp = () => {
+      modalBox.classList.remove('modal-sm');
+      if (modalHeader) modalHeader.style.display = 'flex';
+      modalFooter.style.display = '';
+      modalFooter.style.gap = '';
+      modalFooter.style.marginTop = '';
+      modalFooter.style.paddingTop = '';
+    };
+
+    document.getElementById('btnConfirmCancel').onclick = () => {
+      this.close();
+      cleanUp();
+    };
+
+    document.getElementById('btnConfirmAccept').onclick = async () => {
+      this.close();
+      cleanUp();
+      if (onConfirm) await onConfirm();
+    };
+  },
 };

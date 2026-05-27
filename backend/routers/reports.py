@@ -20,6 +20,11 @@ from backend.services.attendance_processor import process_attendance_report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
+import uuid
+import threading
+
+report_tasks = {}
+
 
 @router.get("/report")
 def get_attendance_report(
@@ -86,6 +91,109 @@ def get_attendance_report(
         "pages": (total + page_size - 1) // page_size if page_size else 0,
         "items": items
     }
+
+
+@router.get("/report/async")
+def get_attendance_report_async(
+    employee_id: Optional[int] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    granularity: str = Query("daily"),
+    search: Optional[str] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from backend.utils import get_local_now
+    from datetime import timedelta
+
+    if not date_from:
+        date_from = (get_local_now() - timedelta(days=30)).date()
+    if not date_to:
+        date_to = get_local_now().date()
+
+    results = process_attendance_report(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        employee_id=employee_id,
+        search=search,
+        granularity=granularity,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
+
+    task_id = str(uuid.uuid4())
+    report_tasks[task_id] = {
+        "status": "processing",
+        "progress": 0,
+        "content": None,
+        "filename": f"reporte_asistencia_{granularity}_{date.today().isoformat()}.pdf",
+        "error": None
+    }
+
+    def background_pdf_gen(tid: str, res: list, gran: str):
+        try:
+            def update_progress(p: int):
+                if tid in report_tasks:
+                    report_tasks[tid]["progress"] = p
+
+            content = generate_attendance_pdf(res, gran, progress_callback=update_progress)
+            if tid in report_tasks:
+                report_tasks[tid]["content"] = content
+                report_tasks[tid]["status"] = "completed"
+                report_tasks[tid]["progress"] = 100
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            if tid in report_tasks:
+                report_tasks[tid]["status"] = "failed"
+                report_tasks[tid]["error"] = str(e)
+
+    t = threading.Thread(target=background_pdf_gen, args=(task_id, results, granularity), daemon=True)
+    t.start()
+
+    return {"task_id": task_id, "status": "processing"}
+
+
+@router.get("/report/status/{task_id}")
+def get_report_status(task_id: str, _=Depends(get_current_user)):
+    if task_id not in report_tasks:
+        return {"status": "not_found", "error": "Tarea no encontrada"}
+    
+    task = report_tasks[task_id]
+    return {
+        "status": task["status"],
+        "progress": task["progress"],
+        "error": task["error"]
+    }
+
+
+@router.get("/report/download/{task_id}")
+def download_report(task_id: str, _=Depends(get_current_user)):
+    if task_id not in report_tasks:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        
+    task = report_tasks[task_id]
+    if task["status"] != "completed":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="El reporte aún no está listo")
+
+    content = task["content"]
+    filename = task["filename"]
+    
+    # Limpiar de la memoria
+    del report_tasks[task_id]
+    
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 @router.get("/excel")

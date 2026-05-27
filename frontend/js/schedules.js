@@ -262,13 +262,19 @@ const SchedulesPage = {
   },
 
   async deleteSchedule(id, name) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el horario "${name}"? Los empleados que tengan este horario asignado pasarán a usar su horario personalizado.`)) return;
-    try {
-      await API.delete(`/api/schedules/${id}`);
-      Toast.show('Horario eliminado con éxito', 'success');
-      this.loadTable();
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
+    Modal.confirm(
+      '¿Eliminar Horario?',
+      `¿Estás seguro de que deseas eliminar el horario <strong>${name}</strong>? Los empleados que tengan este horario asignado pasarán a usar su horario personalizado.`,
+      async () => {
+        try {
+          await API.delete(`/api/schedules/${id}`);
+          Toast.show('Horario eliminado con éxito', 'success');
+          this.loadTable();
+        } catch (e) {
+          Toast.show(e.message, 'error');
+        }
+      },
+      'danger'
+    );
   }
 };
