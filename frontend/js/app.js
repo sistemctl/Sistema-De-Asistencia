@@ -120,7 +120,7 @@ async function loadSystemBranding() {
     
     // Inyectar colores en el DOM
     if (data.primary_color) {
-      document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, ${data.primary_color}26 0%, #03050f 100%)`;
+      document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, ${data.primary_color}08 0%, #f8fafc 100%)`;
     }
     if (data.accent_color) {
       document.documentElement.style.setProperty('--accent', data.accent_color);

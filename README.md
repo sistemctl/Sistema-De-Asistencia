@@ -1,6 +1,10 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.8.0**
+# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v1.9.0**
 
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS** en Glassmorphism Premium.
+
+### 🌟 Novedades de la Versión 1.9.0
+* **Rediseño Visual Premium (Light Mode):** Evolución hacia un entorno limpio y sofisticado en tonalidades claras (`#f8fafc`), conservando elementos modernos de diseño y mejorando la legibilidad.
+* **Branding Corporativo Consolidado:** Integración perfeccionada de los colores primario y secundario en la interfaz, con mejoras de consistencia en todas las vistas de administración y reportes.
 
 ### 🌟 Novedades de la Versión 1.8.0
 * **Personalización de Marca y Branding Corporativo:** Incorporación de un panel de configuración del sistema (`settings`) que permite personalizar el nombre de la aplicación, el nombre de la empresa, los colores primarios y de acento en el frontend (actualizando dinámicamente los orbes Mesh HSL del fondo), y subir un logotipo corporativo personalizado (PNG, JPG, JPEG, SVG) visible en la pantalla de inicio de sesión y en la barra lateral.
@@ -136,8 +140,8 @@ sudo systemctl start asistencia
 
 ```bash
 git add .
-git commit -m "Actualiza documentación para la versión 1.8"
-git push origin 1.8
+git commit -m "Actualiza documentación para la versión 1.9"
+git push origin 1.9
 ```
 ---
 

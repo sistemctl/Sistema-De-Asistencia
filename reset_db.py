@@ -12,7 +12,7 @@ def reset_database():
     
     print("🏗️  Creando nuevas tablas e inicializando datos...")
     init_db()
-    print("✨ Base de datos reseteada con éxito para la versión 1.8")
+    print("✨ Base de datos reseteada con éxito para la versión 1.9")
 
 if __name__ == "__main__":
     try:

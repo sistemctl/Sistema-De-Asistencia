@@ -8,7 +8,7 @@ const AttendancePage = {
       <div class="section-header">
         <div class="section-title">Asistencia</div>
         <div class="section-actions">
-          <input type="text" id="fSearch" placeholder="Buscar empleado o código" style="width: 200px;" />
+          <input type="text" id="fSearch" placeholder="Buscar empleado o código" style="width: 250px;" />
           <input type="text" id="fDateRange" placeholder="Rango de fechas" style="width: 260px;" />
           <select id="fType">
             <option value="">Todos</option><option value="entry">Entradas</option><option value="exit">Salidas</option>

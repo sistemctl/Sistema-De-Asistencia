@@ -1,8 +1,8 @@
 # 📋 Sistema de Control de Asistencia — DS-K1T323MBWX
 ## Punto de Reanudación del Proyecto
 
-**Fecha de última actualización:** 2026-05-25  
-**Estado:** ✅ EN EJECUCIÓN — Backend, Frontend y Analítica Unificada listos y corriendo en la versión **v1.8.0**.
+**Fecha de última actualización:** 2026-05-26  
+**Estado:** ✅ EN EJECUCIÓN — Backend, Frontend y Analítica Unificada listos y corriendo en la versión **v1.9.0**.
 
 ---
 
@@ -99,4 +99,4 @@ El sistema maneja un esquema robusto en PostgreSQL:
 
 ---
 
-*Archivo actualizado automáticamente el 2026-05-25*
+*Archivo actualizado automáticamente el 2026-05-26*

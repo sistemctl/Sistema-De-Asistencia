@@ -76,8 +76,8 @@ def _seed_initial_data():
             db.add(SystemConfig(
                 system_name="Control de Asistencia",
                 company_name="Hikvision DS-K1T323MBWX",
-                primary_color="#1e3a5f",
-                accent_color="#00e676",
+                primary_color="#4f46e5",
+                accent_color="#7c3aed",
                 work_days="1,2,3,4,5",
                 time_format="24h",
                 entry_tolerance_minutes=10,

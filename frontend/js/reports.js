@@ -53,11 +53,11 @@ const ReportsPage = {
       </style>
 
       <!-- ── SECCIÓN DE FILTROS UNIFICADOS (TOPBAR DE CONTROL) ── -->
-      <div class="card" style="margin-bottom: 24px; background: rgba(10, 16, 36, 0.65); overflow: visible; z-index: 10;">
+      <div class="card" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
           <div>
             <div class="card-title" style="font-size: 1.1rem; color: var(--accent);">
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+               <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
               Panel de Reportes y Analítica
             </div>
             <div class="card-sub">Filtros unificados para estadísticas en tiempo real y exportaciones</div>
@@ -69,7 +69,7 @@ const ReportsPage = {
               <div class="searchable-select-wrapper" style="position: relative; width: 100%;">
                 <input type="text" id="repFilterEntityInput" placeholder="🔍 Selecciona..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
                 <input type="hidden" id="repFilterEntity" value="" />
-                <div class="searchable-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: rgba(10, 16, 30, 0.95); border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.65); backdrop-filter: blur(12px);">
+                <div class="searchable-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
                   <!-- Se llena dinámicamente -->
                 </div>
               </div>
@@ -106,7 +106,7 @@ const ReportsPage = {
             <button class="btn btn-sm btn-success" onclick="ReportsPage.exportReport('excel')" style="border-radius: 8px; font-size:0.78rem;">
               📊 Descargar Excel Detallado
             </button>
-            <button class="btn btn-sm btn-primary" onclick="ReportsPage.exportReport('pdf')" style="background:var(--accent); color:var(--bg-base); border-radius: 8px; font-size:0.78rem;">
+            <button class="btn btn-sm btn-primary" onclick="ReportsPage.exportReport('pdf')" style="background:var(--accent); color:#ffffff; border-radius: 8px; font-size:0.78rem;">
               📄 Descargar PDF Imprimible
             </button>
             <button class="btn btn-sm btn-success" onclick="ReportsPage.exportConsolidated()" style="background:rgba(0, 230, 118, 0.08); border-color:rgba(0, 230, 118, 0.2); border-radius: 8px; font-size:0.78rem;">
@@ -119,7 +119,7 @@ const ReportsPage = {
       <div id="repAnalyticsDashboard">
         <!-- ── TARJETAS DE KPI PREMIUM REDISEÑADAS ── -->
         <div class="grid-4" style="margin-bottom: 24px;">
-          <div class="kpi-card" style="--accent-color:var(--accent); background:rgba(255,255,255,0.015);">
+          <div class="kpi-card" style="--accent-color:var(--accent);">
             <div class="kpi-icon">
               <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             </div>
@@ -128,7 +128,7 @@ const ReportsPage = {
             <div class="kpi-sub">Entradas sin tardanza en el período</div>
           </div>
           
-          <div class="kpi-card" style="--accent-color:var(--warning); background:rgba(255,255,255,0.015);">
+          <div class="kpi-card" style="--accent-color:var(--warning);">
             <div class="kpi-icon">
               <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
             </div>
@@ -137,7 +137,7 @@ const ReportsPage = {
             <div class="kpi-sub">Registros marcados como tarde</div>
           </div>
           
-          <div class="kpi-card" style="--accent-color:var(--success); background:rgba(255,255,255,0.015);">
+          <div class="kpi-card" style="--accent-color:var(--success);">
             <div class="kpi-icon">
               <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
             </div>
@@ -146,7 +146,7 @@ const ReportsPage = {
             <div class="kpi-sub">Frecuencia promedio de llegada</div>
           </div>
           
-          <div class="kpi-card" style="--accent-color:var(--accent-2); background:rgba(255,255,255,0.015);">
+          <div class="kpi-card" style="--accent-color:var(--accent-2);">
             <div class="kpi-icon">
               <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             </div>
@@ -158,7 +158,7 @@ const ReportsPage = {
 
         <!-- ── GRÁFICOS ANALÍTICOS SINCRONIZADOS ── -->
         <div class="grid-2" style="margin-bottom: 24px;">
-          <div class="card" style="margin:0; background: rgba(255,255,255,0.012);">
+          <div class="card" style="margin:0;">
             <div class="card-header">
               <div>
                 <div class="card-title">Distribución del Estado de Asistencia</div>
@@ -168,7 +168,7 @@ const ReportsPage = {
             <div class="chart-container" style="height:250px;"><canvas id="anDoughnutChart"></canvas></div>
           </div>
           
-          <div class="card" style="margin:0; background: rgba(255,255,255,0.012);">
+          <div class="card" style="margin:0;">
             <div class="card-header">
               <div>
                 <div class="card-title">Tendencia de Asistencia Diaria</div>
@@ -184,7 +184,7 @@ const ReportsPage = {
       <div id="repAnalyticsTableContainer" style="display:none; margin-bottom: 24px;"></div>
 
       <!-- ── TABLA INTERACTIVA DE VISUALIZACIÓN DE REGISTROS ── -->
-      <div class="card" style="background: rgba(10, 16, 36, 0.65);">
+      <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">
@@ -426,7 +426,7 @@ const ReportsPage = {
     };
 
     container.innerHTML = `
-      <div class="card" style="background: rgba(10, 16, 36, 0.65);">
+      <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title" style="font-size: 1.1rem; color: var(--accent);">
