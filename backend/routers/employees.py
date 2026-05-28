@@ -303,7 +303,9 @@ async def upload_photo(
                 client.upload_face_photo(device_uid, photo_bytes)
                 print(f"Foto de {emp.employee_code} auto-sincronizada con éxito al biométrico.")
     except Exception as e:
-        print(f"Error en auto-sincronizacion de foto de perfil al biométrico: {e}")
+        error_msg = f"Fallo al sincronizar con el biométrico: {str(e)}"
+        print(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
 
     return {"photo_path": emp.photo_path}
 
