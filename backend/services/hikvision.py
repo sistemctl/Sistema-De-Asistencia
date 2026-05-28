@@ -100,9 +100,9 @@ class HikvisionClient:
             "name": normalized_name,
             "userType": "normal",
             "Valid": {
-                "enable": False,
-                "beginTime": "",
-                "endTime": "",
+                "enable": True,
+                "beginTime": "2024-01-01T00:00:00",
+                "endTime": "2030-12-31T23:59:59",
                 "timeType": "local",
             },
             "doorRight": "1",
@@ -134,18 +134,21 @@ class HikvisionClient:
         return r.json()
 
     def upload_face_photo(self, user_id: str, photo_bytes: bytes) -> dict:
-        """Sube una foto facial en formato JPEG al dispositivo."""
-        import base64
-        payload = {
-            "FaceDataRecord": [{
-                "employeeNo": user_id,
-                "faceData": base64.b64encode(photo_bytes).decode(),
-            }]
+        """Sube una foto facial en formato JPEG al dispositivo usando multipart/form-data."""
+        import json
+        face_data = {
+            "faceLibType": "blackFD",
+            "FDID": "1",
+            "FPID": user_id
+        }
+        files = {
+            'FaceDataRecord': (None, json.dumps(face_data), 'application/json'),
+            'FaceImage': ('face.jpg', photo_bytes, 'image/jpeg')
         }
         r = requests.post(
             f"{self.base_url}/Intelligent/FDLib/FaceDataRecord?format=json",
             auth=HTTPDigestAuth(self.username, self.password),
-            json=payload,
+            files=files,
             timeout=self.timeout,
         )
         r.raise_for_status()

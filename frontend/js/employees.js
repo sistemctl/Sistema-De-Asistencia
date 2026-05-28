@@ -97,9 +97,6 @@ const EmployeesPage = {
                 <button class="btn btn-icon btn-sm" onclick="EmployeesPage.openForm(${e.id})" title="Editar">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
-                <button class="btn btn-icon btn-sm" onclick="EmployeesPage.uploadPhoto(${e.id},'${e.employee_code}')" title="Foto">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2 2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                </button>
                 <button class="btn btn-icon btn-sm btn-danger" onclick="EmployeesPage.deleteEmployee(${e.id}, '${e.first_name} ${e.last_name}')" title="Eliminar">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>` : ''}
@@ -110,6 +107,7 @@ const EmployeesPage = {
   },
 
   async openForm(id = null) {
+    this.selectedPhotoFile = null;
     let emp = null;
     if (id) emp = await API.get(`/api/employees/${id}`);
     
@@ -123,7 +121,24 @@ const EmployeesPage = {
     const posOpts = positions.map(p => `<option value="${p.id}" ${emp?.position_id==p.id?'selected':''}>${p.name}</option>`).join('');
     const schedOpts = schedules.map(s => `<option value="${s.id}" ${emp?.schedule_id==s.id?'selected':''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`).join('');
 
+    const initials = emp ? (emp.first_name.charAt(0) + (emp.last_name && emp.last_name !== '-' ? emp.last_name.charAt(0) : '')).toUpperCase() : '+';
+
     Modal.open(id ? 'Editar Empleado' : 'Nuevo Empleado', `
+      <!-- Selector de foto de perfil interactivo -->
+      <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+        <div style="position: relative; width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 2px dashed var(--primary-color, #7c3aed); display: flex; align-items: center; justify-content: center; background: var(--surface-3, #f8fafc); cursor: pointer;" onclick="document.getElementById('fPhotoInput').click()" title="Hacer clic para subir foto">
+          <img id="fPhotoPreview" src="${emp?.photo_path ? `/uploads/${emp.photo_path}` : ''}" style="width: 100%; height: 100%; object-fit: cover; display: ${emp?.photo_path ? 'block' : 'none'};" />
+          <span id="fPhotoPlaceholder" style="font-size: 1.8rem; font-weight: 700; color: var(--text-3, #94a3b8); display: ${emp?.photo_path ? 'none' : 'block'};">
+            ${initials}
+          </span>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(15, 23, 42, 0.6); color: #fff; font-size: 0.62rem; text-align: center; padding: 2px 0; font-weight: 600; font-family: inherit;">Subir</div>
+        </div>
+        <input type="file" id="fPhotoInput" accept="image/*" style="display: none;" onchange="EmployeesPage.onPhotoSelected(event)" />
+        <div>
+          <h4 style="margin: 0 0 4px; color: var(--text-1); font-size: 0.95rem; font-weight: 600;">Foto del Rostro</h4>
+          <p style="margin: 0; font-size: 0.76rem; color: var(--text-3);">Se sincronizará automáticamente al biométrico Hikvision para habilitar el reconocimiento facial.</p>
+        </div>
+      </div>
       <div class="form-row">
         <div class="field"><label>Nombre</label><input id="fFirstName" value="${emp?.first_name||''}" placeholder="Nombre" /></div>
         <div class="field"><label>Apellido</label><input id="fLastName" value="${emp?.last_name||''}" placeholder="Apellido" /></div>
@@ -216,10 +231,32 @@ const EmployeesPage = {
       work_end_time: endTime,
     };
     try {
-      if (id) await API.put(`/api/employees/${id}`, body);
-      else await API.post('/api/employees', body);
-      Modal.close(); Toast.show('Empleado guardado', 'success'); this.loadTable();
-    } catch(e) { Toast.show(e.message, 'error'); }
+      let savedEmp;
+      if (id) {
+        savedEmp = await API.put(`/api/employees/${id}`, body);
+      } else {
+        savedEmp = await API.post('/api/employees', body);
+      }
+
+      if (this.selectedPhotoFile) {
+        const empId = id || savedEmp.id;
+        const fd = new FormData();
+        fd.append('file', this.selectedPhotoFile);
+        try {
+          await API.postForm(`/api/employees/${empId}/photo`, fd);
+          Toast.show('Empleado y foto de rostro guardados con éxito', 'success');
+        } catch(photoErr) {
+          Toast.show(`Empleado guardado, pero falló la carga de foto: ${photoErr.message}`, 'warning');
+        }
+      } else {
+        Toast.show('Empleado guardado con éxito', 'success');
+      }
+
+      Modal.close();
+      this.loadTable();
+    } catch(e) {
+      Toast.show(e.message, 'error');
+    }
   },
 
   async manageDepartments() {
@@ -486,22 +523,24 @@ const EmployeesPage = {
        <button class="btn btn-primary" onclick="EmployeesPage.saveEmployee(${state.emp_id || 'null'})">Guardar</button>`);
   },
 
-  uploadPhoto(id, code) {
-    Modal.open('Subir Foto', `
-      <p style="color:var(--text-2);margin-bottom:14px">Foto del empleado <strong>${code}</strong> (JPG/PNG)</p>
-      <input type="file" id="photoFile" accept="image/*" style="color:var(--text-1)" />`,
-      `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
-       <button class="btn btn-primary" onclick="EmployeesPage.doUploadPhoto(${id})">Subir</button>`);
-  },
-
-  async doUploadPhoto(id) {
-    const file = document.getElementById('photoFile').files[0];
-    if (!file) { Toast.show('Selecciona una imagen', 'warning'); return; }
-    const fd = new FormData(); fd.append('file', file);
-    try {
-      await API.postForm(`/api/employees/${id}/photo`, fd);
-      Modal.close(); Toast.show('Foto actualizada', 'success'); this.loadTable();
-    } catch(e) { Toast.show(e.message, 'error'); }
+  onPhotoSelected(event) {
+    const file = event.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        Toast.show('Selecciona un archivo de imagen válido', 'error');
+        return;
+      }
+      this.selectedPhotoFile = file;
+      const previewImg = document.getElementById('fPhotoPreview');
+      const placeholder = document.getElementById('fPhotoPlaceholder');
+      if (previewImg) {
+        previewImg.src = URL.createObjectURL(file);
+        previewImg.style.display = 'block';
+      }
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+    }
   },
 
   async importFromDevice() {

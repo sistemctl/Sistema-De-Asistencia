@@ -243,6 +243,18 @@ async def upload_photo(
             client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
             if client.check_online():
                 device_uid = emp.device_user_id or emp.employee_code
+                
+                # Si el empleado no está sincronizado al biométrico, registrar sus datos primero
+                if not emp.synced_to_device:
+                    try:
+                        client.create_user(device_uid, emp.full_name, emp.card_number)
+                        emp.device_user_id = device_uid
+                        emp.synced_to_device = True
+                        db.commit()
+                        print(f"Empleado {emp.employee_code} pre-registrado en el biométrico para subir foto.")
+                    except Exception as create_err:
+                        print(f"Error al registrar empleado en biométrico durante subida de foto: {create_err}")
+                
                 with open(dest, "rb") as image_file:
                     photo_bytes = image_file.read()
                 client.upload_face_photo(device_uid, photo_bytes)
