@@ -568,6 +568,11 @@ const EmployeesPage = {
     if (!container || !video) return;
     
     if (this.webcamStream) return;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      Toast.show('Acceso denegado: La cámara requiere HTTPS o configurar el origen seguro en el navegador.', 'error');
+      return;
+    }
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
