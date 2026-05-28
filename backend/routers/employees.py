@@ -101,6 +101,33 @@ def list_employees(
     return q.order_by(Employee.last_name).offset(skip).limit(limit).all()
 
 
+@router.get("/device-capture")
+def capture_photo_from_device(db: Session = Depends(get_db), _=Depends(require_admin)):
+    """Captura una foto de rostro en tiempo real usando la cámara del biométrico Hikvision."""
+    from backend.models import DeviceConfig
+    import requests
+    from requests.auth import HTTPDigestAuth
+    from fastapi import Response
+
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=400, detail="Configuración del dispositivo no encontrada")
+
+    url = f"http://{cfg.ip_address}:{cfg.port}/ISAPI/Streaming/channels/101/picture"
+    try:
+        r = requests.get(
+            url,
+            auth=HTTPDigestAuth(cfg.username, cfg.password),
+            timeout=8
+        )
+        if r.status_code == 200:
+            return Response(content=r.content, media_type="image/jpeg")
+        else:
+            raise HTTPException(status_code=r.status_code, detail=f"El biométrico devolvió error: {r.status_code}")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=503, detail=f"No se pudo conectar con el biométrico: {str(e)}")
+
+
 @router.get("/{emp_id}", response_model=EmployeeOut)
 def get_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()

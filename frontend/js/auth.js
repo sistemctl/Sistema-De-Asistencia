@@ -82,6 +82,9 @@ const Modal = {
   },
   close() {
     document.getElementById('modalOverlay').classList.remove('open');
+    if (typeof EmployeesPage !== 'undefined' && EmployeesPage.stopWebcam) {
+      EmployeesPage.stopWebcam();
+    }
   },
   confirm(title, message, onConfirm, type = 'danger') {
     const colors = {

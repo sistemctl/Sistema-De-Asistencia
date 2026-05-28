@@ -136,9 +136,28 @@ const EmployeesPage = {
         <input type="file" id="fPhotoInput" accept="image/*" style="display: none;" onchange="EmployeesPage.onPhotoSelected(event)" />
         <div>
           <h4 style="margin: 0 0 4px; color: var(--text-1); font-size: 0.95rem; font-weight: 600;">Foto del Rostro</h4>
-          <p style="margin: 0; font-size: 0.76rem; color: var(--text-3);">Se sincronizará automáticamente al biométrico Hikvision para habilitar el reconocimiento facial.</p>
+          <p style="margin: 0 0 10px; font-size: 0.76rem; color: var(--text-3);">Se sincronizará automáticamente al biométrico Hikvision para habilitar el reconocimiento facial.</p>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="EmployeesPage.startWebcam()" style="font-size:0.72rem; padding: 3px 6px; display: flex; align-items: center; gap: 4px;">
+              📷 WebCam
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="EmployeesPage.captureFromDevice()" style="font-size:0.72rem; padding: 3px 6px; display: flex; align-items: center; gap: 4px;">
+              📟 Biométrico
+            </button>
+          </div>
         </div>
       </div>
+
+      <!-- Contenedor de cámara web en vivo -->
+      <div id="webcamContainer" style="display: none; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px; background: var(--surface-2, #f1f5f9); border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0);">
+        <video id="fWebcamVideo" autoplay playsinline style="width: 100%; max-width: 320px; border-radius: 6px; background: #000; transform: scaleX(-1);"></video>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-sm btn-primary" onclick="EmployeesPage.captureWebcam()">Capturar Foto</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="EmployeesPage.stopWebcam()">Cancelar</button>
+        </div>
+        <canvas id="fWebcamCanvas" style="display: none;" width="640" height="480"></canvas>
+      </div>
+
       <div class="form-row">
         <div class="field"><label>Nombre</label><input id="fFirstName" value="${emp?.first_name||''}" placeholder="Nombre" /></div>
         <div class="field"><label>Apellido</label><input id="fLastName" value="${emp?.last_name||''}" placeholder="Apellido" /></div>
@@ -540,6 +559,99 @@ const EmployeesPage = {
       if (placeholder) {
         placeholder.style.display = 'none';
       }
+    }
+  },
+
+  async startWebcam() {
+    const container = document.getElementById('webcamContainer');
+    const video = document.getElementById('fWebcamVideo');
+    if (!container || !video) return;
+    
+    if (this.webcamStream) return;
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      this.webcamStream = stream;
+      video.srcObject = stream;
+      container.style.display = 'flex';
+      Toast.show('WebCam iniciada', 'info');
+    } catch (err) {
+      Toast.show('No se pudo acceder a la WebCam: ' + err.message, 'error');
+    }
+  },
+
+  stopWebcam() {
+    const container = document.getElementById('webcamContainer');
+    const video = document.getElementById('fWebcamVideo');
+    if (container) container.style.display = 'none';
+    if (video) video.srcObject = null;
+    
+    if (this.webcamStream) {
+      this.webcamStream.getTracks().forEach(track => track.stop());
+      this.webcamStream = null;
+    }
+  },
+
+  captureWebcam() {
+    const video = document.getElementById('fWebcamVideo');
+    const canvas = document.getElementById('fWebcamCanvas');
+    if (!video || !canvas || !this.webcamStream) return;
+    
+    const context = canvas.getContext('2d');
+    context.translate(canvas.width, 0);
+    context.scale(-1, 1);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    
+    canvas.toBlob(blob => {
+      this.selectedPhotoFile = blob;
+      
+      const previewImg = document.getElementById('fPhotoPreview');
+      const placeholder = document.getElementById('fPhotoPlaceholder');
+      if (previewImg) {
+        previewImg.src = URL.createObjectURL(blob);
+        previewImg.style.display = 'block';
+      }
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+      
+      this.stopWebcam();
+      Toast.show('Foto capturada con WebCam', 'success');
+    }, 'image/jpeg', 0.9);
+  },
+
+  async captureFromDevice() {
+    Toast.show('Conectando con la cámara del biométrico...', 'info');
+    this.stopWebcam();
+    
+    try {
+      const response = await fetch('/api/employees/device-capture', {
+        headers: { 'Authorization': `Bearer ${API.token()}` }
+      });
+      
+      if (!response.ok) {
+        let msg = 'Error al capturar desde el dispositivo';
+        try { msg = (await response.json()).detail || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+      
+      const blob = await response.blob();
+      this.selectedPhotoFile = blob;
+      
+      const previewImg = document.getElementById('fPhotoPreview');
+      const placeholder = document.getElementById('fPhotoPlaceholder');
+      if (previewImg) {
+        previewImg.src = URL.createObjectURL(blob);
+        previewImg.style.display = 'block';
+      }
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+      
+      Toast.show('Foto capturada con éxito desde el biométrico', 'success');
+    } catch(err) {
+      Toast.show(err.message, 'error');
     }
   },
 
