@@ -135,6 +135,20 @@ class HikvisionClient:
 
     def delete_face_photo(self, user_id: str) -> dict:
         """Elimina la foto facial previa de un usuario del dispositivo si existe."""
+        try:
+            # 1. Intentar con el método HTTP DELETE directo
+            r = requests.delete(
+                f"{self.base_url}/Intelligent/FDLib/1/picture/{user_id}?format=json",
+                auth=HTTPDigestAuth(self.username, self.password),
+                timeout=self.timeout,
+            )
+            if r.status_code == 200:
+                print(f"Foto previa de {user_id} eliminada por DELETE directo.")
+                return r.json()
+        except Exception as delete_direct_err:
+            print(f"Error o método no soportado en DELETE directo para {user_id}: {delete_direct_err}")
+
+        # 2. Fallback al método PUT FDSearch/Delete
         payload = {
             "FPIDList": [
                 {"FPID": user_id}
@@ -148,6 +162,7 @@ class HikvisionClient:
                 timeout=self.timeout,
             )
             if r.status_code == 200:
+                print(f"Foto previa de {user_id} eliminada por PUT FDSearch/Delete.")
                 return r.json()
         except Exception as e:
             print(f"Advertencia al intentar eliminar foto de rostro previa para {user_id}: {e}")
