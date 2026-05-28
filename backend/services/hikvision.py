@@ -148,10 +148,10 @@ class HikvisionClient:
         except Exception as delete_direct_err:
             print(f"Error o método no soportado en DELETE directo para {user_id}: {delete_direct_err}")
 
-        # 2. Fallback al método PUT FDSearch/Delete
+        # 2. Fallback al método PUT FDSearch/Delete (con la estructura de payload correcta)
         payload = {
-            "FPIDList": [
-                {"FPID": user_id}
+            "FPID": [
+                {"value": user_id}
             ]
         }
         try:
