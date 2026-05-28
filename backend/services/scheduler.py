@@ -54,6 +54,49 @@ def update_sync_interval(minutes: int):
     logger.info(f"🔄 Intervalo de sync actualizado a {minutes} minutos")
 
 
+def _sync_pending_employees_to_device(db: Session, client: HikvisionClient):
+    """Busca empleados creados/actualizados sin sincronización y los sube al biométrico."""
+    try:
+        pending_emps = db.query(Employee).filter(
+            Employee.synced_to_device == False, 
+            Employee.is_active == True
+        ).all()
+        
+        if not pending_emps:
+            return
+
+        logger.info(f"🔄 Se encontraron {len(pending_emps)} empleados pendientes de sincronización al dispositivo.")
+        
+        from backend.config import UPLOADS_DIR
+        
+        for emp in pending_emps:
+            try:
+                device_uid = emp.employee_code
+                # 1. Registrar usuario en el terminal
+                client.create_user(device_uid, emp.full_name, emp.card_number)
+                emp.device_user_id = device_uid
+                emp.synced_to_device = True
+                
+                # 2. Si tiene foto de perfil cargada, sincronizarla
+                if emp.photo_path:
+                    photo_file = UPLOADS_DIR.parent / emp.photo_path
+                    if photo_file.exists():
+                        try:
+                            with open(photo_file, "rb") as img:
+                                client.upload_face_photo(device_uid, img.read())
+                            logger.info(f"📸 Foto de perfil de {emp.employee_code} sincronizada al dispositivo.")
+                        except Exception as img_err:
+                            logger.error(f"⚠️ Error al subir foto para {emp.employee_code}: {img_err}")
+                
+                db.commit()
+                logger.info(f"✅ Empleado {emp.employee_code} sincronizado con éxito al dispositivo en segundo plano.")
+            except Exception as emp_err:
+                logger.error(f"❌ Fallo al sincronizar empleado {emp.employee_code}: {emp_err}")
+                db.rollback()
+    except Exception as e:
+        logger.error(f"❌ Error en el proceso de sincronización en segundo plano de empleados: {e}")
+
+
 def sync_job():
     """Tarea principal de sincronización. Se ejecuta periódicamente."""
     db = SessionLocal()
@@ -81,6 +124,9 @@ def sync_job():
         until = get_local_now().replace(tzinfo=None) + timedelta(hours=1)
 
         if is_online:
+            # Sincronizar empleados pendientes primero
+            _sync_pending_employees_to_device(db, client)
+            
             raw_events = client.get_events(since, until, SYNC_MAX_EVENTS)
             is_mock = False
             logger.info(f"📡 Dispositivo online — {len(raw_events)} eventos obtenidos")

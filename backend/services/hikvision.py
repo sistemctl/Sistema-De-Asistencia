@@ -91,14 +91,18 @@ class HikvisionClient:
         return r.json()
 
     def create_user(self, user_id: str, name: str, card_number: Optional[str] = None) -> dict:
+        import unicodedata
+        # Normalizar tildes y eñes a ASCII básico para compatibilidad con el biométrico
+        normalized_name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore').decode('utf-8')
+        
         user_info = {
             "employeeNo": user_id,
-            "name": name,
+            "name": normalized_name,
             "userType": "normal",
             "Valid": {
-                "enable": True,
-                "beginTime": "2024-01-01T00:00:00",
-                "endTime": "2030-12-31T23:59:59",
+                "enable": False,
+                "beginTime": "",
+                "endTime": "",
                 "timeType": "local",
             },
             "doorRight": "1",
@@ -107,9 +111,10 @@ class HikvisionClient:
         if card_number:
             user_info["CardInfo"] = [{"cardNo": card_number, "cardType": "normalCard"}]
 
-        payload = {"UserInfo": [user_info]}
-        r = requests.post(
-            f"{self.base_url}/AccessControl/UserInfo/Record?format=json",
+        # El terminal Hikvision requiere el verbo PUT y la raíz UserInfo como objeto (no lista)
+        payload = {"UserInfo": user_info}
+        r = requests.put(
+            f"{self.base_url}/AccessControl/UserInfo/SetUp?format=json",
             auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,

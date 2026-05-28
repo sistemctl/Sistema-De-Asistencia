@@ -151,6 +151,13 @@ class EmployeeCreate(BaseModel):
     work_start_time: str = "07:00"
     work_end_time: str = "18:00"
 
+    @field_validator('employee_code')
+    @classmethod
+    def validate_employee_code(cls, v: str) -> str:
+        if not v.isdigit():
+            raise ValueError("El código de empleado debe contener únicamente números (dígitos del 0 al 9)")
+        return v
+
 class EmployeeUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None

@@ -283,7 +283,7 @@ def sync_employee_to_device(emp_id: int, db: Session = Depends(get_db), _=Depend
     if not client.check_online():
         raise HTTPException(status_code=503, detail="Dispositivo fuera de línea")
 
-    device_uid = emp.device_user_id or str(emp.id)
+    device_uid = emp.device_user_id or emp.employee_code
     try:
         client.create_user(device_uid, emp.full_name, emp.card_number)
         emp.device_user_id = device_uid
@@ -298,6 +298,8 @@ def sync_employee_to_device(emp_id: int, db: Session = Depends(get_db), _=Depend
 def import_employees_from_device(db: Session = Depends(get_db), _=Depends(require_admin)):
     from backend.models import DeviceConfig
     from backend.services.hikvision import HikvisionClient
+    import requests
+    from requests.auth import HTTPDigestAuth
 
     cfg = db.query(DeviceConfig).first()
     if not cfg:
@@ -308,18 +310,21 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
         raise HTTPException(status_code=503, detail="Dispositivo fuera de línea")
 
     try:
-        # Traer usuarios en páginas de 30 con manejo de reintentos por rate-limit
+        # Traer usuarios en páginas de 50 con manejo de reintentos por rate-limit y paginación real
         import time
         user_list = []
         start_pos = 1
-        limit = 30
+        limit = 50
+        search_id = None
         while True:
             users_page = None
             for attempt in range(3):
                 try:
-                    res = client.list_users(start=start_pos, limit=limit)
+                    res = client.list_users(start=start_pos, limit=limit, search_id=search_id)
                     search_data = res.get("UserInfoSearchRet") or res.get("UserInfoSearch", {})
                     users_page = search_data.get("UserInfo", [])
+                    if not search_id and users_page:
+                        search_id = search_data.get("searchID")
                     break  # Éxito
                 except Exception as e:
                     print(f"Error importando página (intento {attempt+1}): {e}")
@@ -332,17 +337,20 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
                 break
                 
             user_list.extend(users_page)
-            if len(users_page) < limit:
+            total_matches = search_data.get("totalMatches", 0)
+            if len(user_list) >= total_matches:
                 break
-            start_pos += limit
-            time.sleep(0.2)  # Pequeña pausa para no saturar el dispositivo
-        
+            start_pos += len(users_page)
+            time.sleep(0.1)  # Pequeña pausa para no saturar el dispositivo
+
         imported_count = 0
         updated_count = 0
+        photos_imported = 0
         
         for u in user_list:
             device_uid = str(u.get("employeeNo"))
             name = u.get("name", "Empleado")
+            face_url = u.get("faceURL")
             
             # Obtener número de tarjeta si tiene
             card_info = u.get("CardInfo", [])
@@ -372,7 +380,7 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
                 updated_count += 1
             else:
                 # Crear nuevo empleado con el horario de 7:00 AM a 6:00 PM por defecto
-                new_emp = Employee(
+                emp = Employee(
                     employee_code=device_uid,
                     device_user_id=device_uid,
                     first_name=first_name,
@@ -383,17 +391,38 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
                     work_start_time="07:00",
                     work_end_time="18:00",
                 )
-                db.add(new_emp)
+                db.add(emp)
                 imported_count += 1
+            
+            # Descargar foto de rostro del dispositivo si existe
+            if face_url:
+                try:
+                    r = requests.get(
+                        face_url,
+                        auth=HTTPDigestAuth(cfg.username, cfg.password),
+                        timeout=10
+                    )
+                    if r.status_code == 200:
+                        filename = f"{emp.employee_code}.jpg"
+                        dest = UPLOADS_DIR / filename
+                        with open(dest, "wb") as f:
+                            f.write(r.content)
+                        emp.photo_path = f"faces/{filename}"
+                        photos_imported += 1
+                except Exception as img_err:
+                    print(f"Error al descargar foto para {device_uid} durante importación: {img_err}")
                 
         db.commit()
         return {
             "status": "success",
             "imported": imported_count,
             "updated": updated_count,
+            "photos_imported": photos_imported,
             "total_device_users": len(user_list)
         }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al importar desde el dispositivo: {str(e)}")
+
+
 

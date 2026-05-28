@@ -83,7 +83,13 @@ const EmployeesPage = {
           <td style="color:var(--text-2)">${e.position?.name||'-'}</td>
           <td>${e.department?.name||'-'}</td>
           <td style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
-          <td>${e.synced_to_device ? `<span class="badge badge-green">✓ Sync</span>` : `<span class="badge badge-gray">Sin sync</span>`}</td>
+          <td>
+            ${e.synced_to_device 
+              ? `<span class="badge badge-green">✓ Sync</span>` 
+              : `<span class="badge badge-gray" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Haga clic para sincronizar ahora con el biométrico">
+                  ⚠️ Sin sync 🔄
+                 </span>`}
+          </td>
           <td>${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
           <td>
             <div style="display:flex;gap:6px">
@@ -190,10 +196,16 @@ const EmployeesPage = {
       endTime = document.getElementById('fEnd').value;
     }
 
+    const empCode = document.getElementById('fCode').value.trim();
+    if (!/^\d+$/.test(empCode)) {
+      Toast.show('El código de empleado debe contener únicamente números', 'error');
+      return;
+    }
+
     const body = {
       first_name: document.getElementById('fFirstName').value.trim(),
       last_name: document.getElementById('fLastName').value.trim(),
-      employee_code: document.getElementById('fCode').value.trim(),
+      employee_code: empCode,
       position_id: document.getElementById('fPositionId').value ? parseInt(document.getElementById('fPositionId').value) : null,
       email: document.getElementById('fEmail').value.trim() || null,
       phone: document.getElementById('fPhone').value.trim() || null,
@@ -495,18 +507,74 @@ const EmployeesPage = {
   async importFromDevice() {
     Modal.confirm(
       '¿Importar Empleados?',
-      '¿Deseas importar todos los empleados registrados en el dispositivo biométrico? Esto agregará a los empleados nuevos y actualizará los existentes.',
+      '¿Deseas importar todos los empleados registrados en el dispositivo biométrico? Esto agregará a los empleados nuevos y actualizará los existentes, junto con sus fotos de perfil.',
       async () => {
-        Toast.show('Iniciando importación desde el dispositivo...', 'info');
+        // Abrir Modal de Progreso
+        Modal.open(
+          'Importando desde el Biométrico',
+          `
+          <div style="text-align: center; padding: 15px 10px;">
+            <p style="font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 8px;">
+              Sincronizando empleados y fotos de perfil...
+            </p>
+            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">
+              Descargando imágenes de rostro desde el dispositivo. Por favor, no cierre esta ventana.
+            </p>
+            <div style="background-color: #f1f5f9; border-radius: 9999px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0;">
+              <div id="importProgressBar" style="background-color: var(--primary-color, #7c3aed); height: 100%; width: 0%; transition: width 0.4s ease;"></div>
+            </div>
+            <div id="importProgressPercent" style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">0%</div>
+          </div>
+          `,
+          ''
+        );
+
+        // Ocultar botón de cerrar modal para evitar cierres accidentales
+        const closeBtn = document.getElementById('modalClose');
+        if (closeBtn) closeBtn.style.display = 'none';
+
+        // Iniciar progreso simulado mientras se realiza la consulta síncrona
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+          if (currentProgress < 50) {
+            currentProgress += Math.floor(Math.random() * 4) + 3; // Rápido al inicio
+          } else if (currentProgress < 85) {
+            currentProgress += Math.floor(Math.random() * 2) + 1; // Ralentiza a la mitad
+          } else if (currentProgress < 95) {
+            currentProgress += 0.4; // Muy lento cerca del final
+          }
+          
+          const bar = document.getElementById('importProgressBar');
+          const pct = document.getElementById('importProgressPercent');
+          if (bar) bar.style.width = `${Math.min(currentProgress, 95)}%`;
+          if (pct) pct.textContent = `${Math.floor(Math.min(currentProgress, 95))}%`;
+        }, 250);
+
         try {
           const res = await API.post('/api/employees/import-from-device');
-          if (res.status === 'success') {
-            Toast.show(`Importación finalizada: ${res.imported} creados, ${res.updated} actualizados (Total: ${res.total_device_users} en dispositivo).`, 'success');
-            this.loadTable();
-          } else {
-            Toast.show('Error al importar empleados', 'error');
-          }
+          clearInterval(progressInterval);
+
+          // Completar al 100%
+          const bar = document.getElementById('importProgressBar');
+          const pct = document.getElementById('importProgressPercent');
+          if (bar) bar.style.width = '100%';
+          if (pct) pct.textContent = '100% - Completado';
+
+          setTimeout(() => {
+            Modal.close();
+            if (closeBtn) closeBtn.style.display = '';
+            
+            if (res.status === 'success') {
+              Toast.show(`Importación finalizada: ${res.imported} creados, ${res.updated} actualizados y ${res.photos_imported} fotos sincronizadas (Total: ${res.total_device_users} en dispositivo).`, 'success');
+              this.loadTable();
+            } else {
+              Toast.show('Error al importar empleados', 'error');
+            }
+          }, 800);
         } catch(e) {
+          clearInterval(progressInterval);
+          Modal.close();
+          if (closeBtn) closeBtn.style.display = '';
           Toast.show(e.message || 'Error de conexión', 'error');
         }
       },
@@ -529,5 +597,20 @@ const EmployeesPage = {
       },
       'danger'
     );
+  },
+
+  async syncEmployeeToDevice(id) {
+    Toast.show('Sincronizando empleado con el biométrico...', 'info');
+    try {
+      const res = await API.post(`/api/employees/${id}/sync-to-device`);
+      if (res.ok) {
+        Toast.show('Empleado sincronizado con éxito', 'success');
+        this.loadTable();
+      } else {
+        Toast.show(res.message || 'Error al sincronizar con el dispositivo', 'error');
+      }
+    } catch(e) {
+      Toast.show(e.message || 'Error de conexión', 'error');
+    }
   },
 };
