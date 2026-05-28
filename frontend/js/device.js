@@ -8,35 +8,50 @@ const DevicePage = {
   async render(tab = 'device_status') {
     this.currentTab = tab;
 
-    document.getElementById('pageContent').innerHTML = `
-      <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
-        <button class="tab-btn active" data-tab="device_status" onclick="DevicePage.switchTab('device_status')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Biométrico / Conexión
-        </button>
-        <button class="tab-btn" data-tab="sync_history" onclick="DevicePage.switchTab('sync_history')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Historial de Sincronización
-        </button>
-        ${Auth.user()?.role === 'admin' ? `
-        <button class="tab-btn" data-tab="branding" onclick="DevicePage.switchTab('branding')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Personalización de Marca
-        </button>
-        ` : ''}
-      </div>
-      <style>
-        .tab-btn.active { color: var(--accent) !important; }
-        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
-        .tab-btn.active::after { transform: scaleX(1); }
-        .tab-btn:hover { color: var(--text-1) !important; }
-      </style>
-      <div id="deviceTabContent">
-      </div>
-    `;
+    if (tab === 'branding') {
+      document.getElementById('pageContent').innerHTML = `
+        <div id="deviceTabContent">
+        </div>
+      `;
+    } else {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
+          <button class="tab-btn active" data-tab="device_status" onclick="DevicePage.switchTab('device_status')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Biométrico / Conexión
+          </button>
+          <button class="tab-btn" data-tab="sync_history" onclick="DevicePage.switchTab('sync_history')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Historial de Sincronización
+          </button>
+        </div>
+        <style>
+          .tab-btn.active { color: var(--accent) !important; }
+          .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
+          .tab-btn.active::after { transform: scaleX(1); }
+          .tab-btn:hover { color: var(--text-1) !important; }
+        </style>
+        <div id="deviceTabContent">
+        </div>
+      `;
+    }
 
     await this.switchTab(tab);
   },
 
   async switchTab(tab) {
     this.currentTab = tab;
+    
+    // Sincronizar hash de la SPA según la pestaña activa
+    if (tab === 'branding') {
+      if (window.location.hash !== '#system') {
+        window.location.hash = 'system';
+        return;
+      }
+    } else {
+      if (window.location.hash !== '#device') {
+        window.location.hash = 'device';
+        return;
+      }
+    }
     
     // Cleanup any running poll interval from history tab if we switch
     if (this.pollInterval) {

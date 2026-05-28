@@ -7,26 +7,7 @@ const ReportsPage = {
 
   async render() {
     document.getElementById('pageContent').innerHTML = `
-      <!-- ── PESTAÑAS DE AGRUPACIÓN ── -->
-      <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
-        <button class="tab-btn ${this.currentTab === 'general' ? 'active' : ''}" data-tab="general" onclick="ReportsPage.switchTab('general')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          General
-        </button>
-        <button class="tab-btn ${this.currentTab === 'departments' ? 'active' : ''}" data-tab="departments" onclick="ReportsPage.switchTab('departments')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Departamentos
-        </button>
-        <button class="tab-btn ${this.currentTab === 'positions' ? 'active' : ''}" data-tab="positions" onclick="ReportsPage.switchTab('positions')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Cargos
-        </button>
-        <button class="tab-btn ${this.currentTab === 'schedules' ? 'active' : ''}" data-tab="schedules" onclick="ReportsPage.switchTab('schedules')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-          Horarios
-        </button>
-      </div>
       <style>
-        .tab-btn.active { color: var(--accent) !important; }
-        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
-        .tab-btn.active::after { transform: scaleX(1); }
-        .tab-btn:hover { color: var(--text-1) !important; }
 
         /* Estilos para el Selector de Búsqueda Dinámica */
         .searchable-select-item {
@@ -52,67 +33,97 @@ const ReportsPage = {
         }
       </style>
 
-      <!-- ── SECCIÓN DE FILTROS UNIFICADOS (TOPBAR DE CONTROL) ── -->
+      <!-- ── TARJETA 1: FILTROS DE CONSULTA ── -->
       <div class="card" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-          <div>
-            <div class="card-title" style="font-size: 1.1rem; color: var(--accent);">
-               <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-              Panel de Reportes y Analítica
-            </div>
-            <div class="card-sub">Filtros unificados para estadísticas en tiempo real y exportaciones</div>
-          </div>
-          
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <!-- Selector Dinámico de Entidad (Búsqueda Dinámica) -->
-            <div class="field" style="margin:0; width:240px;">
-              <div class="searchable-select-wrapper" style="position: relative; width: 100%;">
-                <input type="text" id="repFilterEntityInput" placeholder="🔍 Selecciona..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
-                <input type="hidden" id="repFilterEntity" value="" />
-                <div class="searchable-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                  <!-- Se llena dinámicamente -->
-                </div>
+        <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          Filtros de Búsqueda
+        </div>
+        
+        <div class="grid-4" style="gap: 16px; align-items: flex-end; margin-bottom: 16px;">
+          <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
+          <div class="field" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
+            <div class="searchable-select-wrapper" style="position: relative; width: 100%;">
+              <input type="text" id="repFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
+              <input type="hidden" id="repFilterEntity" value="" />
+              <div class="searchable-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                <!-- Se llena dinámicamente -->
               </div>
             </div>
-            
-            <!-- Selector Granularidad -->
-            <div class="field" style="margin:0; width:140px;">
-              <select id="repGranularity" onchange="ReportsPage.onGranularityChange()" style="padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                <option value="daily">📅 Vista Diaria</option>
-                <option value="weekly">📅 Vista Semanal</option>
-                <option value="monthly">📅 Vista Mensual</option>
-              </select>
-            </div>
-            
-            <!-- Selector de Rango de Fechas Único -->
-            <div class="field" style="margin:0; width:230px;">
-              <input type="text" id="unifiedDateRange" placeholder="Seleccionar rango de fechas..." style="padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
-            </div>
-            
-            <!-- Botón Buscar -->
-            <button class="btn btn-sm btn-primary" onclick="ReportsPage.onFilterChange()" style="height:36px; padding: 0 16px; border-radius: 8px;">
-              Filtrar
-            </button>
+          </div>
+          
+          <!-- Selector Departamento -->
+          <div class="field" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Departamento</label>
+            <select id="repFilterDepartment" onchange="ReportsPage.onDropdownFilterChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+              <option value="">🏢 Todos los departamentos</option>
+            </select>
+          </div>
+
+          <!-- Selector Cargo -->
+          <div class="field" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Cargo</label>
+            <select id="repFilterPosition" onchange="ReportsPage.onDropdownFilterChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+              <option value="">💼 Todos los cargos</option>
+            </select>
+          </div>
+
+          <!-- Selector Horario -->
+          <div class="field" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Horario</label>
+            <select id="repFilterSchedule" onchange="ReportsPage.onDropdownFilterChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+              <option value="">🕒 Todos los horarios</option>
+            </select>
           </div>
         </div>
 
-        <!-- ── BOTONERA DE ACCIONES DE EXPORTACIÓN RÁPIDA ── -->
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <div style="color:var(--text-2); font-size:0.8rem; font-weight:600; display:flex; align-items:center; gap:6px;">
-            <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Acciones de descarga rápida:
+        <div class="grid-4" style="gap: 16px; align-items: flex-end;">
+          <!-- Selector Granularidad -->
+          <div class="field" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Granularidad / Vista</label>
+            <select id="repGranularity" onchange="ReportsPage.onGranularityChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+              <option value="daily">📅 Vista Diaria</option>
+              <option value="weekly">📅 Vista Semanal</option>
+              <option value="monthly">📅 Vista Mensual</option>
+            </select>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-success" onclick="ReportsPage.exportReport('excel')" style="border-radius: 8px; font-size:0.78rem;">
-              📊 Descargar Excel Detallado
-            </button>
-            <button class="btn btn-sm btn-primary" onclick="ReportsPage.exportReport('pdf')" style="background:var(--accent); color:#ffffff; border-radius: 8px; font-size:0.78rem;">
-              📄 Descargar PDF Imprimible
-            </button>
-            <button class="btn btn-sm btn-success" onclick="ReportsPage.exportConsolidated()" style="background:rgba(0, 230, 118, 0.08); border-color:rgba(0, 230, 118, 0.2); border-radius: 8px; font-size:0.78rem;">
-              📅 Descargar Consolidado Diario
+          
+          <!-- Selector de Rango de Fechas Único -->
+          <div class="field" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
+            <input type="text" id="unifiedDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+          </div>
+
+          <!-- Espaciador -->
+          <div class="field" style="margin: 0;"></div>
+          
+          <!-- Botón Buscar -->
+          <div>
+            <button class="btn btn-primary" onclick="ReportsPage.onFilterChange()" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 600;">
+              Aplicar Filtros
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- ── TARJETA 2: ACCIONES DE EXPORTACIÓN Y DESCARGA ── -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Exportación de Reportes
+        </div>
+        
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-success" onclick="ReportsPage.exportReport('excel')" style="flex: 1; min-width: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.82rem; padding: 12px;">
+            <span>📊</span> Descargar Excel Detallado
+          </button>
+          <button class="btn btn-primary" onclick="ReportsPage.exportReport('pdf')" style="flex: 1; min-width: 200px; background: var(--accent); border-color: var(--accent); color: #ffffff; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.82rem; padding: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);">
+            <span>📄</span> Descargar PDF Imprimible
+          </button>
+          <button class="btn btn-success" onclick="ReportsPage.exportConsolidated()" style="flex: 1; min-width: 200px; background: rgba(0, 230, 118, 0.08); border-color: rgba(0, 230, 118, 0.25); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.82rem; padding: 12px;">
+            <span>📅</span> Descargar Consolidado Diario
+          </button>
         </div>
       </div>
 
@@ -235,8 +246,8 @@ const ReportsPage = {
       }
     });
 
-    // Carga inicial de opciones de filtro según pestaña actual
-    await this.loadFilterEntityOptions();
+    // Cargar todas las opciones de los dropdowns y autocomplete
+    await this.loadDropdownOptions();
 
     // Configurar listeners del buscador dinámico
     const input = document.getElementById('repFilterEntityInput');
@@ -244,15 +255,18 @@ const ReportsPage = {
     
     if (input && dropdown) {
       input.addEventListener('focus', () => {
+        const available = this.getFilteredEmployees();
+        this.renderSearchableSelectItems(available);
         dropdown.style.display = 'block';
       });
 
       input.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
+        const query = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const available = this.getFilteredEmployees();
         if (!query) {
-          this.renderSearchableSelectItems(this.filterOptionsData);
+          this.renderSearchableSelectItems(available);
         } else {
-          const filtered = this.filterOptionsData.filter(item => item.searchable.includes(query));
+          const filtered = available.filter(item => item.searchable.includes(query));
           this.renderSearchableSelectItems(filtered);
         }
       });
@@ -295,74 +309,59 @@ const ReportsPage = {
     await this.loadReportTable(1);
   },
 
-  async switchTab(tab) {
-    this.currentTab = tab;
-
-    // Actualizar UI de las pestañas
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === tab);
-    });
-
-    // Recargar las opciones del selector dinámico
-    await this.loadFilterEntityOptions();
-
-    // Recargar reportes y analítica
-    await this.onFilterChange();
-  },
-
   filterOptionsData: [],
 
-  async loadFilterEntityOptions() {
+  async loadDropdownOptions() {
     const input = document.getElementById('repFilterEntityInput');
     const hidden = document.getElementById('repFilterEntity');
     const dropdown = document.querySelector('.searchable-select-dropdown');
     if (!input || !dropdown) return;
 
-    // Restablecer valores
     hidden.value = '';
-    
-    // Configurar marcadores según pestaña
-    let placeholderText = '';
-    if (this.currentTab === 'general') placeholderText = '👤 Todos los empleados';
-    else if (this.currentTab === 'departments') placeholderText = '🏢 Todos los departamentos';
-    else if (this.currentTab === 'positions') placeholderText = '💼 Todos los cargos';
-    else if (this.currentTab === 'schedules') placeholderText = '🕒 Todos los horarios';
-
     input.value = '';
-    input.placeholder = placeholderText;
+    input.placeholder = '👤 Todos los empleados';
 
     this.filterOptionsData = [];
 
     try {
-      if (this.currentTab === 'general') {
-        const emps = await API.get('/api/employees') || [];
-        this.filterOptionsData = emps.map(e => ({
+      // 1. Cargar Departamentos
+      const depts = await API.get('/api/employees/departments') || [];
+      const deptSel = document.getElementById('repFilterDepartment');
+      if (deptSel) {
+        deptSel.innerHTML = '<option value="">🏢 Todos los departamentos</option>' + 
+          depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      }
+
+      // 2. Cargar Cargos
+      const positions = await API.get('/api/employees/positions') || [];
+      const posSel = document.getElementById('repFilterPosition');
+      if (posSel) {
+        posSel.innerHTML = '<option value="">💼 Todos los cargos</option>' + 
+          positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      }
+
+      // 3. Cargar Horarios
+      const schedules = await API.get('/api/schedules') || [];
+      const schedSel = document.getElementById('repFilterSchedule');
+      if (schedSel) {
+        schedSel.innerHTML = '<option value="">🕒 Todos los horarios</option>' + 
+          schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      }
+
+      // 4. Cargar Empleados para buscador dinámico (con límite ampliado para evitar truncamiento)
+      const emps = await API.get('/api/employees?limit=5000') || [];
+      this.filterOptionsData = emps.map(e => {
+        const fullName = `${e.first_name} ${e.last_name} ${e.employee_code}`;
+        const searchable = fullName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        return {
           id: e.id,
           text: `👤 ${e.first_name} ${e.last_name} (${e.employee_code})`,
-          searchable: `${e.first_name} ${e.last_name} ${e.employee_code}`.toLowerCase()
-        }));
-      } else if (this.currentTab === 'departments') {
-        const depts = await API.get('/api/employees/departments') || [];
-        this.filterOptionsData = depts.map(d => ({
-          id: d.id,
-          text: `🏢 ${d.name}`,
-          searchable: d.name.toLowerCase()
-        }));
-      } else if (this.currentTab === 'positions') {
-        const positions = await API.get('/api/employees/positions') || [];
-        this.filterOptionsData = positions.map(p => ({
-          id: p.id,
-          text: `💼 ${p.name}`,
-          searchable: p.name.toLowerCase()
-        }));
-      } else if (this.currentTab === 'schedules') {
-        const schedules = await API.get('/api/schedules') || [];
-        this.filterOptionsData = schedules.map(s => ({
-          id: s.id,
-          text: `🕒 ${s.name}`,
-          searchable: s.name.toLowerCase()
-        }));
-      }
+          searchable,
+          department_id: e.department_id,
+          position_id: e.position_id,
+          schedule_id: e.schedule_id
+        };
+      });
 
       this.renderSearchableSelectItems(this.filterOptionsData);
 
@@ -370,6 +369,44 @@ const ReportsPage = {
       console.error('Error al cargar opciones de filtro de entidad', e);
       Toast.show('Error al cargar opciones de filtro', 'error');
     }
+  },
+
+  getFilteredEmployees() {
+    const deptId = document.getElementById('repFilterDepartment')?.value;
+    const posId = document.getElementById('repFilterPosition')?.value;
+    const schedId = document.getElementById('repFilterSchedule')?.value;
+    
+    let list = this.filterOptionsData;
+    if (deptId) list = list.filter(e => e.department_id == deptId);
+    if (posId) list = list.filter(e => e.position_id == posId);
+    if (schedId) list = list.filter(e => e.schedule_id == schedId);
+    return list;
+  },
+
+  onDropdownFilterChange() {
+    // Al cambiar departamento, cargo o turno, opcionalmente limpiamos la selección del empleado si no pertenece a la nueva selección.
+    const hiddenVal = document.getElementById('repFilterEntity')?.value;
+    if (hiddenVal) {
+      const currentObj = this.filterOptionsData.find(x => x.id == hiddenVal);
+      if (currentObj) {
+        const deptId = document.getElementById('repFilterDepartment')?.value;
+        const posId = document.getElementById('repFilterPosition')?.value;
+        const schedId = document.getElementById('repFilterSchedule')?.value;
+        
+        let isValid = true;
+        if (deptId && currentObj.department_id != deptId) isValid = false;
+        if (posId && currentObj.position_id != posId) isValid = false;
+        if (schedId && currentObj.schedule_id != schedId) isValid = false;
+        
+        if (!isValid) {
+          document.getElementById('repFilterEntity').value = '';
+          document.getElementById('repFilterEntityInput').value = '';
+          document.getElementById('repFilterEntityInput').placeholder = '👤 Todos los empleados';
+        }
+      }
+    }
+    
+    this.onFilterChange();
   },
 
   renderSearchableSelectItems(items) {
@@ -381,11 +418,7 @@ const ReportsPage = {
     dropdown.innerHTML = '';
 
     // Opción por defecto (Todos)
-    let allText = '';
-    if (this.currentTab === 'general') allText = '👤 Todos los empleados';
-    else if (this.currentTab === 'departments') allText = '🏢 Todos los departamentos';
-    else if (this.currentTab === 'positions') allText = '💼 Todos los cargos';
-    else if (this.currentTab === 'schedules') allText = '🕒 Todos los horarios';
+    const allText = '👤 Todos los empleados';
 
     const allDiv = document.createElement('div');
     allDiv.className = 'searchable-select-item all-option';
@@ -464,15 +497,16 @@ const ReportsPage = {
     let entities = [];
 
     try {
-      if (this.currentTab === 'general') {
-        entities = await API.get('/api/employees') || [];
-      } else if (this.currentTab === 'departments') {
-        entities = await API.get('/api/employees/departments') || [];
-      } else if (this.currentTab === 'positions') {
-        entities = await API.get('/api/employees/positions') || [];
-      } else if (this.currentTab === 'schedules') {
-        entities = await API.get('/api/schedules') || [];
-      }
+      let emps = await API.get('/api/employees?limit=5000') || [];
+      const deptId = document.getElementById('repFilterDepartment')?.value;
+      const posId = document.getElementById('repFilterPosition')?.value;
+      const schedId = document.getElementById('repFilterSchedule')?.value;
+      
+      if (deptId) emps = emps.filter(e => e.department_id == deptId);
+      if (posId) emps = emps.filter(e => e.position_id == posId);
+      if (schedId) emps = emps.filter(e => e.schedule_id == schedId);
+      
+      entities = emps;
 
       if (!entities.length) {
         container.querySelector('tbody').innerHTML = `
@@ -617,21 +651,19 @@ const ReportsPage = {
       if (date_to) params.set('date_to', date_to);
 
       if (filterVal) {
-        if (this.currentTab === 'general') {
-          // Si hay empleado seleccionado, filtramos la analítica por su código
-          const text = document.getElementById('repFilterEntityInput')?.value || '';
-          const match = text.match(/\(([^)]+)\)/);
-          if (match && match[1]) {
-            params.set('search', match[1]);
-          }
-        } else if (this.currentTab === 'departments') {
-          params.set('department_id', filterVal);
-        } else if (this.currentTab === 'positions') {
-          params.set('position_id', filterVal);
-        } else if (this.currentTab === 'schedules') {
-          params.set('schedule_id', filterVal);
+        const text = document.getElementById('repFilterEntityInput')?.value || '';
+        const match = text.match(/\(([^)]+)\)/);
+        if (match && match[1]) {
+          params.set('search', match[1]);
         }
       }
+      
+      const deptId = document.getElementById('repFilterDepartment')?.value;
+      const posId = document.getElementById('repFilterPosition')?.value;
+      const schedId = document.getElementById('repFilterSchedule')?.value;
+      if (deptId) params.set('department_id', deptId);
+      if (posId) params.set('position_id', posId);
+      if (schedId) params.set('schedule_id', schedId);
 
       const data = await API.get(`/api/reports/analytics?${params}`);
 
@@ -771,17 +803,14 @@ const ReportsPage = {
     if (date_from) params.set('date_from', date_from);
     if (date_to) params.set('date_to', date_to);
 
-    if (filterVal) {
-      if (this.currentTab === 'general') {
-        params.set('employee_id', filterVal);
-      } else if (this.currentTab === 'departments') {
-        params.set('department_id', filterVal);
-      } else if (this.currentTab === 'positions') {
-        params.set('position_id', filterVal);
-      } else if (this.currentTab === 'schedules') {
-        params.set('schedule_id', filterVal);
-      }
-    }
+    if (filterVal) params.set('employee_id', filterVal);
+    
+    const deptId = document.getElementById('repFilterDepartment')?.value;
+    const posId = document.getElementById('repFilterPosition')?.value;
+    const schedId = document.getElementById('repFilterSchedule')?.value;
+    if (deptId) params.set('department_id', deptId);
+    if (posId) params.set('position_id', posId);
+    if (schedId) params.set('schedule_id', schedId);
 
     const tbody = document.getElementById('repTableBody');
     tbody.innerHTML = Array.from({length: 4}).map(() => `<tr>
@@ -927,17 +956,14 @@ const ReportsPage = {
     if (date_from) params.set('date_from', date_from);
     if (date_to) params.set('date_to', date_to);
 
-    if (filterVal) {
-      if (this.currentTab === 'general') {
-        params.set('employee_id', filterVal);
-      } else if (this.currentTab === 'departments') {
-        params.set('department_id', filterVal);
-      } else if (this.currentTab === 'positions') {
-        params.set('position_id', filterVal);
-      } else if (this.currentTab === 'schedules') {
-        params.set('schedule_id', filterVal);
-      }
-    }
+    if (filterVal) params.set('employee_id', filterVal);
+    
+    const deptId = document.getElementById('repFilterDepartment')?.value;
+    const posId = document.getElementById('repFilterPosition')?.value;
+    const schedId = document.getElementById('repFilterSchedule')?.value;
+    if (deptId) params.set('department_id', deptId);
+    if (posId) params.set('position_id', posId);
+    if (schedId) params.set('schedule_id', schedId);
 
     if (format === 'excel') {
       Toast.show('Generando reporte EXCEL...', 'info');
@@ -1091,15 +1117,12 @@ const ReportsPage = {
     if (date_from) params.set('date_from', date_from);
     if (date_to) params.set('date_to', date_to);
 
-    if (filterVal) {
-      if (this.currentTab === 'departments') {
-        params.set('department_id', filterVal);
-      } else if (this.currentTab === 'positions') {
-        params.set('position_id', filterVal);
-      } else if (this.currentTab === 'schedules') {
-        params.set('schedule_id', filterVal);
-      }
-    }
+    const deptId = document.getElementById('repFilterDepartment')?.value;
+    const posId = document.getElementById('repFilterPosition')?.value;
+    const schedId = document.getElementById('repFilterSchedule')?.value;
+    if (deptId) params.set('department_id', deptId);
+    if (posId) params.set('position_id', posId);
+    if (schedId) params.set('schedule_id', schedId);
 
     Toast.show('Generando consolidado diario...', 'info');
 

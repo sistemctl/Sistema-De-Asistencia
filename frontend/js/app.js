@@ -9,6 +9,7 @@ const PAGES = {
   parameters: { module: ParametersPage, title: 'Parámetros',  sub: 'Configuración de departamentos, cargos y horarios' },
   reports:    { module: ReportsPage,    title: 'Reportes',    sub: 'Exportar datos' },
   device:     { module: DevicePage,     title: 'Dispositivo', sub: 'DS-K1T323MBWX' },
+  system:     { module: DevicePage,     title: 'Configuración del Sistema', sub: 'Personalización de marca y branding' },
   users:      { module: UsersPage,      title: 'Usuarios',    sub: 'Gestionar administradores' },
 };
 
@@ -20,7 +21,7 @@ function navigate(page) {
 
   // Control de accesos en el frontend
   const user = Auth.user();
-  if ((page === 'users' || page === 'device') && user?.role !== 'admin') {
+  if ((page === 'users' || page === 'device' || page === 'system') && user?.role !== 'admin') {
     page = 'dashboard';
   }
 
@@ -42,7 +43,13 @@ function navigate(page) {
   // Renderizar página
   const contentEl = document.getElementById('pageContent');
   contentEl.classList.remove('page-fade-in');
-  PAGES[page].module.render();
+  if (page === 'system') {
+    PAGES[page].module.render('branding');
+  } else if (page === 'device') {
+    PAGES[page].module.render('device_status');
+  } else {
+    PAGES[page].module.render();
+  }
   void contentEl.offsetWidth; // Force reflow
   contentEl.classList.add('page-fade-in');
 }
@@ -107,6 +114,10 @@ function loadUserInfo() {
   const navDevice = document.getElementById('nav-device');
   if (navDevice) {
     navDevice.style.display = user.role === 'admin' ? 'flex' : 'none';
+  }
+  const navSystem = document.getElementById('nav-system');
+  if (navSystem) {
+    navSystem.style.display = user.role === 'admin' ? 'flex' : 'none';
   }
 }
 
