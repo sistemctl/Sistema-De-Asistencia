@@ -133,9 +133,33 @@ class HikvisionClient:
         r.raise_for_status()
         return r.json()
 
+    def delete_face_photo(self, user_id: str) -> dict:
+        """Elimina la foto facial previa de un usuario del dispositivo si existe."""
+        payload = {
+            "FPIDList": [
+                {"FPID": user_id}
+            ]
+        }
+        try:
+            r = requests.put(
+                f"{self.base_url}/Intelligent/FDLib/FDSearch/Delete?format=json&FDID=1&faceLibType=blackFD",
+                auth=HTTPDigestAuth(self.username, self.password),
+                json=payload,
+                timeout=self.timeout,
+            )
+            if r.status_code == 200:
+                return r.json()
+        except Exception as e:
+            print(f"Advertencia al intentar eliminar foto de rostro previa para {user_id}: {e}")
+        return {}
+
     def upload_face_photo(self, user_id: str, photo_bytes: bytes) -> dict:
         """Sube una foto facial en formato JPEG al dispositivo usando multipart/form-data."""
         import json
+        
+        # Eliminar la cara previa antes de subir la nueva para evitar errores de duplicidad en el firmware
+        self.delete_face_photo(user_id)
+        
         face_data = {
             "faceLibType": "blackFD",
             "FDID": "1",
