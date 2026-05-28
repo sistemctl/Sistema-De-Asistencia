@@ -223,12 +223,28 @@ async def upload_photo(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Solo se permiten imágenes")
 
-    ext = file.filename.rsplit(".", 1)[-1].lower()
-    filename = f"{emp.employee_code}.{ext}"
-    dest = UPLOADS_DIR / filename
-
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    try:
+        from PIL import Image
+        import io
+        
+        # Leer los bytes de la imagen subida
+        img_bytes = await file.read()
+        img = Image.open(io.BytesIO(img_bytes))
+        
+        # Convertir a RGB (necesario para guardar como JPEG y quitar canal alfa de PNG)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+            
+        # Redimensionar si es muy grande (máximo 800px de ancho/alto)
+        max_size = (800, 800)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        # Guardar en disco como JPEG con calidad 85 y optimizado
+        filename = f"{emp.employee_code}.jpg"
+        dest = UPLOADS_DIR / filename
+        img.save(dest, format="JPEG", quality=85, optimize=True)
+    except Exception as img_err:
+        raise HTTPException(status_code=400, detail=f"Error al procesar la imagen: {img_err}")
 
     emp.photo_path = f"faces/{filename}"
     db.commit()
