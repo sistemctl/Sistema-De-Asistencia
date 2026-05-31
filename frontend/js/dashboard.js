@@ -55,21 +55,87 @@ const DashboardPage = {
       };
 
       document.getElementById('kpiGrid').innerHTML = `
-        ${this.kpiCard(icons.emp,'Total empleados', d.total_employees, 'registrados activos','--accent')}
-        ${this.kpiCard(icons.present,'Presentes hoy', d.today_present, `${d.attendance_rate}% asistencia`,'--accent-3')}
-        ${this.kpiCard(icons.absent,'Ausentes hoy', d.today_absent, 'sin registro de entrada','--danger')}
-        ${this.kpiCard(icons.late,'Tardanzas', d.today_late, 'llegaron después de la hora','--warning')}
-        ${this.kpiCard(icons.leaves,'De Vacaciones / Permiso', d.today_leaves, 'inasistencias justificadas','--accent-2')}`;
+        ${this.kpiCard(icons.emp,'Total empleados', d.total_employees, 'registrados activos','--accent','total')}
+        ${this.kpiCard(icons.present,'Presentes hoy', d.today_present, `${d.attendance_rate}% asistencia`,'--accent-3','present')}
+        ${this.kpiCard(icons.absent,'Ausentes hoy', d.today_absent, 'sin registro de entrada','--danger','absent')}
+        ${this.kpiCard(icons.late,'Tardanzas', d.today_late, 'llegaron después de la hora','--warning','late')}
+        ${this.kpiCard(icons.leaves,'De Vacaciones / Permiso', d.today_leaves, 'inasistencias justificadas','--accent-2','leaves')}`;
     } catch(e) { Toast.show('Error cargando KPIs', 'error'); }
   },
 
-  kpiCard(icon, label, value, sub, color) {
-    return `<div class="kpi-card" style="--accent-color:var(${color})">
+  kpiCard(icon, label, value, sub, color, type) {
+    return `<div class="kpi-card" style="--accent-color:var(${color}); cursor:pointer" onclick="DashboardPage.showKPIDetails('${type}')">
       <div class="kpi-icon">${icon}</div>
       <div class="kpi-value">${value ?? '-'}</div>
       <div class="kpi-label">${label}</div>
       <div class="kpi-sub">${sub}</div>
     </div>`;
+  },
+
+  async showKPIDetails(type) {
+    const titles = {
+      total: 'Personal Registrado Activo',
+      present: 'Colaboradores Presentes Hoy',
+      absent: 'Colaboradores Ausentes Hoy',
+      late: 'Retrasos / Tardanzas de Hoy',
+      leaves: 'Colaboradores con Vacaciones / Permiso'
+    };
+
+    Toast.show('Cargando detalles...', 'info');
+
+    try {
+      const data = await API.get(`/api/dashboard/kpis/details?type=${type}`);
+      
+      let html = '';
+      if (!data || data.length === 0) {
+        html = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-3);">
+            <div style="font-size: 3rem; margin-bottom: 10px;">📭</div>
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No se encontraron registros para mostrar.</p>
+          </div>
+        `;
+      } else {
+        html = `
+          <div style="max-height: 450px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+            <table style="width: 100%; min-width: auto; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+              <thead>
+                <tr style="background: var(--surface-2); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-1); position: sticky; top: 0; z-index: 10;">
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px;">Cargo</th>
+                  ${type === 'present' ? '<th style="padding: 12px 16px;">Hora Entrada</th>' : ''}
+                  ${type === 'late' ? '<th style="padding: 12px 16px;">Hora Entrada</th><th style="padding: 12px 16px;">Retraso</th>' : ''}
+                  ${type === 'leaves' ? '<th style="padding: 12px 16px;">Tipo Permiso</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(emp => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${emp.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${emp.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${emp.department}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${emp.position}</td>
+                    ${type === 'present' ? `<td style="padding: 12px 16px; font-weight: 600; color: var(--success);">${emp.check_in}</td>` : ''}
+                    ${type === 'late' ? `<td style="padding: 12px 16px; color: var(--text-1);">${emp.check_in}</td><td style="padding: 12px 16px; font-weight: 600; color: var(--warning);">${emp.delay}</td>` : ''}
+                    ${type === 'leaves' ? `<td style="padding: 12px 16px;"><span class="badge" style="background: rgba(100,108,255,.12); color: var(--accent-2); border: 1px solid rgba(100,108,255,.24); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${emp.leave_type}</span></td>` : ''}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      Modal.open(titles[type], html, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>`);
+      
+      const modalEl = document.querySelector('#modalOverlay .modal');
+      if (modalEl) {
+        modalEl.style.maxWidth = '780px';
+      }
+    } catch(err) {
+      Toast.show('Error al cargar los detalles: ' + err.message, 'error');
+    }
   },
   async loadStatusCard() {
     try {

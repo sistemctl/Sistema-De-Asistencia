@@ -82,6 +82,10 @@ const Modal = {
   },
   close() {
     document.getElementById('modalOverlay').classList.remove('open');
+    const modalEl = document.querySelector('#modalOverlay .modal');
+    if (modalEl) {
+      modalEl.style.maxWidth = '';
+    }
     if (typeof EmployeesPage !== 'undefined' && EmployeesPage.stopWebcam) {
       EmployeesPage.stopWebcam();
     }
