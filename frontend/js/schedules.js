@@ -218,6 +218,13 @@ const SchedulesPage = {
             Hoy
           </button>
         </div>
+
+        <!-- Buscador instantáneo de Colaborador -->
+        <div style="flex-grow:1; max-width:320px; position:relative;">
+          <input type="text" id="matrixSearchInput" placeholder="Buscar colaborador..." oninput="SchedulesPage.filterMatrix()" style="width:100%; padding: 7px 12px 7px 32px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text-1); box-sizing: border-box;">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); pointer-events:none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+
         <div>
           ${Auth.canManageEmployees() ? `
             <button class="btn btn-primary btn-sm" onclick="SchedulesPage.openRotationalGeneratorModal()">
@@ -254,93 +261,110 @@ const SchedulesPage = {
         API.get(`/api/employees/daily-schedules?start_date=${start_date_str}&end_date=${end_date_str}`)
       ]);
 
-      const empList = employees || [];
-      const schedList = schedules || [];
-      const dailyList = dailySchedules || [];
-      const tbody = document.getElementById('matrixTable');
-      if (!tbody) return;
+      this.cachedEmployees = employees || [];
+      this.cachedSchedules = schedules || [];
+      this.cachedDailySchedules = dailySchedules || [];
+      this.datesOfWeek = datesOfWeek;
 
-      if (!empList.length) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><h3>No hay colaboradores</h3><p>Registra colaboradores para visualizar el calendario de turnos.</p></div></td></tr>`;
-        return;
-      }
-
-      // Index daily schedules by (employee_id, date_str)
-      const dailyMap = {};
-      dailyList.forEach(ds => {
-        dailyMap[`${ds.employee_id}_${ds.date}`] = ds;
-      });
-
-      tbody.innerHTML = empList.map(e => {
-        const empSchedule = schedList.find(s => s.id === e.schedule_id);
-        const workDaysList = empSchedule ? empSchedule.work_days.split(',') : [];
-
-        const daysHtml = datesOfWeek.map((d, idx) => {
-          const dateStr = d.toISOString().split('T')[0];
-          const override = dailyMap[`${e.id}_${dateStr}`];
-          const weekdayNum = idx + 1; // 1-7
-
-          let badgeHtml = '';
-          let isOverride = false;
-          let scheduleName = '';
-
-          if (override) {
-            isOverride = true;
-            if (override.is_off) {
-              badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(148,163,184,0.1);color:var(--text-3);border:1px dashed var(--border);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Asignado por Rotación (Clic para modificar)">Libre (R)</span>`;
-            } else if (override.schedule) {
-              scheduleName = override.schedule.name;
-              const timeRange = `${override.schedule.work_start_time}-${override.schedule.work_end_time}`;
-              badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:6px;font-family:monospace;display:inline-block;cursor:pointer;" title="Turno Rotativo: ${scheduleName} (Clic para modificar)">${timeRange} (R)</span>`;
-            } else {
-              badgeHtml = `<span class="badge badge-gray" style="font-size:0.72rem;padding:5px 10px;border-radius:6px;display:inline-block;cursor:pointer;" title="Clic para modificar">Por Defecto</span>`;
-            }
-          } else {
-            // Static default weekly schedule logic
-            if (!empSchedule) {
-              badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(100,116,139,0.06);color:var(--text-3);border-radius:6px;display:inline-block;cursor:pointer;opacity:0.6;" title="Sin Horario Semanal (Clic para modificar)">Sin Turno</span>`;
-            } else if (workDaysList.includes(String(weekdayNum))) {
-              scheduleName = empSchedule.name;
-              const timeRange = `${empSchedule.work_start_time}-${empSchedule.work_end_time}`;
-              badgeHtml = `<span class="badge badge-green" style="font-size:0.72rem;padding:5px 10px;border-radius:6px;font-family:monospace;display:inline-block;cursor:pointer;" title="Horario Fijo: ${scheduleName} (Clic para modificar)">${timeRange}</span>`;
-            } else {
-              badgeHtml = `<span class="badge badge-gray" style="font-size:0.72rem;padding:5px 10px;background:rgba(100,116,139,0.04);color:var(--text-3);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Semanal Fijo (Clic para modificar)">Libre</span>`;
-            }
-          }
-
-          const currentScheduleId = override ? override.schedule_id : (empSchedule ? empSchedule.id : null);
-          const currentIsOff = override ? override.is_off : (!empSchedule || !workDaysList.includes(String(weekdayNum)));
-
-          return `
-            <td style="text-align:center;padding:12px 6px;vertical-align:middle;" onclick="event.stopPropagation(); SchedulesPage.changeEmployeeDailySchedule(${e.id}, '${e.full_name.replace(/'/g, "\\'")}', '${dateStr}', ${currentScheduleId || 'null'}, ${currentIsOff})">
-              ${badgeHtml}
-            </td>`;
-        }).join('');
-
-        const avatar = e.photo_path 
-          ? `<div class="emp-avatar"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" alt=""></div>`
-          : avatarHtml(e.full_name);
-
-        return `
-          <tr>
-            <td style="padding:10px 14px; vertical-align:middle;">
-              <div style="display:flex;align-items:center;gap:10px;">
-                ${avatar}
-                <div style="line-height:1.3;">
-                  <div class="emp-name-link" style="cursor:pointer;" onclick="SchedulesPage.changeEmployeeSchedule(${e.id}, '${e.full_name.replace(/'/g, "\\'")}', ${e.schedule_id || 'null'})" title="Cambiar Horario Base">${e.full_name}</div>
-                  <div style="font-size:0.7rem;color:var(--text-3);font-weight:600;">${e.position?.name || e.position_legacy || '-'}</div>
-                </div>
-              </div>
-            </td>
-            ${daysHtml}
-          </tr>
-        `;
-      }).join('');
+      this.displayMatrixRows();
     } catch(err) {
       console.error(err);
       const tbody = document.getElementById('matrixTable');
       if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:24px;">Error al cargar el calendario semanal.</td></tr>`;
     }
+  },
+
+  filterMatrix() {
+    const query = document.getElementById('matrixSearchInput')?.value || '';
+    this.displayMatrixRows(query);
+  },
+
+  displayMatrixRows(searchQuery = '') {
+    const tbody = document.getElementById('matrixTable');
+    if (!tbody) return;
+
+    const filtered = this.cachedEmployees.filter(e => {
+      const fullName = (e.full_name || '').toLowerCase();
+      const posName = (e.position?.name || e.position_legacy || '').toLowerCase();
+      const query = searchQuery.toLowerCase();
+      return fullName.includes(query) || posName.includes(query);
+    });
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-3);">No se encontraron colaboradores</td></tr>`;
+      return;
+    }
+
+    const dailyMap = {};
+    this.cachedDailySchedules.forEach(ds => {
+      dailyMap[`${ds.employee_id}_${ds.date}`] = ds;
+    });
+
+    tbody.innerHTML = filtered.map(e => {
+      const empSchedule = this.cachedSchedules.find(s => s.id === e.schedule_id);
+      const workDaysList = empSchedule ? empSchedule.work_days.split(',') : [];
+
+      const daysHtml = this.datesOfWeek.map((d, idx) => {
+        const dateStr = d.toISOString().split('T')[0];
+        const override = dailyMap[`${e.id}_${dateStr}`];
+        const weekdayNum = idx + 1; // 1-7
+
+        let badgeHtml = '';
+        let isOverride = false;
+        let scheduleName = '';
+
+        if (override) {
+          isOverride = true;
+          if (override.is_off) {
+            badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(148,163,184,0.1);color:var(--text-3);border:1px dashed var(--border);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Asignado por Rotación (Clic para modificar)">Libre (R)</span>`;
+          } else if (override.schedule) {
+            scheduleName = override.schedule.name;
+            const timeRange = `${override.schedule.work_start_time}-${override.schedule.work_end_time}`;
+            badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:6px;font-family:monospace;display:inline-block;cursor:pointer;" title="Turno Rotativo: ${scheduleName} (Clic para modificar)">${timeRange} (R)</span>`;
+          } else {
+            badgeHtml = `<span class="badge badge-gray" style="font-size:0.72rem;padding:5px 10px;border-radius:6px;display:inline-block;cursor:pointer;" title="Clic para modificar">Por Defecto</span>`;
+          }
+        } else {
+          // Static default weekly schedule logic
+          if (!empSchedule) {
+            badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(100,116,139,0.06);color:var(--text-3);border-radius:6px;display:inline-block;cursor:pointer;opacity:0.6;" title="Sin Horario Semanal (Clic para modificar)">Sin Turno</span>`;
+          } else if (workDaysList.includes(String(weekdayNum))) {
+            scheduleName = empSchedule.name;
+            const timeRange = `${empSchedule.work_start_time}-${empSchedule.work_end_time}`;
+            badgeHtml = `<span class="badge badge-green" style="font-size:0.72rem;padding:5px 10px;border-radius:6px;font-family:monospace;display:inline-block;cursor:pointer;" title="Horario Fijo: ${scheduleName} (Clic para modificar)">${timeRange}</span>`;
+          } else {
+            badgeHtml = `<span class="badge badge-gray" style="font-size:0.72rem;padding:5px 10px;background:rgba(100,116,139,0.04);color:var(--text-3);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Semanal Fijo (Clic para modificar)">Libre</span>`;
+          }
+        }
+
+        const currentScheduleId = override ? override.schedule_id : (empSchedule ? empSchedule.id : null);
+        const currentIsOff = override ? override.is_off : (!empSchedule || !workDaysList.includes(String(weekdayNum)));
+
+        return `
+          <td style="text-align:center;padding:12px 6px;vertical-align:middle;" onclick="event.stopPropagation(); SchedulesPage.changeEmployeeDailySchedule(${e.id}, '${e.full_name.replace(/'/g, "\\'")}', '${dateStr}', ${currentScheduleId || 'null'}, ${currentIsOff})">
+            ${badgeHtml}
+          </td>`;
+      }).join('');
+
+      const avatar = e.photo_path 
+        ? `<div class="emp-avatar"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" alt=""></div>`
+        : avatarHtml(e.full_name);
+
+      return `
+        <tr>
+          <td style="padding:10px 14px; vertical-align:middle;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              ${avatar}
+              <div style="line-height:1.3;">
+                <div class="emp-name-link" style="cursor:pointer;" onclick="SchedulesPage.changeEmployeeSchedule(${e.id}, '${e.full_name.replace(/'/g, "\\'")}', ${e.schedule_id || 'null'})" title="Cambiar Horario Base">${e.full_name}</div>
+                <div style="font-size:0.7rem;color:var(--text-3);font-weight:600;">${e.position?.name || e.position_legacy || '-'}</div>
+              </div>
+            </div>
+          </td>
+          ${daysHtml}
+        </tr>
+      `;
+    }).join('');
   },
 
   prevWeek() {
