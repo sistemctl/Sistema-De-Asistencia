@@ -235,15 +235,38 @@ const SchedulesPage = {
         </div>
       </div>
 
-      <div class="card">
-        <div class="table-wrap">
-          <table style="min-width:1100px; border-collapse:collapse;">
+      <style>
+        .matrix-table-container {
+          max-height: 550px;
+          overflow-y: auto;
+          overflow-x: auto;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          position: relative;
+        }
+        .matrix-table {
+          min-width: 1100px;
+          border-collapse: collapse;
+          width: 100%;
+        }
+        .matrix-table thead th {
+          position: sticky;
+          top: 0;
+          background: var(--bg-card, #1e293b);
+          z-index: 10;
+          box-shadow: inset 0 -1px 0 var(--border);
+        }
+      </style>
+
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="matrix-table-container">
+          <table class="matrix-table">
             <thead><tr>
-              <th style="width:250px;">Colaborador</th>
+              <th style="width:250px; text-align: left; padding: 12px 16px;">Colaborador</th>
               ${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day, idx) => {
                 const d = datesOfWeek[idx];
                 const dateLabel = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-                return `<th style="text-align:center;">${day}<br><span style="font-size:0.72rem;font-weight:normal;color:var(--text-3);">${dateLabel}</span></th>`;
+                return `<th style="text-align:center; padding: 12px 6px;">${day}<br><span style="font-size:0.72rem;font-weight:normal;color:var(--text-3);">${dateLabel}</span></th>`;
               }).join('')}
             </tr></thead>
             <tbody id="matrixTable">
