@@ -69,11 +69,19 @@ if FRONTEND_DIR.exists():
 
     @app.get("/", include_in_schema=False)
     def serve_login():
-        return FileResponse(str(FRONTEND_DIR / "index.html"))
+        response = FileResponse(str(FRONTEND_DIR / "index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.get("/app", include_in_schema=False)
     def serve_app():
-        return FileResponse(str(FRONTEND_DIR / "app.html"))
+        response = FileResponse(str(FRONTEND_DIR / "app.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.get("/favicon.svg", include_in_schema=False)
     def serve_favicon_svg():
