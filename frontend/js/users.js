@@ -16,20 +16,22 @@ const UsersPage = {
     }
 
     document.getElementById('pageContent').innerHTML = `
-      <div class="section-header">
-        <div>
-          <div class="section-title">Usuarios del Sistema</div>
-          <div style="color:var(--text-3);font-size:.8rem;margin-top:2px">Gestionar administradores del software y sus roles</div>
-        </div>
-        <div class="section-actions">
-          <button class="btn btn-primary" id="btnNewUser">
+      <div class="card" style="padding: 0; display: flex; flex-direction: column; overflow: hidden;">
+        
+        <!-- Cabecera de la Tarjeta con Título y Acciones -->
+        <div style="padding: 16px 20px; background: var(--surface-1); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Usuarios Registrados
+            </div>
+            <div style="color: var(--text-3); font-size: 0.78rem; margin-top: 4px;">Administradores del software y sus respectivos roles de acceso</div>
+          </div>
+          <button class="btn btn-primary" id="btnNewUser" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Nuevo Usuario
           </button>
         </div>
-      </div>
-
-      <div class="card">
         <div class="table-wrap">
           <table>
             <thead>
@@ -82,7 +84,7 @@ const UsersPage = {
           <tr>
             <td>
               <div style="display:flex;align-items:center;gap:10px">
-                <div class="emp-avatar" style="background:var(--accent-glow);color:var(--accent)">${u.full_name.charAt(0).toUpperCase()}</div>
+                ${avatarHtml(u.full_name)}
                 <span style="font-weight:600">${u.full_name}</span>
               </div>
             </td>

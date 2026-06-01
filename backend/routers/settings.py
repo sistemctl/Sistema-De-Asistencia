@@ -16,6 +16,8 @@ class SettingsUpdateSchema(BaseModel):
     company_name: str
     primary_color: str
     accent_color: str
+    bg_base_color: Optional[str] = None
+    bg_surface_color: Optional[str] = None
     work_days: str
     time_format: str
     entry_tolerance_minutes: int
@@ -47,6 +49,8 @@ def get_settings(db: Session = Depends(get_db)):
             "logo_path": None,
             "primary_color": "#1e3a5f",
             "accent_color": "#00e676",
+            "bg_base_color": "#f8fafc",
+            "bg_surface_color": "#ffffff",
             "work_days": "1,2,3,4,5",
             "time_format": "24h",
             "entry_tolerance_minutes": 10,
@@ -74,6 +78,8 @@ def get_settings(db: Session = Depends(get_db)):
         "logo_path": config.logo_path,
         "primary_color": config.primary_color,
         "accent_color": config.accent_color,
+        "bg_base_color": config.bg_base_color or "#f8fafc",
+        "bg_surface_color": config.bg_surface_color or "#ffffff",
         "work_days": config.work_days,
         "time_format": config.time_format,
         "entry_tolerance_minutes": config.entry_tolerance_minutes,
@@ -114,6 +120,8 @@ def update_settings(
     config.company_name = data.company_name
     config.primary_color = data.primary_color
     config.accent_color = data.accent_color
+    config.bg_base_color = data.bg_base_color
+    config.bg_surface_color = data.bg_surface_color
     config.work_days = data.work_days
     config.time_format = data.time_format
     config.entry_tolerance_minutes = data.entry_tolerance_minutes

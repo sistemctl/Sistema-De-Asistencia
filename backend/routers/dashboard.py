@@ -13,15 +13,19 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 @router.get("/kpis")
-def get_kpis(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_kpis(date: str = None, db: Session = Depends(get_db), _=Depends(get_current_user)):
     from backend.utils import get_local_now
-    today = get_local_now().date()
-    today_start = datetime.combine(today, datetime.min.time())
-    today_end = datetime.combine(today, datetime.max.time())
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            target_date = get_local_now().date()
+    else:
+        target_date = get_local_now().date()
 
     from backend.services.attendance_processor import process_daily_attendance_bulk
     
-    summaries = process_daily_attendance_bulk(db, today)
+    summaries = process_daily_attendance_bulk(db, target_date)
     total_employees = len(summaries)
     today_present = sum(1 for s in summaries if s["is_present"])
     today_absent = total_employees - today_present
@@ -32,6 +36,7 @@ def get_kpis(db: Session = Depends(get_db), _=Depends(get_current_user)):
     cfg = db.query(DeviceConfig).first()
 
     return {
+        "target_date": target_date.isoformat(),
         "today_present": today_present,
         "today_absent": today_absent,
         "today_late": today_late,
@@ -92,11 +97,17 @@ def get_recent_events(limit: int = 8, db: Session = Depends(get_db), _=Depends(g
 
 
 @router.get("/kpis/details")
-def get_kpi_details(type: str, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_kpi_details(type: str, date: str = None, db: Session = Depends(get_db), _=Depends(get_current_user)):
     from backend.utils import get_local_now
     from backend.services.attendance_processor import process_daily_attendance_bulk
     
-    today = get_local_now().date()
+    if date:
+        try:
+            today = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            today = get_local_now().date()
+    else:
+        today = get_local_now().date()
     summaries = process_daily_attendance_bulk(db, today)
     
     # Cargar todos los empleados activos

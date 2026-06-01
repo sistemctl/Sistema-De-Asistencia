@@ -8,13 +8,6 @@ const AttendancePage = {
     this.currentTab = tab;
 
     document.getElementById('pageContent').innerHTML = `
-      <div class="section-header">
-        <div>
-          <div class="section-title">Asistencia</div>
-          <div style="color:var(--text-3);font-size:.8rem;margin-top:2px">Control y seguimiento de entradas y salidas</div>
-        </div>
-      </div>
-
       <!-- Tab Nav -->
       <div style="margin-bottom:24px; border-bottom:1px solid var(--border); display:flex; gap:24px;">
         <button class="att-tab-btn active" data-tab="records" onclick="AttendancePage.switchTab('records')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.95rem;cursor:pointer;position:relative;transition:color 0.2s;">
@@ -168,13 +161,13 @@ const AttendancePage = {
         return `
         <tr>
           <td><div style="display:flex;align-items:center;gap:10px">
-            <div class="emp-avatar">${r.employee_name.charAt(0)}</div>
+            ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
             <span style="font-weight:600">${r.employee_name}</span>
           </div></td>
           <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem;font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
           <td style="color:var(--text-2)">${r.department}</td>
           <td style="color:var(--text-2)">${new Date(r.date + "T00:00:00").toLocaleDateString('es')}</td>
-          <td>${isSplit ? 'Partida' : (r.schedule_type === 'continuous' ? 'Continua' : 'Sin Horario')}</td>
+          <td>${isSplit ? '<span class="badge badge-blue">Partida</span>' : (r.schedule_type === 'continuous' ? '<span class="badge badge-green">Continua</span>' : '<span class="badge badge-gray">Sin Horario</span>')}</td>
           <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${formatTime(r.punches.entry_1)}</td>
           <td style="font-family:'JetBrains Mono',monospace;color:var(--text-2)">${isSplit ? formatTime(r.punches.exit_1) : '—'}</td>
           <td style="font-family:'JetBrains Mono',monospace;color:var(--text-2)">${isSplit ? formatTime(r.punches.entry_2) : '—'}</td>
@@ -212,7 +205,7 @@ const AttendancePage = {
       }
       list.innerHTML = items.map(e => `
         <div class="event-item">
-          <div class="emp-avatar">${e.employee_name.charAt(0)}</div>
+          ${e.photo_path ? `<div class="emp-avatar"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(e.employee_name)}
           <div style="flex:1">
             <div class="event-name">${e.employee_name}</div>
             <div class="event-sub">${e.event_type === 'entry' ? '<span style="color:var(--success)">🟢 Entrada</span>' : '<span style="color:var(--danger)">🔴 Salida</span>'}${e.is_late ? ' · <span style="color:var(--warning);font-weight:600;">Tardanza</span>' : ''}</div>

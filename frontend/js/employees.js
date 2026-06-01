@@ -1,99 +1,389 @@
 /* employees.js — Gestión de empleados */
-
 const EmployeesPage = {
-  page: 1, search: '', depts: [], positions: [],
+  page: 1, limit: 50, search: '', depts: [], positions: [], schedules: [],
+  filterDept: '', filterPosition: '', filterStatus: '',
+  visibleColumns: { code: true, position: true, dept: true, schedule: true, device: true, creds: true, status: true },
 
   async render() {
-    document.getElementById('pageContent').innerHTML = `
-      <div class="section-header">
-        <div class="section-title">Empleados</div>
-        <div class="section-actions">
-          <div class="search-bar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--text-3);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="empSearch" placeholder="Buscar por nombre o código..." style="width:220px" />
+    const isAdmin = Auth.canManageEmployees();
+    document.getElementById('pageContent').innerHTML = `      <!-- ── CONTENEDOR ÚNICO DE TABLA Y FILTROS ── -->
+      <div class="card" style="padding: 0; display: flex; flex-direction: column; overflow: hidden;">
+        
+        <!-- Cabecera: Búsqueda y Filtros -->
+        <div style="padding: 16px 20px; background: var(--surface-1);">
+          <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+
+            <!-- Lado Izquierdo: Búsqueda + Filtros -->
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; flex:1; min-width:280px;">
+              <!-- Búsqueda -->
+              <div class="search-bar" style="flex:1; min-width:200px; max-width:280px; margin: 0;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--text-3);flex-shrink:0;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="empSearch" placeholder="Buscar por nombre o código…" />
+              </div>
+
+              <!-- Divisor vertical -->
+              <div style="width:1px; height:28px; background:var(--border); flex-shrink:0;"></div>
+
+              <!-- Filtros -->
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <select id="filterDept" class="emp-filter-select">
+                  <option value="">🏢 Departamento</option>
+                </select>
+                <select id="filterPosition" class="emp-filter-select">
+                  <option value="">💼 Cargo</option>
+                </select>
+                <select id="filterStatus" class="emp-filter-select">
+                  <option value="">👤 Estado</option>
+                  <option value="true">✅ Activo</option>
+                  <option value="false">⛔ Inactivo</option>
+                </select>
+                <select id="pageSize" class="emp-filter-select" style="min-width: 110px;">
+                  <option value="10">📄 10 filas</option>
+                  <option value="50" selected>📄 50 filas</option>
+                  <option value="100">📄 100 filas</option>
+                  <option value="200">📄 200 filas</option>
+                  <option value="500">📄 500 filas</option>
+                  <option value="1000">📄 1000 filas</option>
+                  <option value="10000">📄 Todos</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Lado Derecho: Acciones -->
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <span id="empFilterCount" style="display:none; font-size:.75rem; color:var(--accent); font-weight:700; padding:3px 10px; background:rgba(var(--accent-rgb),0.10); border-radius:99px; white-space:nowrap;"></span>
+              <button id="btnClearFilters" style="display:none; align-items:center; gap:5px; padding:7px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-3); font-size:.78rem; font-weight:600; font-family:inherit; cursor:pointer; transition:all .2s; white-space:nowrap;">
+                <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                Limpiar
+              </button>
+              <div class="col-selector-container" style="position: relative;">
+                <button class="btn btn-secondary" id="btnToggleColSelector" onclick="EmployeesPage.toggleColSelector(event)" style="padding: 8px 12px; gap: 6px;" title="Seleccionar Columnas">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  Columnas
+                </button>
+                <div id="colSelectorDropdown" style="display: none; position: absolute; right: 0; top: 40px; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 12px; z-index: 100; min-width: 170px; flex-direction: column; gap: 8px;">
+                  <h4 style="margin: 0 0 8px 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Mostrar Columnas</h4>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.code ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('code', this.checked)"> Código</label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.position ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('position', this.checked)"> Cargo</label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.dept ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('dept', this.checked)"> Departamento</label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.schedule ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('schedule', this.checked)"> Horario</label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.device ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('device', this.checked)"> Dispositivo</label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.creds ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('creds', this.checked)"> Credenciales</label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-2);"><input type="checkbox" ${this.visibleColumns.status ? 'checked' : ''} onchange="EmployeesPage.toggleColumn('status', this.checked)"> Estado</label>
+                </div>
+              </div>
+              ${isAdmin ? `
+                <button class="btn btn-secondary" id="btnImportFromDevice">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  Importar del Biométrico
+                </button>
+                <button class="btn btn-primary" id="btnNewEmp">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Nuevo empleado
+                </button>
+              ` : ''}
+            </div>
+
           </div>
-          ${Auth.canManageEmployees() ? `
-            <button class="btn btn-secondary" id="btnImportFromDevice" style="margin-right:8px">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Importar del Biométrico
-            </button>
-            <button class="btn btn-primary" id="btnNewEmp">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              Nuevo empleado
-            </button>
-          ` : ''}
         </div>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>Empleado</th><th>Código</th><th>Cargo</th><th>Departamento</th>
-              <th>Horario</th><th>Dispositivo</th><th>Estado</th><th>Acciones</th>
-            </tr></thead>
+
+        <style>
+          .emp-filter-select {
+            padding: 8px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-2);
+            font-size: .82rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all .2s;
+            outline: none;
+            appearance: auto;
+          }
+          .emp-filter-select:hover {
+            border-color: var(--accent);
+            background: var(--surface-1);
+            color: var(--text-1);
+          }
+          .emp-filter-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+            background: var(--surface-1);
+            color: var(--text-1);
+          }
+          .emp-filter-select.active-filter {
+            border-color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.06);
+            color: var(--accent);
+            font-weight: 600;
+          }
+          #btnClearFilters:hover {
+            background: var(--surface-3);
+            color: var(--danger);
+            border-color: rgba(220,38,38,0.3);
+          }
+        </style>
+
+        <div style="height:1px; background:var(--border);"></div>
+
+        <!-- Acciones en lote integradas -->
+        ${isAdmin ? `
+          <div id="bulkActionsBar" style="display: none; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--surface-2); border-bottom: 1px solid var(--border); animation: slideDown 0.3s ease;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="bulkCount" style="font-weight: 600; color: var(--accent); background: rgba(var(--accent-rgb),0.08); padding: 4px 10px; border-radius: 999px; font-size: 0.85rem;">0 seleccionados</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <select id="bulkDeptSelect" style="width: 160px; padding: 6px 12px; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-1);">
+                  <option value="">-- Dep. --</option>
+                </select>
+                <button class="btn btn-secondary" onclick="EmployeesPage.applyBulkDept()" style="padding: 6px 12px; font-size: 0.82rem; border-radius: 6px;">Asignar</button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <select id="bulkScheduleSelect" style="width: 180px; padding: 6px 12px; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); color: var(--text-1);">
+                  <option value="">-- Horario --</option>
+                </select>
+                <button class="btn btn-secondary" onclick="EmployeesPage.applyBulkSchedule()" style="padding: 6px 12px; font-size: 0.82rem; border-radius: 6px;">Asignar</button>
+              </div>
+              <button class="btn btn-primary" onclick="EmployeesPage.applyBulkSync()" style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; font-size: 0.82rem; border-radius: 6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Sincronizar
+              </button>
+              <button class="btn btn-danger" onclick="EmployeesPage.applyBulkDelete()" style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; font-size: 0.82rem; border-radius: 6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Tabla con scroll vertical interno -->
+        <div class="table-wrap" style="margin: 0; border: none; border-radius: 0; overflow-y: auto; max-height: 520px; flex: 1;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-top: none;">
+                ${isAdmin ? `<th style="width:40px;text-align:center;border-top:none;"><input type="checkbox" id="selectAllEmps" onchange="EmployeesPage.toggleSelectAll(this)"></th>` : ''}
+                <th style="border-top:none;">Empleado</th>
+                <th style="border-top:none;" class="col-code">Código</th>
+                <th style="border-top:none;" class="col-position">Cargo</th>
+                <th style="border-top:none;" class="col-dept">Departamento</th>
+                <th style="border-top:none;" class="col-schedule">Horario</th>
+                <th style="border-top:none;" class="col-device">Dispositivo</th>
+                <th style="border-top:none;" class="col-creds">Credenciales</th>
+                <th style="border-top:none;" class="col-status">Estado</th>
+                <th style="border-top:none;">Acciones</th>
+              </tr>
+            </thead>
             <tbody id="empTable">
               ${[1,2,3,4].map(() => `<tr>
+                ${isAdmin ? `<td style="text-align:center;"><div class="skeleton" style="width:16px;height:16px;border-radius:4px;margin:auto;"></div></td>` : ''}
                 <td><div style="display:flex;gap:10px;align-items:center"><div class="skeleton sk-avatar"></div><div style="flex:1"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-text w-75" style="margin:0"></div></div></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-75"></div></td>
-                <td><div class="skeleton sk-text w-75"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
+                <td class="col-code"><div class="skeleton sk-text w-50"></div></td>
+                <td class="col-position"><div class="skeleton sk-text w-75"></div></td>
+                <td class="col-dept"><div class="skeleton sk-text w-75"></div></td>
+                <td class="col-schedule"><div class="skeleton sk-text w-50"></div></td>
+                <td class="col-device"><div class="skeleton sk-text w-50"></div></td>
+                <td class="col-creds"><div class="skeleton sk-text w-50"></div></td>
+                <td class="col-status"><div class="skeleton sk-text w-50"></div></td>
                 <td><div class="skeleton sk-text w-50"></div></td>
               </tr>`).join('')}
             </tbody>
           </table>
         </div>
-        <div class="pagination" id="empPagination"></div>
+
+        <div style="height:1px; background:var(--border);"></div>
+
+        <!-- Pie de página (Paginación) -->
+        <div style="padding: 14px 20px; background: var(--surface-1);">
+          <div class="pagination" id="empPagination" style="margin-top: 0;"></div>
+        </div>
+
       </div>`;
 
-    this.depts = await API.get('/api/employees/departments') || [];
-    this.positions = await API.get('/api/employees/positions') || [];
+    this.depts     = await API.get('/api/employees/departments') || [];
+    this.positions = await API.get('/api/employees/positions')   || [];
+    this.schedules = await API.get('/api/schedules')             || [];
 
+    // Llenar dropdowns de filtro
+    const deptSel = document.getElementById('filterDept');
+    const posSel  = document.getElementById('filterPosition');
+    if (deptSel) deptSel.innerHTML = '<option value="">🏢 Departamento</option>' +
+      this.depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    if (posSel) posSel.innerHTML = '<option value="">💼 Cargo</option>' +
+      this.positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+    // Restaurar valores previos de filtros
+    if (this.filterDept)     deptSel.value = this.filterDept;
+    if (this.filterPosition) posSel.value  = this.filterPosition;
+    const statusSel = document.getElementById('filterStatus');
+    if (this.filterStatus && statusSel) statusSel.value = this.filterStatus;
+    const sizeSel = document.getElementById('pageSize');
+    if (sizeSel) sizeSel.value = this.limit.toString();
+
+    if (isAdmin) {
+      const deptOpts = this.depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      const schedOpts = this.schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      const bulkDept = document.getElementById('bulkDeptSelect');
+      if (bulkDept) bulkDept.innerHTML = '<option value="">-- Dep. --</option>' + deptOpts;
+      const bulkSched = document.getElementById('bulkScheduleSelect');
+      if (bulkSched) bulkSched.innerHTML = '<option value="">-- Horario --</option>' + schedOpts;
+    }
+
+    // Listeners de búsqueda y filtros — filtrado automático al cambiar
     document.getElementById('empSearch').addEventListener('input', (e) => {
       this.search = e.target.value; this.page = 1; this.loadTable();
     });
-    if (Auth.canManageEmployees()) {
+    document.getElementById('filterDept').addEventListener('change', (e) => {
+      this.filterDept = e.target.value; this.page = 1; this.loadTable();
+    });
+    document.getElementById('filterPosition').addEventListener('change', (e) => {
+      this.filterPosition = e.target.value; this.page = 1; this.loadTable();
+    });
+    document.getElementById('filterStatus').addEventListener('change', (e) => {
+      this.filterStatus = e.target.value; this.page = 1; this.loadTable();
+    });
+    document.getElementById('pageSize').addEventListener('change', (e) => {
+      this.limit = parseInt(e.target.value); this.page = 1; this.loadTable();
+    });
+    document.getElementById('btnClearFilters').addEventListener('click', () => {
+      this.search = ''; this.filterDept = ''; this.filterPosition = ''; this.filterStatus = '';
+      document.getElementById('empSearch').value = '';
+      document.getElementById('filterDept').value = '';
+      document.getElementById('filterPosition').value = '';
+      document.getElementById('filterStatus').value = '';
+      this.page = 1; this.loadTable();
+    });
+
+    if (isAdmin) {
       document.getElementById('btnNewEmp')?.addEventListener('click', () => this.openForm());
       document.getElementById('btnImportFromDevice')?.addEventListener('click', () => this.importFromDevice());
     }
+    // Close columns dropdown if clicked outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('colSelectorDropdown');
+      const btn = document.getElementById('btnToggleColSelector');
+      if (dropdown && btn && !dropdown.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    this.updateColumnStyles();
     await this.loadTable();
   },
 
+  toggleColSelector(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('colSelectorDropdown');
+    if (dropdown) {
+      const isHidden = dropdown.style.display === 'none';
+      dropdown.style.display = isHidden ? 'flex' : 'none';
+    }
+  },
+
+  toggleColumn(col, visible) {
+    this.visibleColumns[col] = visible;
+    this.updateColumnStyles();
+  },
+
+  updateColumnStyles() {
+    let styleHtml = '';
+    for (const [col, visible] of Object.entries(this.visibleColumns)) {
+      if (!visible) {
+        styleHtml += `.col-${col} { display: none !important; }\n`;
+      }
+    }
+    let styleEl = document.getElementById('col-toggle-style');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'col-toggle-style';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = styleHtml;
+  },
+
   async loadTable() {
-    const params = new URLSearchParams({ skip: (this.page-1)*50, limit: 50 });
-    if (this.search) params.set('search', this.search);
+    const params = new URLSearchParams({ skip: (this.page-1)*this.limit, limit: this.limit });
+    if (this.search)         params.set('search',        this.search);
+    if (this.filterDept)     params.set('department_id', this.filterDept);
+    if (this.filterPosition) params.set('position_id',   this.filterPosition);
+    if (this.filterStatus !== '') params.set('is_active', this.filterStatus);
+
+    // Actualizar UI del indicador de filtros activos
+    const activeFilters = [this.filterDept, this.filterPosition, this.filterStatus, this.search]
+      .filter(v => v !== '').length;
+    const clearBtn    = document.getElementById('btnClearFilters');
+    const filterCount = document.getElementById('empFilterCount');
+    if (clearBtn) {
+      clearBtn.style.display = activeFilters > 0 ? 'inline-flex' : 'none';
+    }
+    if (filterCount) {
+      if (activeFilters > 0) {
+        filterCount.style.display = 'inline-block';
+        filterCount.textContent   = `${activeFilters} filtro${activeFilters > 1 ? 's' : ''} activo${activeFilters > 1 ? 's' : ''}`;
+      } else {
+        filterCount.style.display = 'none';
+      }
+    }
+    // Resaltar visualmente los dropdowns con valor activo
+    ['filterDept','filterPosition','filterStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('active-filter', el.value !== '');
+    });
+
     try {
       const emps = await API.get(`/api/employees?${params}`);
       const tbody = document.getElementById('empTable');
+      const isAdmin = Auth.canManageEmployees();
+      
+      const selectAll = document.getElementById('selectAllEmps');
+      if (selectAll) selectAll.checked = false;
+      const bar = document.getElementById('bulkActionsBar');
+      if (bar) bar.style.display = 'none';
+
       if (!emps?.length) { 
-        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">
+        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 10 : 9}"><div class="empty-state"><div class="icon">
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         </div><h3>Aún no hay equipo</h3><p>Registra a tu primer empleado o importa desde el dispositivo.</p></div></td></tr>`; 
         return; 
       }
       tbody.innerHTML = emps.map(e => `
         <tr>
-          <td><div style="display:flex;align-items:center;gap:10px">
-            <div class="emp-avatar">${e.photo_path ? `<img src="/uploads/${e.photo_path}" alt="">` : e.first_name.charAt(0)}</div>
-            <div><div style="font-weight:600">${e.first_name} ${e.last_name}</div><div style="font-size:.75rem;color:var(--text-3)">${e.email||''}</div></div>
-          </div></td>
-          <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
-          <td style="color:var(--text-2)">${e.position?.name||'-'}</td>
-          <td>${e.department?.name||'-'}</td>
-          <td style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
+          ${isAdmin ? `<td style="text-align:center;"><input type="checkbox" class="emp-checkbox" value="${e.id}" onchange="EmployeesPage.onRowCheckboxChange()"></td>` : ''}
           <td>
+            <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia">
+              ${e.photo_path ? `<div class="emp-avatar"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(`${e.first_name} ${e.last_name}`)}
+              <div>
+                <div class="emp-name-link">${e.first_name} ${e.last_name}</div>
+                <div style="font-size:.75rem;color:var(--text-3)">${e.email||''}</div>
+              </div>
+            </div>
+          </td>
+          <td class="col-code"><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
+          <td class="col-position" style="color:var(--text-2)">${e.position?.name||'-'}</td>
+          <td class="col-dept">${e.department?.name||'-'}</td>
+          <td class="col-schedule" style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
+          <td class="col-device">
             ${e.synced_to_device 
               ? `<span class="badge badge-green">✓ Sync</span>` 
               : `<span class="badge badge-gray" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Haga clic para sincronizar ahora con el biométrico">
                   ⚠️ Sin sync 🔄
                  </span>`}
           </td>
-          <td>${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
+          <td class="col-creds">
+            <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start;">
+              <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.35'}; font-size: 1.05rem;" class="biometric-icon">👤</span>
+              <span title="${e.card_number ? `Tarjeta registrada: ${e.card_number}` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.35'}; font-size: 1.05rem;" class="biometric-icon">💳</span>
+            </div>
+          </td>
+          <td class="col-status">${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
           <td>
             <div style="display:flex;gap:6px">
-              ${Auth.canManageEmployees() ? `
+              <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia" style="color:var(--accent);border-color:rgba(var(--accent-rgb),0.2);background:rgba(var(--accent-rgb),0.06);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </button>
+              ${isAdmin ? `
                 <button class="btn btn-icon btn-sm" onclick="EmployeesPage.openForm(${e.id})" title="Editar">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
@@ -103,8 +393,63 @@ const EmployeesPage = {
             </div>
           </td>
         </tr>`).join('');
+
+      // Render pagination UI
+      const pagEl = document.getElementById('empPagination');
+      if (pagEl) {
+        const count = emps.length;
+        if (count === 0 && this.page === 1) {
+          pagEl.innerHTML = '';
+        } else {
+          const start = (this.page - 1) * this.limit + 1;
+          const totalText = this.limit >= 10000 ? `Mostrando todos los ${count} empleados` : `Mostrando ${start} a ${start + count - 1} empleados`;
+          
+          pagEl.innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="pagination-info">${totalText}</div>
+              <select id="bottomPageSize" style="padding: 5px 10px; font-size: 0.76rem; font-weight: 600; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); cursor: pointer; outline: none;">
+                <option value="10" ${this.limit === 10 ? 'selected' : ''}>10 por pág.</option>
+                <option value="50" ${this.limit === 50 ? 'selected' : ''}>50 por pág.</option>
+                <option value="100" ${this.limit === 100 ? 'selected' : ''}>100 por pág.</option>
+                <option value="200" ${this.limit === 200 ? 'selected' : ''}>200 por pág.</option>
+                <option value="500" ${this.limit === 500 ? 'selected' : ''}>500 por pág.</option>
+                <option value="1000" ${this.limit === 1000 ? 'selected' : ''}>1000 por pág.</option>
+                <option value="10000" ${this.limit === 10000 ? 'selected' : ''}>Todos</option>
+              </select>
+            </div>
+            <div class="pagination-btns">
+              <button class="page-btn" id="prevPageBtn" ${this.page === 1 ? 'disabled' : ''}>Anterior</button>
+              <span style="align-self:center; font-size:.82rem; font-weight:600; color:var(--text-2); padding: 0 4px;">Página ${this.page}</span>
+              <button class="page-btn" id="nextPageBtn" ${count < this.limit ? 'disabled' : ''}>Siguiente</button>
+            </div>
+          `;
+          
+          // Listeners para botones y select de página
+          document.getElementById('bottomPageSize')?.addEventListener('change', (e) => {
+            this.limit = parseInt(e.target.value);
+            const topSel = document.getElementById('pageSize');
+            if (topSel) topSel.value = e.target.value;
+            this.page = 1;
+            this.loadTable();
+          });
+          document.getElementById('prevPageBtn')?.addEventListener('click', () => {
+            if (this.page > 1) {
+              this.page--;
+              this.loadTable();
+            }
+          });
+          document.getElementById('nextPageBtn')?.addEventListener('click', () => {
+            if (count === this.limit) {
+              this.page++;
+              this.loadTable();
+            }
+          });
+        }
+      }
     } catch(e) { Toast.show('Error cargando empleados', 'error'); }
   },
+
+
 
   async openForm(id = null) {
     this.selectedPhotoFile = null;
@@ -127,7 +472,7 @@ const EmployeesPage = {
       <!-- Selector de foto de perfil interactivo -->
       <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
         <div style="position: relative; width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 2px dashed var(--primary-color, #7c3aed); display: flex; align-items: center; justify-content: center; background: var(--surface-3, #f8fafc); cursor: pointer;" onclick="document.getElementById('fPhotoInput').click()" title="Hacer clic para subir foto">
-          <img id="fPhotoPreview" src="${emp?.photo_path ? `/uploads/${emp.photo_path}` : ''}" style="width: 100%; height: 100%; object-fit: cover; display: ${emp?.photo_path ? 'block' : 'none'};" />
+          <img id="fPhotoPreview" src="${emp?.photo_path ? `/uploads/${emp.photo_path}?t=${new Date().getTime()}` : ''}" style="width: 100%; height: 100%; object-fit: cover; display: ${emp?.photo_path ? 'block' : 'none'};" />
           <span id="fPhotoPlaceholder" style="font-size: 1.8rem; font-weight: 700; color: var(--text-3, #94a3b8); display: ${emp?.photo_path ? 'none' : 'block'};">
             ${initials}
           </span>
@@ -202,6 +547,13 @@ const EmployeesPage = {
             ${schedOpts}
           </select>
         </div>
+        <div class="field">
+          <label>Estado</label>
+          <select id="fIsActive">
+            <option value="true" ${emp ? (emp.is_active ? 'selected' : '') : 'selected'}>✅ Activo</option>
+            <option value="false" ${emp ? (!emp.is_active ? 'selected' : '') : ''}>⛔ Inactivo</option>
+          </select>
+        </div>
       </div>
       <div class="form-row" id="manualHoursRow" style="${emp?.schedule_id ? 'display:none' : 'display:flex'}">
         <div class="field"><label>Hora de Entrada</label><input id="fStart" type="time" value="${emp?.work_start_time||'07:00'}" /></div>
@@ -221,35 +573,37 @@ const EmployeesPage = {
   },
 
   async saveEmployee(id) {
-    const schedId = document.getElementById('fScheduleId').value || null;
-    let startTime = "07:00";
-    let endTime = "18:00";
-    
-    if (schedId === null) {
-      startTime = document.getElementById('fStart').value;
-      endTime = document.getElementById('fEnd').value;
-    }
-
-    const empCode = document.getElementById('fCode').value.trim();
-    if (!/^\d+$/.test(empCode)) {
-      Toast.show('El código de empleado debe contener únicamente números', 'error');
-      return;
-    }
-
-    const body = {
-      first_name: document.getElementById('fFirstName').value.trim(),
-      last_name: document.getElementById('fLastName').value.trim(),
-      employee_code: empCode,
-      position_id: document.getElementById('fPositionId').value ? parseInt(document.getElementById('fPositionId').value) : null,
-      email: document.getElementById('fEmail').value.trim() || null,
-      phone: document.getElementById('fPhone').value.trim() || null,
-      department_id: document.getElementById('fDept').value || null,
-      schedule_id: schedId ? parseInt(schedId) : null,
-      card_number: document.getElementById('fCard').value.trim() || null,
-      work_start_time: startTime,
-      work_end_time: endTime,
-    };
     try {
+      const schedId = document.getElementById('fScheduleId').value || null;
+      let startTime = "07:00";
+      let endTime = "18:00";
+      
+      if (schedId === null) {
+        startTime = document.getElementById('fStart').value;
+        endTime = document.getElementById('fEnd').value;
+      }
+
+      const empCode = document.getElementById('fCode').value.trim();
+      if (!/^\d+$/.test(empCode)) {
+        Toast.show('El código de empleado debe contener únicamente números', 'error');
+        return;
+      }
+
+      const body = {
+        first_name: document.getElementById('fFirstName').value.trim(),
+        last_name: document.getElementById('fLastName').value.trim(),
+        employee_code: empCode,
+        position_id: document.getElementById('fPositionId').value ? parseInt(document.getElementById('fPositionId').value) : null,
+        email: document.getElementById('fEmail').value.trim() || null,
+        phone: document.getElementById('fPhone').value.trim() || null,
+        department_id: document.getElementById('fDept').value || null,
+        schedule_id: schedId ? parseInt(schedId) : null,
+        card_number: document.getElementById('fCard').value.trim() || null,
+        work_start_time: startTime,
+        work_end_time: endTime,
+        is_active: document.getElementById('fIsActive').value === 'true',
+      };
+
       let savedEmp;
       if (id) {
         savedEmp = await API.put(`/api/employees/${id}`, body);
@@ -274,7 +628,8 @@ const EmployeesPage = {
       Modal.close();
       this.loadTable();
     } catch(e) {
-      Toast.show(e.message, 'error');
+      Toast.show(e.message || 'Error desconocido al guardar', 'error');
+      console.error(e);
     }
   },
 
@@ -769,4 +1124,245 @@ const EmployeesPage = {
       Toast.show(e.message || 'Error de conexión', 'error');
     }
   },
+
+  toggleSelectAll(master) {
+    const checkboxes = document.querySelectorAll('.emp-checkbox');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    this.onRowCheckboxChange();
+  },
+
+  onRowCheckboxChange() {
+    const checkboxes = document.querySelectorAll('.emp-checkbox');
+    const selected = Array.from(checkboxes).filter(cb => cb.checked);
+    const bar = document.getElementById('bulkActionsBar');
+    const count = document.getElementById('bulkCount');
+    const master = document.getElementById('selectAllEmps');
+    
+    if (bar && count) {
+      if (selected.length > 0) {
+        bar.style.display = 'flex';
+        count.textContent = `${selected.length} seleccionados`;
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+    
+    if (master) {
+      master.checked = checkboxes.length > 0 && selected.length === checkboxes.length;
+    }
+  },
+
+  getSelectedEmployeeIds() {
+    const checkboxes = document.querySelectorAll('.emp-checkbox');
+    return Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
+  },
+
+  async applyBulkDept() {
+    const ids = this.getSelectedEmployeeIds();
+    if (!ids.length) return;
+    const deptVal = document.getElementById('bulkDeptSelect').value;
+    if (!deptVal) {
+      Toast.show('Seleccione un departamento para aplicar', 'warning');
+      return;
+    }
+    const deptId = parseInt(deptVal);
+    
+    Toast.show('Aplicando cambios...', 'info');
+    try {
+      await API.put('/api/employees/bulk-update', {
+        employee_ids: ids,
+        department_id: deptId
+      });
+      Toast.show('Departamento actualizado correctamente', 'success');
+      await this.loadTable();
+    } catch(e) {
+      Toast.show(e.message || 'Error al aplicar departamento', 'error');
+    }
+  },
+
+  async applyBulkSchedule() {
+    const ids = this.getSelectedEmployeeIds();
+    if (!ids.length) return;
+    const schedVal = document.getElementById('bulkScheduleSelect').value;
+    if (!schedVal) {
+      Toast.show('Seleccione un horario para aplicar', 'warning');
+      return;
+    }
+    const scheduleId = parseInt(schedVal);
+    
+    Toast.show('Aplicando cambios...', 'info');
+    try {
+      await API.put('/api/employees/bulk-update', {
+        employee_ids: ids,
+        schedule_id: scheduleId
+      });
+      Toast.show('Horario actualizado correctamente', 'success');
+      await this.loadTable();
+    } catch(e) {
+      Toast.show(e.message || 'Error al aplicar horario', 'error');
+    }
+  },
+
+  async applyBulkSync() {
+    const ids = this.getSelectedEmployeeIds();
+    if (!ids.length) return;
+    
+    Toast.show('Sincronizando empleados con el biométrico...', 'info');
+    try {
+      const res = await API.post('/api/employees/bulk-sync', {
+        employee_ids: ids
+      });
+      if (res.failed > 0) {
+        Toast.show(`Sincronización parcial: ${res.synced} exitosos, ${res.failed} fallidos.`, 'warning');
+      } else {
+        Toast.show(`Sincronizados ${res.synced} empleados con éxito.`, 'success');
+      }
+      await this.loadTable();
+    } catch(e) {
+      Toast.show(e.message || 'Error al sincronizar empleados', 'error');
+    }
+  },
+
+  async applyBulkDelete() {
+    const ids = this.getSelectedEmployeeIds();
+    if (!ids.length) return;
+    
+    Modal.confirm(
+      '¿Eliminar en Lote?',
+      `¿Estás seguro de eliminar de forma permanente a los <strong>${ids.length}</strong> empleados seleccionados? Esta acción eliminará sus rostros del biométrico y sus archivos locales de fotos de perfil.`,
+      async () => {
+        Toast.show('Eliminando empleados...', 'info');
+        try {
+          const res = await API.post('/api/employees/bulk-delete', {
+            employee_ids: ids
+          });
+          Toast.show(`Eliminados ${res.deleted_count} empleados correctamente.`, 'success');
+          await this.loadTable();
+        } catch(e) {
+          Toast.show(e.message || 'Error al eliminar empleados', 'error');
+        }
+      },
+      'warning'
+    );
+  },
+
+  // ── Perfil de Asistencia por Empleado ──────────────────────────────────────
+  async showProfile(employeeId) {
+    Toast.show('Cargando perfil...', 'info');
+    try {
+      const d = await API.get(`/api/employees/${employeeId}/attendance-summary`);
+      const emp = d.employee;
+      const stats = d.stats;
+      const period = d.period;
+      const records = d.recent_records || [];
+
+      const avatar = emp.photo_path
+        ? `<img src="/uploads/${emp.photo_path}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid rgba(var(--accent-rgb),0.3);">`
+        : `<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:#fff;border:3px solid rgba(var(--accent-rgb),0.2);">${emp.full_name.charAt(0)}</div>`;
+
+      const statBar = (label, value, max, color) => {
+        const pct = Math.round(((value||0) / (max||1)) * 100);
+        return `
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:.78rem;font-weight:600;color:var(--text-2);">${label}</span>
+              <span style="font-size:.78rem;font-weight:700;color:var(--text-1);">${value}</span>
+            </div>
+            <div style="height:6px;background:var(--surface-3);border-radius:99px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:99px;transition:width .8s cubic-bezier(.4,0,.2,1);"></div>
+            </div>
+          </div>`;
+      };
+
+      const eventTypeLabel = (type, isLate) => {
+        const icon = type === 'entry'
+          ? `<span style="color:var(--success);">▲ Entrada</span>`
+          : `<span style="color:var(--danger);">▼ Salida</span>`;
+        const late = isLate ? ` <span style="color:var(--warning);font-size:.7rem;font-weight:700;">TARDE</span>` : '';
+        return icon + late;
+      };
+
+      const html = `
+        <!-- Cabecera del perfil -->
+        <div style="display:flex;gap:16px;align-items:center;padding:20px;background:linear-gradient(135deg,rgba(var(--accent-rgb),0.06),transparent);border-radius:12px;margin-bottom:20px;border:1px solid rgba(var(--accent-rgb),0.1);">
+          ${avatar}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:1.15rem;font-weight:800;color:var(--text-1);">${emp.full_name}</div>
+            <div style="font-size:.82rem;color:var(--text-3);margin-top:2px;">${emp.position} · ${emp.department}</div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+              <span class="badge badge-blue">🗓 ${emp.schedule}</span>
+              <span class="badge ${emp.is_active ? 'badge-green' : 'badge-red'}">${emp.is_active ? '✓ Activo' : '⛔ Inactivo'}</span>
+              <code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.72rem;font-family:'JetBrains Mono',monospace;">${emp.employee_code}</code>
+            </div>
+          </div>
+          <div style="text-align:center;padding:12px 16px;background:var(--surface-2);border-radius:12px;border:1px solid var(--border);min-width:90px;">
+            <div style="font-size:2rem;font-weight:800;color:${stats.attendance_rate >= 80 ? 'var(--success)' : stats.attendance_rate >= 50 ? 'var(--warning)' : 'var(--danger)'};">${stats.attendance_rate}%</div>
+            <div style="font-size:.7rem;color:var(--text-3);font-weight:600;">Asistencia</div>
+          </div>
+        </div>
+
+        <!-- Período -->
+        <div style="font-size:.72rem;color:var(--text-3);font-weight:600;text-align:center;margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase;">
+          Últimos 30 días · ${period.date_from} al ${period.date_to}
+        </div>
+
+        <!-- Stats KPIs pequeños -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+          ${[
+            {label:'Presentes', value: stats.days_present, color:'var(--success)', bg:'rgba(0,230,118,.08)'},
+            {label:'Ausentes', value: stats.days_absent, color:'var(--danger)', bg:'rgba(255,61,0,.08)'},
+            {label:'Tardanzas', value: stats.days_late, color:'var(--warning)', bg:'rgba(255,179,0,.08)'},
+            {label:'Horas totales', value: stats.total_hours_worked > 0 ? stats.total_hours_worked + 'h' : '-', color:'var(--accent)', bg:'rgba(var(--accent-rgb),.08)'},
+          ].map(k => `
+            <div style="padding:12px;background:${k.bg};border-radius:10px;border:1px solid rgba(0,0,0,.04);text-align:center;">
+              <div style="font-size:1.4rem;font-weight:800;color:${k.color};">${k.value}</div>
+              <div style="font-size:.7rem;color:var(--text-3);font-weight:600;margin-top:2px;">${k.label}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Barras de progreso -->
+        <div style="margin-bottom:20px;">
+          ${statBar('Días presentes', stats.days_present, stats.total_days, 'var(--success)')}
+          ${statBar('Tardanzas', stats.days_late, stats.days_present || 1, 'var(--warning)')}
+          ${stats.avg_hours_per_day > 0 ? statBar(`Promedio diario (${stats.avg_hours_per_day}h)`, Math.round(stats.avg_hours_per_day * 10), 100, 'var(--accent)') : ''}
+        </div>
+
+        <!-- Últimos registros -->
+        <div style="border-top:1px solid var(--border);padding-top:16px;">
+          <div style="font-size:.78rem;font-weight:700;color:var(--text-2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em;">Últimos Registros del Dispositivo</div>
+          ${records.length === 0
+            ? `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.86rem;">Sin registros recientes</div>`
+            : `<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+                <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                  <thead>
+                    <tr style="background:var(--surface-2);position:sticky;top:0;">
+                      <th style="padding:8px 12px;text-align:left;font-weight:700;color:var(--text-2);">Fecha y hora</th>
+                      <th style="padding:8px 12px;text-align:left;font-weight:700;color:var(--text-2);">Tipo</th>
+                      <th style="padding:8px 12px;text-align:left;font-weight:700;color:var(--text-2);">Método</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${records.map(r => {
+                      const dt = new Date(r.event_time);
+                      const dateStr = dt.toLocaleDateString('es-PE', {day:'2-digit',month:'short',year:'2-digit'});
+                      const timeStr = dt.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit',hour12:false});
+                      return `<tr style="border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                        <td style="padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:.78rem;"><span style="color:var(--text-3);">${dateStr}</span> <strong>${timeStr}</strong></td>
+                        <td style="padding:8px 12px;">${eventTypeLabel(r.event_type, r.is_late)}</td>
+                        <td style="padding:8px 12px;color:var(--text-3);font-size:.75rem;">${r.auth_method}</td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>`}
+        </div>`;
+
+      Modal.open(`Perfil · ${emp.full_name}`, html, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>`);
+      const modalEl = document.querySelector('#modalOverlay .modal');
+      if (modalEl) modalEl.style.maxWidth = '680px';
+
+    } catch(err) {
+      Toast.show('Error al cargar el perfil: ' + err.message, 'error');
+    }
+  }
 };

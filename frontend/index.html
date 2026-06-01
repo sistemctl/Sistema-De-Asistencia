@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iniciar Sesión — Sistema de Asistencia</title>
+  <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/static/styles.css?v=6" />
+  <link rel="stylesheet" href="/static/styles.css?v=11" />
   <style>
     body { display:flex; align-items:center; justify-content:center; min-height:100vh; background-color: #f8fafc; color: var(--text-1); font-family: 'Plus Jakarta Sans', sans-serif; position:relative; overflow:hidden; }
     
@@ -13,7 +14,7 @@
       position: relative;
       z-index: 2;
       display: flex;
-      background: #ffffff;
+      background: var(--surface-1);
       border: 1px solid var(--border);
       border-radius: 24px;
       width: 100%;
@@ -392,6 +393,21 @@
   
   // Cargar branding del sistema
   (async () => {
+    function hexToRgb(hex) {
+      if (!hex) return null;
+      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+      const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : null;
+    }
+    function getBrightness(hex) {
+      if (!hex) return 255;
+      const rgb = hexToRgb(hex);
+      if (!rgb) return 255;
+      const parts = rgb.split(',').map(n => parseInt(n.trim(), 10));
+      return (parts[0] * 299 + parts[1] * 587 + parts[2] * 114) / 1000;
+    }
+
     try {
       const res = await fetch('/api/settings');
       if (res.ok) {
@@ -422,13 +438,84 @@
             img.style.objectFit = 'contain';
           }
         }
-        if (data.primary_color) {
-          document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, ${data.primary_color}08 0%, #f8fafc 100%)`;
+        
+        // Inyectar colores de tema y fondos
+        const base = data.bg_base_color || '#f8fafc';
+        const surface = data.bg_surface_color || '#ffffff';
+        const pColor = data.primary_color || '#4f46e5';
+        const aColor = data.accent_color || '#7c3aed';
+
+        document.documentElement.style.setProperty('--bg-base', base);
+        document.documentElement.style.setProperty('--bg-raised', surface);
+        document.documentElement.style.setProperty('--surface-1', surface);
+        
+        document.documentElement.style.setProperty('--accent', pColor);
+        const pRgb = hexToRgb(pColor);
+        if (pRgb) {
+          document.documentElement.style.setProperty('--accent-rgb', pRgb);
+          document.documentElement.style.setProperty('--border-glow', `rgba(${pRgb}, 0.08)`);
         }
-        if (data.accent_color) {
-          document.documentElement.style.setProperty('--accent', data.accent_color);
-          if (logoIcon && !data.logo_path) {
-            logoIcon.style.boxShadow = `0 4px 12px ${data.accent_color}25`;
+        
+        document.documentElement.style.setProperty('--accent-2', aColor);
+        const aRgb = hexToRgb(aColor);
+        if (aRgb) {
+          document.documentElement.style.setProperty('--accent-2-rgb', aRgb);
+        }
+        if (logoIcon && !data.logo_path) {
+          logoIcon.style.boxShadow = `0 4px 12px rgba(${pRgb || '79, 70, 229'}, 0.15)`;
+        }
+
+        // Calcular contraste según el brillo de las tarjetas
+        const brightness = getBrightness(surface);
+        if (brightness < 135) {
+          document.documentElement.style.setProperty('--text-1', '#f8fafc');
+          document.documentElement.style.setProperty('--text-2', '#cbd5e1');
+          document.documentElement.style.setProperty('--text-3', '#94a3b8');
+          document.documentElement.style.setProperty('--border', '#334155');
+          document.documentElement.style.setProperty('--border-light', '#475569');
+          document.documentElement.style.setProperty('--surface-2', '#1e293b');
+          document.documentElement.style.setProperty('--surface-3', '#334155');
+        } else {
+          document.documentElement.style.setProperty('--text-1', '#0f172a');
+          document.documentElement.style.setProperty('--text-2', '#334155');
+          document.documentElement.style.setProperty('--text-3', '#64748b');
+          document.documentElement.style.setProperty('--border', '#e2e8f0');
+          document.documentElement.style.setProperty('--border-light', '#cbd5e1');
+          document.documentElement.style.setProperty('--surface-2', '#f1f5f9');
+          document.documentElement.style.setProperty('--surface-3', '#e2e8f0');
+        }
+
+        document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '79, 70, 229'}, 0.03) 0%, ${base} 100%)`;
+
+        // Actualizar favicon de la pestaña del navegador
+        const faviconEl = document.getElementById('favicon');
+        if (faviconEl) {
+          if (data.logo_path) {
+            // Recortar logo en círculo usando canvas
+            const size = 64;
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = size; canvas.height = size;
+              const ctx = canvas.getContext('2d');
+              ctx.beginPath();
+              ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+              ctx.closePath(); ctx.clip();
+              const scale = Math.max(size / img.width, size / img.height);
+              const w = img.width * scale; const h = img.height * scale;
+              ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+              faviconEl.href = canvas.toDataURL('image/png');
+              faviconEl.type = 'image/png';
+            };
+            img.onerror = () => { faviconEl.href = data.logo_path; };
+            img.src = data.logo_path;
+          } else {
+            const initial = (data.system_name || 'A').charAt(0).toUpperCase();
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="${pColor}"/><text x="16" y="22" font-family="Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="middle" fill="#ffffff">${initial}</text></svg>`;
+            const blob = new Blob([svg], { type: 'image/svg+xml' });
+            faviconEl.href = URL.createObjectURL(blob);
+            faviconEl.type = 'image/svg+xml';
           }
         }
       }

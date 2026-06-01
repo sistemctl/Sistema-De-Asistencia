@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from backend.config import APP_NAME, APP_VERSION, CORS_ORIGINS, FRONTEND_DIR
 from backend.database import init_db
 from backend.services.scheduler import start_scheduler, stop_scheduler
-from backend.routers import auth, employees, attendance, device, dashboard, reports, schedules, settings
+from backend.routers import auth, employees, attendance, device, dashboard, reports, schedules, settings, daily_schedules
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,6 +52,7 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
+app.include_router(daily_schedules.router)
 app.include_router(employees.router)
 app.include_router(schedules.router)
 app.include_router(attendance.router)
@@ -73,6 +74,14 @@ if FRONTEND_DIR.exists():
     @app.get("/app", include_in_schema=False)
     def serve_app():
         return FileResponse(str(FRONTEND_DIR / "app.html"))
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    def serve_favicon_svg():
+        return FileResponse(str(FRONTEND_DIR / "favicon.svg"), media_type="image/svg+xml")
+
+    @app.get("/static/favicon.svg", include_in_schema=False)
+    def serve_favicon_static():
+        return FileResponse(str(FRONTEND_DIR / "favicon.svg"), media_type="image/svg+xml")
 
 
 @app.get("/api/health")

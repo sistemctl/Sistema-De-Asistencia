@@ -4,7 +4,7 @@ Tablas: users, departments, employees, attendance_records, device_config, sync_l
 """
 from datetime import datetime
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey,
+    Boolean, Column, Date, DateTime, Float, ForeignKey,
     Integer, String, Text, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
@@ -168,6 +168,8 @@ class SystemConfig(Base):
     logo_path = Column(String(500), nullable=True)
     primary_color = Column(String(30), default="#1e3a5f")
     accent_color = Column(String(30), default="#00e676")
+    bg_base_color = Column(String(30), default="#f8fafc")
+    bg_surface_color = Column(String(30), default="#ffffff")
     work_days = Column(String(100), default="1,2,3,4,5") # Lunes a Viernes (1=Lunes, 7=Domingo)
     time_format = Column(String(10), default="24h") # 12h / 24h
     entry_tolerance_minutes = Column(Integer, default=10)
@@ -199,4 +201,22 @@ class SystemConfig(Base):
     flexible_shift_end = Column(String(10), default="18:00:00")
     
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class EmployeeDailySchedule(Base):
+    """Asignación de turnos y descansos diarios para empleados (turnos rotativos)."""
+    __tablename__ = "employee_daily_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id", ondelete="SET NULL"), nullable=True)
+    is_off = Column(Boolean, default=False, nullable=False) # Si es verdadero, indica descanso obligatorio
+
+    employee = relationship("Employee")
+    schedule = relationship("Schedule")
+
+    __table_args__ = (
+        UniqueConstraint("employee_id", "date", name="uq_emp_date"),
+    )
 

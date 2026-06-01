@@ -2,11 +2,26 @@
 
 const DashboardPage = {
   chart: null,
+  selectedDate: null, // null = hoy
 
   async render() {
+    // Fecha inicial: hoy
+    const todayISO = new Date().toISOString().slice(0, 10);
+    this.selectedDate = todayISO;
+
     document.getElementById('pageContent').innerHTML = `
-      <div class="section-header">
-        <div><div class="section-title">Dashboard</div><div style="color:var(--text-3);font-size:.8rem;margin-top:2px">Resumen de asistencia en tiempo real</div></div>
+      <!-- Barra de fecha -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span style="font-size:.85rem;font-weight:600;color:var(--text-2);">Viendo datos de:</span>
+          <input id="dashDatePicker" class="flatpickr-input" placeholder="Seleccionar fecha…"
+            style="padding:7px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;color:var(--text-1);font-size:.85rem;font-weight:600;font-family:inherit;cursor:pointer;width:180px;outline:none;" readonly />
+          <span id="dashDateLabel" style="font-size:.78rem;color:var(--text-3);font-weight:500;"></span>
+        </div>
+        <button id="dashGoToday" class="btn btn-secondary btn-sm" style="display:none;">
+          ← Volver a hoy
+        </button>
       </div>
 
       <!-- KPIs -->
@@ -25,7 +40,7 @@ const DashboardPage = {
             <div>
               <div class="card-title">
                 <svg viewBox="0 0 24 24" width="17" height="17" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                Estado de Hoy
+                Estado del Día
               </div>
               <div class="card-sub" id="statusDate">Cargando fecha…</div>
             </div>
@@ -40,12 +55,56 @@ const DashboardPage = {
         </div>
       </div>`;
 
-    await Promise.all([this.loadKPIs(), this.loadWeekly(), this.loadStatusCard()]);
+    // Inicializar Flatpickr en el selector de fecha
+    if (window.flatpickr) {
+      flatpickr('#dashDatePicker', {
+        locale: 'es',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'D d M Y',
+        maxDate: 'today',
+        defaultDate: todayISO,
+        onChange: (selectedDates, dateStr) => {
+          this.selectedDate = dateStr;
+          const isToday = dateStr === todayISO;
+          const label = document.getElementById('dashDateLabel');
+          const btn = document.getElementById('dashGoToday');
+          if (label) label.textContent = isToday ? '(Hoy)' : '';
+          if (btn) btn.style.display = isToday ? 'none' : 'inline-flex';
+          this.reload();
+        }
+      });
+    }
+
+    // Botón "Volver a hoy"
+    document.getElementById('dashGoToday')?.addEventListener('click', () => {
+      this.selectedDate = todayISO;
+      document.getElementById('dashDatePicker')._flatpickr?.setDate(todayISO, true);
+      const label = document.getElementById('dashDateLabel');
+      const btn = document.getElementById('dashGoToday');
+      if (label) label.textContent = '(Hoy)';
+      if (btn) btn.style.display = 'none';
+      this.reload();
+    });
+
+    await this.reload();
+  },
+
+  async reload() {
+    await Promise.all([
+      this.loadKPIs(),
+      this.loadWeekly(),
+      this.loadStatusCard()
+    ]);
+  },
+
+  dateParam() {
+    return this.selectedDate ? `?date=${this.selectedDate}` : '';
   },
 
   async loadKPIs() {
     try {
-      const d = await API.get('/api/dashboard/kpis');
+      const d = await API.get(`/api/dashboard/kpis${this.dateParam()}`);
       const icons = {
         emp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
         present: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
@@ -56,10 +115,10 @@ const DashboardPage = {
 
       document.getElementById('kpiGrid').innerHTML = `
         ${this.kpiCard(icons.emp,'Total empleados', d.total_employees, 'registrados activos','--accent','total')}
-        ${this.kpiCard(icons.present,'Presentes hoy', d.today_present, `${d.attendance_rate}% asistencia`,'--accent-3','present')}
-        ${this.kpiCard(icons.absent,'Ausentes hoy', d.today_absent, 'sin registro de entrada','--danger','absent')}
+        ${this.kpiCard(icons.present,'Presentes', d.today_present, `${d.attendance_rate}% asistencia`,'--accent-3','present')}
+        ${this.kpiCard(icons.absent,'Ausentes', d.today_absent, 'sin registro de entrada','--danger','absent')}
         ${this.kpiCard(icons.late,'Tardanzas', d.today_late, 'llegaron después de la hora','--warning','late')}
-        ${this.kpiCard(icons.leaves,'De Vacaciones / Permiso', d.today_leaves, 'inasistencias justificadas','--accent-2','leaves')}`;
+        ${this.kpiCard(icons.leaves,'Vacaciones / Permiso', d.today_leaves, 'inasistencias justificadas','--accent-2','leaves')}`;
     } catch(e) { Toast.show('Error cargando KPIs', 'error'); }
   },
 
@@ -75,16 +134,17 @@ const DashboardPage = {
   async showKPIDetails(type) {
     const titles = {
       total: 'Personal Registrado Activo',
-      present: 'Colaboradores Presentes Hoy',
-      absent: 'Colaboradores Ausentes Hoy',
-      late: 'Retrasos / Tardanzas de Hoy',
+      present: 'Colaboradores Presentes',
+      absent: 'Colaboradores Ausentes',
+      late: 'Retrasos / Tardanzas',
       leaves: 'Colaboradores con Vacaciones / Permiso'
     };
 
     Toast.show('Cargando detalles...', 'info');
 
     try {
-      const data = await API.get(`/api/dashboard/kpis/details?type=${type}`);
+      const dateQ = this.selectedDate ? `&date=${this.selectedDate}` : '';
+      const data = await API.get(`/api/dashboard/kpis/details?type=${type}${dateQ}`);
       
       let html = '';
       if (!data || data.length === 0) {
@@ -118,7 +178,7 @@ const DashboardPage = {
                     <td style="padding: 12px 16px; color: var(--text-2);">${emp.position}</td>
                     ${type === 'present' ? `<td style="padding: 12px 16px; font-weight: 600; color: var(--success);">${emp.check_in}</td>` : ''}
                     ${type === 'late' ? `<td style="padding: 12px 16px; color: var(--text-1);">${emp.check_in}</td><td style="padding: 12px 16px; font-weight: 600; color: var(--warning);">${emp.delay}</td>` : ''}
-                    ${type === 'leaves' ? `<td style="padding: 12px 16px;"><span class="badge" style="background: rgba(100,108,255,.12); color: var(--accent-2); border: 1px solid rgba(100,108,255,.24); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${emp.leave_type}</span></td>` : ''}
+                    ${type === 'leaves' ? `<td style="padding: 12px 16px;"><span class="badge badge-blue">${emp.leave_type}</span></td>` : ''}
                   </tr>
                 `).join('')}
               </tbody>
@@ -137,25 +197,28 @@ const DashboardPage = {
       Toast.show('Error al cargar los detalles: ' + err.message, 'error');
     }
   },
+
   async loadStatusCard() {
     try {
-      const d = await API.get('/api/dashboard/kpis');
+      const d = await API.get(`/api/dashboard/kpis${this.dateParam()}`);
       const body = document.getElementById('statusBody');
       const dateEl = document.getElementById('statusDate');
       if (!body) return;
 
-      const today = new Date().toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      if (dateEl) dateEl.textContent = today.charAt(0).toUpperCase() + today.slice(1);
+      // Mostrar la fecha del target, no necesariamente hoy
+      const targetDate = d.target_date ? new Date(d.target_date + 'T12:00:00') : new Date();
+      const formatted = targetDate.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      if (dateEl) dateEl.textContent = formatted.charAt(0).toUpperCase() + formatted.slice(1);
 
       const total = d.total_employees || 1;
       const rows = [
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
-          label: 'Presentes hoy', value: d.today_present, color: 'var(--success)', bg: 'rgba(0,230,118,.12)'
+          label: 'Presentes', value: d.today_present, color: 'var(--success)', bg: 'rgba(0,230,118,.12)'
         },
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
-          label: 'Ausentes hoy', value: d.today_absent, color: 'var(--danger)', bg: 'rgba(255,61,0,.12)'
+          label: 'Ausentes', value: d.today_absent, color: 'var(--danger)', bg: 'rgba(255,61,0,.12)'
         },
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
@@ -171,7 +234,7 @@ const DashboardPage = {
         const pct = Math.round(((r.value || 0) / total) * 100);
         return `
           <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border)">
-            <div style="width:42px;height:42px;border-radius:10px;background:${r.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${r.color}">
+            <div style="width:42px;height:42px;border-radius:50%;background:${r.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${r.color}">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="${r.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${r.icon.replace(/<svg[^>]*>|<\/svg>/g,'')}</svg>
             </div>
             <div style="flex:1;min-width:0">
@@ -195,7 +258,10 @@ const DashboardPage = {
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       
-      // Crear gradientes premium
+      // Colores dinámicos usando CSS vars
+      const style = getComputedStyle(document.documentElement);
+      const accentRgb = style.getPropertyValue('--accent-rgb').trim() || '79, 70, 229';
+      
       const gradPresent = ctx.createLinearGradient(0, 0, 0, 200);
       gradPresent.addColorStop(0, 'rgba(0, 230, 118, 0.8)');
       gradPresent.addColorStop(1, 'rgba(0, 230, 118, 0.1)');
@@ -223,42 +289,21 @@ const DashboardPage = {
           responsive: true, maintainAspectRatio: false,
           plugins: { 
             legend: { 
-              labels: { color: '#cbd5e1', font: { family: 'Plus Jakarta Sans', size: 11, weight: 600 } } 
+              labels: { color: 'var(--text-3)', font: { family: 'Plus Jakarta Sans', size: 11, weight: 600 } } 
             } 
           },
           scales: {
             x: { 
               ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 10, weight: 500 } }, 
-              grid: { color: 'rgba(255,255,255,.03)' } 
+              grid: { color: 'rgba(0,0,0,.03)' } 
             },
             y: { 
               ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 10, weight: 500 } }, 
-              grid: { color: 'rgba(255,255,255,.03)' } 
+              grid: { color: 'rgba(0,0,0,.03)' } 
             },
           },
         },
       });
-    } catch(e) {}
-  },
-
-  async loadRecent() {
-    try {
-      const items = await API.get('/api/dashboard/recent-events');
-      const list = document.getElementById('recentList');
-      if (!list) return;
-      if (!items?.length) { 
-        list.innerHTML = `<div class="empty-state"><div class="icon">✨</div><h3>¡Día tranquilo!</h3><p>Aún no hay movimientos registrados hoy.</p></div>`; 
-        return; 
-      }
-      list.innerHTML = items.map(e => `
-        <div class="event-item">
-          <div class="emp-avatar">${e.employee_name.charAt(0)}</div>
-          <div style="flex:1">
-            <div class="event-name">${e.employee_name}</div>
-            <div class="event-sub">${e.event_type === 'entry' ? '<span style="color:var(--success)">🟢 Entrada</span>' : '<span style="color:var(--danger)">🔴 Salida</span>'}${e.is_late ? ' · <span style="color:var(--warning);font-weight:600;">Tardanza</span>' : ''}</div>
-          </div>
-          <div class="event-time">${this.timeAgo(e.event_time)}</div>
-        </div>`).join('');
     } catch(e) {}
   },
 

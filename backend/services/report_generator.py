@@ -9,6 +9,79 @@ from sqlalchemy.orm import Session
 
 from backend.models import AttendanceRecord, Employee
 
+from reportlab.platypus import Flowable
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
+import os
+
+class NumberedCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._saved_page_states = []
+
+    def showPage(self):
+        self._saved_page_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        num_pages = len(self._saved_page_states)
+        for state in self._saved_page_states:
+            self.__dict__.update(state)
+            self.draw_page_number(num_pages)
+            super().showPage()
+        super().save()
+
+    def draw_page_number(self, page_count):
+        self.saveState()
+        self.setFont("Helvetica", 8)
+        self.setFillColor(colors.HexColor("#64748b"))
+        
+        # Draw a thin footer separator line
+        self.setStrokeColor(colors.HexColor("#e2e8f0"))
+        self.setLineWidth(0.5)
+        # Margin is 0.8*cm on sides (A4 width is 21.0cm)
+        self.line(0.8*cm, 1.2*cm, 20.2*cm, 1.2*cm)
+        
+        # Left side text: system name / company
+        cfg = _get_system_config()
+        system_text = f"{cfg.get('system_name')} — {cfg.get('company_name')}"
+        self.drawString(0.8*cm, 0.8*cm, system_text[:80])
+        
+        # Right side text: Page x of y
+        page_text = f"Página {self._pageNumber} de {page_count}"
+        self.drawRightString(20.2*cm, 0.8*cm, page_text)
+        self.restoreState()
+
+class CircularAvatar(Flowable):
+    def __init__(self, path_or_initials, size):
+        Flowable.__init__(self)
+        self.path = path_or_initials if (path_or_initials and os.path.exists(path_or_initials)) else None
+        self.size = size
+        self.width = size
+        self.height = size
+
+    def draw(self):
+        self.canv.saveState()
+        # Create circular clipping path
+        path = self.canv.beginPath()
+        path.circle(self.size / 2, self.size / 2, self.size / 2)
+        self.canv.clipPath(path, stroke=0, fill=0)
+        
+        if self.path:
+            self.canv.drawImage(self.path, 0, 0, width=self.size, height=self.size)
+        else:
+            # Draw placeholder avatar
+            self.canv.setFillColor(colors.HexColor("#cbd5e1"))
+            self.canv.circle(self.size / 2, self.size / 2, self.size / 2, fill=1, stroke=0)
+            # Head
+            self.canv.setFillColor(colors.white)
+            self.canv.circle(self.size / 2, self.size * 0.62, self.size * 0.18, fill=1, stroke=0)
+            # Body
+            self.canv.circle(self.size / 2, self.size * 0.15, self.size * 0.32, fill=1, stroke=0)
+            
+        self.canv.restoreState()
+
 def generate_excel_report(
     db: Session,
     employee_id: Optional[int] = None,
@@ -181,6 +254,7 @@ def generate_consolidated_excel(
     department_id: Optional[int] = None,
     position_id: Optional[int] = None,
     schedule_id: Optional[int] = None,
+    columns: Optional[list] = None,
 ) -> bytes:
     """Genera un reporte consolidado en Excel con entrada y salida en la misma fila por día."""
     from openpyxl import Workbook
@@ -239,10 +313,23 @@ def generate_consolidated_excel(
     thin = Side(style="thin", color="CCCCCC")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    headers = [
-        "Fecha", "Código", "Empleado", "Departamento", 
-        "Hora Entrada", "Hora Salida", "Horario", "Tardanza"
+    all_cols = [
+        ("period", "Fecha"),
+        ("employee_code", "Código"),
+        ("employee_name", "Empleado"),
+        ("department", "Departamento"),
+        ("punches", "Hora Entrada"),
+        ("punches", "Hora Salida"),
+        ("schedule", "Horario"),
+        ("status", "Tardanza")
     ]
+
+    active_cols = []
+    for col_key, col_header in all_cols:
+        if columns is None or col_key in columns:
+            active_cols.append((col_key, col_header))
+
+    headers = [h for _, h in active_cols]
     ws.append(headers)
 
     for col_idx, _ in enumerate(headers, 1):
@@ -275,30 +362,42 @@ def generate_consolidated_excel(
             last_exit = max(group["exits"], key=lambda r: r.event_time)
             exit_time_str = last_exit.event_time.strftime("%H:%M:%S")
 
-        row = [
-            day.strftime("%d/%m/%Y"),
-            emp.employee_code,
-            emp.full_name,
-            emp.department.name if emp.department else "-",
-            entry_time_str,
-            exit_time_str,
-            f"{emp.schedule.name} ({emp.schedule.work_start_time}-{emp.schedule.work_end_time})" if emp.schedule_id and emp.schedule else f"{emp.work_start_time} - {emp.work_end_time}",
-            is_late_str
-        ]
+        full_row_data = {
+            "period": day.strftime("%d/%m/%Y"),
+            "employee_code": emp.employee_code,
+            "employee_name": emp.full_name,
+            "department": emp.department.name if emp.department else "-",
+            "punches_in": entry_time_str,
+            "punches_out": exit_time_str,
+            "schedule": f"{emp.schedule.name} ({emp.schedule.work_start_time}-{emp.schedule.work_end_time})" if emp.schedule_id and emp.schedule else f"{emp.work_start_time} - {emp.work_end_time}",
+            "status": is_late_str
+        }
+
+        row = []
+        for col_key, col_header in active_cols:
+            if col_header == "Hora Entrada":
+                row.append(full_row_data["punches_in"])
+            elif col_header == "Hora Salida":
+                row.append(full_row_data["punches_out"])
+            else:
+                row.append(full_row_data[col_key])
+
         ws.append(row)
         for col_idx in range(1, len(headers) + 1):
             cell = ws.cell(row=row_num, column=col_idx)
             cell.alignment = center
             cell.border = border
-            if is_late_str == "Sí" and col_idx == 8:
+            header_name = headers[col_idx - 1]
+            if header_name == "Tardanza" and is_late_str == "Sí":
                 cell.font = Font(color="CC0000", bold=True)
         
         row_num += 1
 
     # Anchos de columna
-    col_widths = [14, 12, 28, 20, 14, 14, 16, 12]
-    for i, width in enumerate(col_widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = width
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 10)
 
     ws.freeze_panes = "A2"
 
@@ -307,7 +406,7 @@ def generate_consolidated_excel(
     return buf.getvalue()
 
 
-def generate_attendance_excel(summaries: list, granularity: str) -> bytes:
+def generate_attendance_excel(summaries: list, granularity: str, columns: Optional[list] = None) -> bytes:
     """Genera un reporte consolidado con horarios y granularidad en Excel."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -325,16 +424,37 @@ def generate_attendance_excel(summaries: list, granularity: str) -> bytes:
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     if granularity == "daily":
-        headers = [
-            "Empleado", "Código", "Departamento", "Fecha", "Horario",
-            "Entrada", "Salida Almuerzo", "Retorno Almuerzo", "Salida", "Estado"
+        all_cols = [
+            ("employee_name", "Empleado"),
+            ("employee_code", "Código"),
+            ("department", "Departamento"),
+            ("period", "Fecha"),
+            ("schedule", "Horario"),
+            ("punches", "Entrada"),
+            ("punches", "Salida Almuerzo"),
+            ("punches", "Retorno Almuerzo"),
+            ("punches", "Salida"),
+            ("status", "Estado")
         ]
     else:
-        headers = [
-            "Empleado", "Código", "Departamento", "Período", "Horario",
-            "Asistente", "Incidencias Tardanza", "Punches Incompletos", "Eventos Totales"
+        all_cols = [
+            ("employee_name", "Empleado"),
+            ("employee_code", "Código"),
+            ("department", "Departamento"),
+            ("period", "Período"),
+            ("schedule", "Horario"),
+            ("status", "Asistente"),
+            ("status", "Incidencias Tardanza"),
+            ("status", "Punches Incompletos"),
+            ("punches", "Eventos Totales")
         ]
 
+    active_cols = []
+    for col_key, col_header in all_cols:
+        if columns is None or col_key in columns:
+            active_cols.append((col_key, col_header))
+
+    headers = [h for _, h in active_cols]
     ws.append(headers)
 
     for col_idx, _ in enumerate(headers, 1):
@@ -374,18 +494,31 @@ def generate_attendance_excel(summaries: list, granularity: str) -> bytes:
             except:
                 formatted_date = s["date"]
 
-            row = [
-                s["employee_name"],
-                s["employee_code"],
-                s["department"],
-                formatted_date,
-                "Partido" if is_split else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
-                entry_1,
-                exit_1,
-                entry_2,
-                exit_2,
-                status
-            ]
+            full_row_data = {
+                "employee_name": s["employee_name"],
+                "employee_code": s["employee_code"],
+                "department": s["department"],
+                "period": formatted_date,
+                "schedule": "Partido" if is_split else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
+                "punches_e1": entry_1,
+                "punches_x1": exit_1,
+                "punches_e2": entry_2,
+                "punches_x2": exit_2,
+                "status": status
+            }
+
+            row = []
+            for col_key, col_header in active_cols:
+                if col_header == "Entrada":
+                    row.append(full_row_data["punches_e1"])
+                elif col_header == "Salida Almuerzo":
+                    row.append(full_row_data["punches_x1"])
+                elif col_header == "Retorno Almuerzo":
+                    row.append(full_row_data["punches_e2"])
+                elif col_header == "Salida":
+                    row.append(full_row_data["punches_x2"])
+                else:
+                    row.append(full_row_data[col_key])
         else:
             try:
                 p_start = datetime.strptime(s["period_start"], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -394,24 +527,36 @@ def generate_attendance_excel(summaries: list, granularity: str) -> bytes:
             except:
                 period_str = f"{s['period_start']} - {s['period_end']}"
 
-            row = [
-                s["employee_name"],
-                s["employee_code"],
-                s["department"],
-                period_str,
-                "Partido" if s["schedule_type"] == "split" else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
-                "Sí" if s["is_present"] else "No",
-                "Sí" if s["is_late"] else "No",
-                "Sí" if s["missing_punches"] else "No",
-                s["total_raw_events"]
-            ]
+            full_row_data = {
+                "employee_name": s["employee_name"],
+                "employee_code": s["employee_code"],
+                "department": s["department"],
+                "period": period_str,
+                "schedule": "Partido" if s["schedule_type"] == "split" else ("Continuo" if s["schedule_type"] == "continuous" else "Sin Horario"),
+                "status_p": "Sí" if s["is_present"] else "No",
+                "status_l": "Sí" if s["is_late"] else "No",
+                "status_m": "Sí" if s["missing_punches"] else "No",
+                "punches": s["total_raw_events"]
+            }
+
+            row = []
+            for col_key, col_header in active_cols:
+                if col_header == "Asistente":
+                    row.append(full_row_data["status_p"])
+                elif col_header == "Incidencias Tardanza":
+                    row.append(full_row_data["status_l"])
+                elif col_header == "Punches Incompletos":
+                    row.append(full_row_data["status_m"])
+                else:
+                    row.append(full_row_data[col_key])
 
         ws.append(row)
         for col_idx in range(1, len(headers) + 1):
             cell = ws.cell(row=row_num, column=col_idx)
             cell.alignment = center
             cell.border = border
-            if granularity == "daily" and col_idx == 10:
+            header_name = headers[col_idx - 1]
+            if granularity == "daily" and header_name == "Estado":
                 if status == "Ausente":
                     cell.font = Font(color="FF3D00", bold=True)
                 elif status == "Tardanza":
@@ -421,9 +566,9 @@ def generate_attendance_excel(summaries: list, granularity: str) -> bytes:
                 else:
                     cell.font = Font(color="00E676", bold=True)
             elif granularity != "daily":
-                if col_idx == 7 and s["is_late"]:
+                if header_name == "Incidencias Tardanza" and s["is_late"]:
                     cell.font = Font(color="FFB300", bold=True)
-                elif col_idx == 8 and s["missing_punches"]:
+                elif header_name == "Punches Incompletos" and s["missing_punches"]:
                     cell.font = Font(color="FFA000", bold=True)
 
         row_num += 1
@@ -484,7 +629,12 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
 
     cfg = _get_system_config()
     primary_color = cfg.get("primary_color") or "#1e3a5f"
-    accent_color = cfg.get("accent_color") or "#00E676"
+
+    # Executive pastel colors
+    color_ontime = "#4ade80"      # soft green
+    color_late = "#fbbf24"        # soft orange/yellow
+    color_incomplete = "#f97316"  # soft orange
+    color_absent = "#f87171"      # soft red
 
     # 1. Gráfico Doughnut (Distribución de asistencia)
     ontime = 0
@@ -507,33 +657,33 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
     if ontime > 0:
         labels.append(f"A tiempo ({ontime})")
         sizes.append(ontime)
-        colors_list.append(accent_color)
+        colors_list.append(color_ontime)
     if late > 0:
         labels.append(f"Tardanza ({late})")
         sizes.append(late)
-        colors_list.append("#FFB300")
+        colors_list.append(color_late)
     if incomplete > 0:
         labels.append(f"Incompleto ({incomplete})")
         sizes.append(incomplete)
-        colors_list.append("#FFA000")
+        colors_list.append(color_incomplete)
     if absent > 0:
         labels.append(f"Ausente ({absent})")
         sizes.append(absent)
-        colors_list.append("#FF3D00")
+        colors_list.append(color_absent)
 
     if not sizes:
         labels.append("Sin registros")
         sizes.append(1)
-        colors_list.append("#E2E8F0")
+        colors_list.append("#e2e8f0")
 
     fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=150)
     wedges, texts, autotexts = ax.pie(
         sizes, labels=labels, autopct='%1.0f%%', startangle=90,
-        colors=colors_list, textprops=dict(color="#1e293b", size=5.5, weight="bold"),
-        wedgeprops=dict(width=0.35, edgecolor='white')
+        colors=colors_list, textprops=dict(color="#1e293b", size=5.0, weight="bold"),
+        wedgeprops=dict(width=0.35, edgecolor='white', linewidth=0.7)
     )
-    plt.setp(autotexts, size=5.5, weight="bold", color="white")
-    ax.set_title("Distribución de Estados", fontsize=7, weight="bold", color=primary_color, pad=8)
+    plt.setp(autotexts, size=4.5, weight="bold", color="white")
+    ax.set_title("Distribución de Estados", fontsize=6.5, weight="bold", color=primary_color, pad=8)
     fig.tight_layout()
     
     img_buf_1 = io.BytesIO()
@@ -563,8 +713,8 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
 
     fig2, ax2 = plt.subplots(figsize=(3.2, 1.8), dpi=150)
     if entry_minutes and granularity == "daily":
-        ax2.plot(dates, entry_minutes, marker='o', color=primary_color, linewidth=1.5, markersize=3, label='Entrada')
-        ax2.fill_between(dates, entry_minutes, color=primary_color, alpha=0.08)
+        ax2.plot(dates, entry_minutes, marker='o', color=primary_color, linewidth=1.2, markersize=2.5, label='Entrada')
+        ax2.fill_between(dates, entry_minutes, color=primary_color, alpha=0.06)
         
         def format_min_to_hm(x, pos):
             h = int(x // 60)
@@ -573,33 +723,31 @@ def _generate_matplotlib_charts(summaries: list, granularity: str) -> tuple:
         
         from matplotlib.ticker import FuncFormatter
         ax2.yaxis.set_major_formatter(FuncFormatter(format_min_to_hm))
-        ax2.axhline(y=480, color='#FF3D00', linestyle='--', linewidth=0.75, alpha=0.7, label='Límite (08:00)')
-        ax2.legend(fontsize=5.5, loc='upper right', framealpha=0.8)
+        ax2.axhline(y=480, color=color_absent, linestyle='--', linewidth=0.75, alpha=0.8, label='Límite (08:00)')
+        ax2.legend(fontsize=5.0, loc='upper right', framealpha=0.9, edgecolor='#cbd5e1')
     else:
         msg = 'Tendencia disponible en vista Diaria' if granularity != "daily" else 'Sin entradas registradas'
-        ax2.text(0.5, 0.5, msg, horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, color="#64748b", fontsize=7)
+        ax2.text(0.5, 0.5, msg, horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, color="#64748b", fontsize=6.5)
 
-    ax2.set_title("Puntualidad en Entradas (Últimos 12 Días)", fontsize=7, weight="bold", color=primary_color, pad=8)
-    ax2.tick_params(axis='both', which='major', labelsize=6, labelcolor="#475569")
+    ax2.set_title("Puntualidad en Entradas (Últimos 12 Días)", fontsize=6.5, weight="bold", color=primary_color, pad=8)
+    ax2.tick_params(axis='both', which='major', labelsize=5.5, labelcolor="#475569")
     for label in ax2.get_xticklabels():
         label.set_rotation(30)
-    ax2.grid(True, linestyle=':', alpha=0.3, color="#94a3b8")
+    ax2.grid(True, linestyle='--', alpha=0.4, color="#e2e8f0")
     for spine in ['top', 'right']:
         ax2.spines[spine].set_visible(False)
-    ax2.spines['left'].set_color('#cbd5e1')
-    ax2.spines['bottom'].set_color('#cbd5e1')
+    ax2.spines['left'].set_color('#e2e8f0')
+    ax2.spines['bottom'].set_color('#e2e8f0')
     
     fig2.tight_layout()
 
     img_buf_2 = io.BytesIO()
     fig2.savefig(img_buf_2, format='png', bbox_inches='tight', transparent=True)
     plt.close(fig2)
-    img_buf_2.seek(0)
-
     return img_buf_1, img_buf_2
 
 
-def _get_employee_flowables(summaries: list, granularity: str, schedules_map: dict = None) -> list:
+def _get_employee_flowables(summaries: list, granularity: str, schedules_map: dict = None, columns: Optional[list] = None) -> list:
     """Genera la lista de flowables (elementos de ReportLab) para un empleado individual."""
     import os
     from reportlab.lib import colors
@@ -619,20 +767,53 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
     if schedules_map is not None and emp_id in schedules_map:
         work_days = schedules_map[emp_id]
         
+    photo_path = None
+    if emp_id:
+        from backend.database import SessionLocal
+        from backend.models import Employee
+        db = SessionLocal()
+        try:
+            emp = db.query(Employee).filter(Employee.id == emp_id).first()
+            if emp:
+                photo_path = emp.photo_path
+                if work_days is None and emp.schedule and emp.schedule.work_days:
+                    work_days = [int(x) for x in emp.schedule.work_days.split(",")]
+        except Exception as e:
+            print(f"Error cargando datos de empleado en reporte PDF: {e}")
+        finally:
+            db.close()
+            
     if work_days is None:
         work_days = [int(x) for x in cfg.get("work_days", "1,2,3,4,5").split(",")]
-        if emp_id:
-            from backend.database import SessionLocal
-            from backend.models import Employee
-            db = SessionLocal()
-            try:
-                emp = db.query(Employee).filter(Employee.id == emp_id).first()
-                if emp and emp.schedule and emp.schedule.work_days:
-                    work_days = [int(x) for x in emp.schedule.work_days.split(",")]
-            except Exception as e:
-                print(f"Error cargando dias laborales del empleado en reporte PDF: {e}")
-            finally:
-                db.close()
+
+    # Precargar horarios diarios para el empleado en el rango analizado
+    daily_schedules_map = {}
+    if emp_id and summaries:
+        from backend.database import SessionLocal
+        from backend.models import EmployeeDailySchedule
+        db = SessionLocal()
+        try:
+            dates = []
+            from datetime import datetime as dt_parser
+            for s in summaries:
+                try:
+                    dates.append(dt_parser.strptime(s["date"], "%Y-%m-%d").date())
+                except:
+                    pass
+            if dates:
+                min_date = min(dates)
+                max_date = max(dates)
+                dailies = db.query(EmployeeDailySchedule).filter(
+                    EmployeeDailySchedule.employee_id == emp_id,
+                    EmployeeDailySchedule.date >= min_date,
+                    EmployeeDailySchedule.date <= max_date
+                ).all()
+                for d in dailies:
+                    daily_schedules_map[d.date] = d
+        except Exception as e:
+            print(f"Error cargando horarios diarios en reporte: {e}")
+        finally:
+            db.close()
 
     primary_color = colors.HexColor(primary_color_hex)
     accent_color = colors.HexColor(accent_color_hex)
@@ -645,16 +826,22 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
     total_days = len(summaries)
     present_days = sum(1 for s in summaries if s.get("is_present", False))
     
-    # Calcular ausencias únicamente en días laborables configurados
+    # Calcular ausencias únicamente en días laborales configurados
     absent_days = 0
     from datetime import datetime as dt_parser
     for s in summaries:
         if not s.get("is_present", False):
             try:
                 d_obj = dt_parser.strptime(s["date"], "%Y-%m-%d")
-                if (d_obj.weekday() + 1) in work_days:
-                    absent_days += 1
+                d_date = d_obj.date()
+                if d_date in daily_schedules_map:
+                    is_workday = not daily_schedules_map[d_date].is_off
+                else:
+                    is_workday = (d_obj.weekday() + 1) in work_days
             except Exception:
+                is_workday = True
+            
+            if is_workday:
                 absent_days += 1
 
     late_days = sum(1 for s in summaries if s.get("is_present", False) and s.get("is_late", False))
@@ -741,8 +928,11 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
             if clean_path.startswith('/'):
                 clean_path = clean_path[1:]
             local_path = os.path.abspath(clean_path)
+            if not os.path.exists(local_path) and not clean_path.startswith("uploads/"):
+                local_path = os.path.abspath(os.path.join("uploads", clean_path))
+                
             if os.path.exists(local_path):
-                logo_img = Image(local_path, height=1.1*cm, width=4.0*cm, kind='proportional')
+                logo_img = CircularAvatar(local_path, 1.3*cm)
                 logo_img.hAlign = 'LEFT'
                 left_cell_elements.append(logo_img)
                 left_cell_elements.append(Spacer(1, 4))
@@ -758,16 +948,38 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
     )
     left_cell_elements.append(Paragraph(cfg.get("system_name", "Control de Asistencia").upper(), sys_title_style))
 
+    photo_img = None
+    if photo_path:
+        try:
+            clean_photo_path = photo_path.split('?')[0]
+            if clean_photo_path.startswith('/'):
+                clean_photo_path = clean_photo_path[1:]
+            local_photo_path = os.path.abspath(clean_photo_path)
+            if not os.path.exists(local_photo_path) and not clean_photo_path.startswith("uploads/"):
+                local_photo_path = os.path.abspath(os.path.join("uploads", clean_photo_path))
+                
+            if os.path.exists(local_photo_path):
+                photo_img = CircularAvatar(local_photo_path, 2.2*cm)
+        except Exception as pe:
+            print(f"Error loading photo for PDF: {pe}")
+            
+    if not photo_img:
+        photo_img = CircularAvatar(None, 2.2*cm)
+        
+    photo_img.hAlign = 'RIGHT'
+
     banner_data = [
         [
             left_cell_elements,
-            Paragraph(f"<b>Empresa:</b> {cfg.get('company_name')}<br/><b>Empleado:</b> {employee_name}<br/><b>Código:</b> {employee_code}<br/><b>Área:</b> {department}", banner_meta_style)
+            Paragraph(f"<b>Empresa:</b> {cfg.get('company_name')}<br/><b>Empleado:</b> {employee_name}<br/><b>Código:</b> {employee_code}<br/><b>Área:</b> {department}", banner_meta_style),
+            photo_img
         ]
     ]
-    banner_table = Table(banner_data, colWidths=[9.5*cm, 9.1*cm])
+    banner_table = Table(banner_data, colWidths=[7.8*cm, 8.5*cm, 2.5*cm])
     banner_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), primary_color),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
         ("LEFTPADDING", (0, 0), (-1, -1), 16),
@@ -797,17 +1009,18 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
             Paragraph("Punches Incompletos", kpi_lbl_style)
         ]
     ]
-    kpi_table = Table(kpis_data, colWidths=[4.65*cm, 4.65*cm, 4.65*cm, 4.65*cm])
+    kpi_table = Table(kpis_data, colWidths=[4.7*cm, 4.7*cm, 4.7*cm, 4.7*cm])
     kpi_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fafafa")),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
+        ("LINEABOVE", (0, 0), (-1, 0), 2.5, primary_color),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ("TOPPADDING", (0, 0), (-1, 0), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
-        ("TOPPADDING", (0, 1), (-1, 1), 1),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), 6),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
+        ("TOPPADDING", (0, 1), (-1, 1), 2),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
     ]))
     elements.append(kpi_table)
 
@@ -818,7 +1031,7 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
         img_trend = Image(chart_trend_buf, width=7.6*cm, height=3.8*cm)
         
         charts_data = [[img_doughnut, img_trend]]
-        charts_table = Table(charts_data, colWidths=[4.2*cm, 14.4*cm])
+        charts_table = Table(charts_data, colWidths=[4.3*cm, 14.5*cm])
         charts_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
@@ -837,18 +1050,41 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
     elements.append(Paragraph("HISTORIAL DETALLADO DE ASISTENCIA", section_title))
     
     if granularity == "daily":
-        headers = [
-            Paragraph("<b>Fecha</b>", ParagraphStyle("H_F_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Horario</b>", ParagraphStyle("H_S_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Entrada</b>", ParagraphStyle("H_E_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Sal. Alm.</b>", ParagraphStyle("H_SA_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Ret. Alm.</b>", ParagraphStyle("H_RA_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Salida</b>", ParagraphStyle("H_O_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Estado</b>", ParagraphStyle("H_ST_" + str(employee_code), parent=cell_bold_style, textColor=colors.white))
+        all_cols = [
+            ("period", "Fecha", 2.6*cm),
+            ("schedule", "Horario", 2.5*cm),
+            ("punches", "Entrada", 2.5*cm),
+            ("punches", "Sal. Alm.", 2.5*cm),
+            ("punches", "Ret. Alm.", 2.5*cm),
+            ("punches", "Salida", 2.5*cm),
+            ("status", "Estado", 3.5*cm)
         ]
-        data = [headers]
-        col_widths = [2.6*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 3.5*cm]
+    else:
+        all_cols = [
+            ("period", "Período", 3.6*cm),
+            ("schedule", "Horario", 3.0*cm),
+            ("status", "Asistió", 3.0*cm),
+            ("status", "Tardanza", 3.0*cm),
+            ("status", "Incompleto", 3.0*cm),
+            ("punches", "Eventos", 3.0*cm)
+        ]
 
+    active_cols = []
+    for col_key, col_header, col_w in all_cols:
+        if columns is None or col_key in columns:
+            active_cols.append((col_key, col_header, col_w))
+
+    headers = [Paragraph(f"<b>{h}</b>", ParagraphStyle("H_" + h.replace(".", "").replace(" ", "_") + "_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)) for _, h, _ in active_cols]
+    data = [headers]
+    
+    total_w = sum(w for _, _, w in active_cols)
+    if total_w > 0:
+        scale = (18.8 * cm) / total_w
+        col_widths = [w * scale for _, _, w in active_cols]
+    else:
+        col_widths = []
+
+    if granularity == "daily":
         for s in summaries:
             def format_time(iso_str):
                 if not iso_str:
@@ -865,28 +1101,31 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
             exit_2 = format_time(s["punches"].get("exit_2")) if is_split else format_time(s["punches"].get("exit_1"))
 
             status_text = "OK"
-            status_color = "#00E676"
+            status_color = "#166534"
             if not s.get("is_present", False):
                 is_workday = True
                 try:
                     d_obj = datetime.strptime(s["date"], "%Y-%m-%d")
-                    if (d_obj.weekday() + 1) not in work_days:
-                        is_workday = False
+                    d_date = d_obj.date()
+                    if d_date in daily_schedules_map:
+                        is_workday = not daily_schedules_map[d_date].is_off
+                    else:
+                        is_workday = (d_obj.weekday() + 1) in work_days
                 except Exception:
                     pass
                 
                 if is_workday:
                     status_text = "Ausente"
-                    status_color = "#FF3D00"
+                    status_color = "#991b1b"
                 else:
                     status_text = "Descanso"
-                    status_color = "#64748b" # gris neutro
+                    status_color = "#475569"
             elif s.get("missing_punches", False):
                 status_text = "Incompleto"
-                status_color = "#FFA000"
+                status_color = "#854d0e"
             elif s.get("is_late", False):
                 status_text = "Tardanza"
-                status_color = "#FFB300"
+                status_color = "#9a3412"
 
             status_paragraph = Paragraph(f"<b><font color='{status_color}'>{status_text}</font></b>", cell_bold_style)
 
@@ -895,27 +1134,29 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
             except:
                 formatted_date = s.get("date", "")
 
-            data.append([
-                Paragraph(formatted_date, cell_style),
-                Paragraph("Partido" if is_split else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
-                Paragraph(entry_1, cell_style),
-                Paragraph(exit_1, cell_style),
-                Paragraph(entry_2, cell_style),
-                Paragraph(exit_2, cell_style),
-                status_paragraph
-            ])
+            full_row_data = {
+                "period": Paragraph(formatted_date, cell_style),
+                "schedule": Paragraph("Partido" if is_split else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
+                "punches_e1": Paragraph(entry_1, cell_style),
+                "punches_x1": Paragraph(exit_1, cell_style),
+                "punches_e2": Paragraph(entry_2, cell_style),
+                "punches_x2": Paragraph(exit_2, cell_style),
+                "status": status_paragraph
+            }
+            row = []
+            for col_key, col_header, _ in active_cols:
+                if col_header == "Entrada":
+                    row.append(full_row_data["punches_e1"])
+                elif col_header == "Sal. Alm.":
+                    row.append(full_row_data["punches_x1"])
+                elif col_header == "Ret. Alm.":
+                    row.append(full_row_data["punches_e2"])
+                elif col_header == "Salida":
+                    row.append(full_row_data["punches_x2"])
+                else:
+                    row.append(full_row_data[col_key])
+            data.append(row)
     else:
-        headers = [
-            Paragraph("<b>Período</b>", ParagraphStyle("H_P_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Horario</b>", ParagraphStyle("H_H_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Asistió</b>", ParagraphStyle("H_A_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Tardanza</b>", ParagraphStyle("H_T_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Incompleto</b>", ParagraphStyle("H_I_" + str(employee_code), parent=cell_bold_style, textColor=colors.white)),
-            Paragraph("<b>Eventos</b>", ParagraphStyle("H_E2_" + str(employee_code), parent=cell_bold_style, textColor=colors.white))
-        ]
-        data = [headers]
-        col_widths = [3.6*cm, 3.0*cm, 3.0*cm, 3.0*cm, 3.0*cm, 3.0*cm]
-
         for s in summaries:
             try:
                 p_start = datetime.strptime(s["period_start"], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -924,37 +1165,89 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
             except:
                 period_str = f"{s.get('period_start', '')} - {s.get('period_end', '')}"
 
-            row = [
-                Paragraph(period_str, cell_style),
-                Paragraph("Partido" if s.get("schedule_type") == "split" else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
-                Paragraph("Sí" if s.get("is_present") else "No", ParagraphStyle("B_P_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#00E676") if s.get("is_present") else colors.HexColor("#FF3D00"))),
-                Paragraph("Sí" if s.get("is_late") else "No", ParagraphStyle("B_T_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFB300") if s.get("is_late") else colors.HexColor("#00E676"))),
-                Paragraph("Sí" if s.get("missing_punches") else "No", ParagraphStyle("B_I_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFA000") if s.get("missing_punches") else colors.HexColor("#00E676"))),
-                Paragraph(str(s.get("total_raw_events", 0)), cell_style)
-            ]
+            full_row_data = {
+                "period": Paragraph(period_str, cell_style),
+                "schedule": Paragraph("Partido" if s.get("schedule_type") == "split" else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
+                "status_p": Paragraph("Sí" if s.get("is_present") else "No", ParagraphStyle("B_P_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#00E676") if s.get("is_present") else colors.HexColor("#FF3D00"))),
+                "status_l": Paragraph("Sí" if s.get("is_late") else "No", ParagraphStyle("B_T_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFB300") if s.get("is_late") else colors.HexColor("#00E676"))),
+                "status_m": Paragraph("Sí" if s.get("missing_punches") else "No", ParagraphStyle("B_I_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFA000") if s.get("missing_punches") else colors.HexColor("#00E676"))),
+                "punches": Paragraph(str(s.get("total_raw_events", 0)), cell_style)
+            }
+            row = []
+            for col_key, col_header, _ in active_cols:
+                if col_header == "Asistió":
+                    row.append(full_row_data["status_p"])
+                elif col_header == "Tardanza":
+                    row.append(full_row_data["status_l"])
+                elif col_header == "Incompleto":
+                    row.append(full_row_data["status_m"])
+                else:
+                    row.append(full_row_data[col_key])
             data.append(row)
 
-    table = Table(data, colWidths=col_widths, repeatRows=1)
-    t_style = TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), primary_color),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
-    ])
+    if col_widths:
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+        t_style = TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), primary_color),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ])
 
-    for r in range(1, len(data)):
-        bg = colors.white if r % 2 == 1 else colors.HexColor("#f8fafc")
-        t_style.add("BACKGROUND", (0, r), (-1, r), bg)
+        if granularity == "daily":
+            for r in range(1, len(data)):
+                s = summaries[r - 1]
+                is_present = s.get("is_present", False)
+                missing = s.get("missing_punches", False)
+                is_late = s.get("is_late", False)
+                
+                if not is_present:
+                    is_workday = True
+                    try:
+                        d_obj = datetime.strptime(s["date"], "%Y-%m-%d")
+                        d_date = d_obj.date()
+                        if d_date in daily_schedules_map:
+                            is_workday = not daily_schedules_map[d_date].is_off
+                        else:
+                            is_workday = (d_obj.weekday() + 1) in work_days
+                    except Exception:
+                        pass
+                    
+                    if is_workday:
+                        bg_color = colors.HexColor("#fee2e2") # soft red
+                    else:
+                        bg_color = colors.HexColor("#f1f5f9") # soft gray/blue
+                elif missing:
+                    bg_color = colors.HexColor("#fef9c3") # soft yellow
+                elif is_late:
+                    bg_color = colors.HexColor("#fef3c7") # soft orange
+                else:
+                    bg_color = colors.HexColor("#dcfce7") # soft green
+                    
+                t_style.add("BACKGROUND", (0, r), (-1, r), bg_color)
+        else:
+            for r in range(1, len(data)):
+                bg = colors.white if r % 2 == 1 else colors.HexColor("#f8fafc")
+                t_style.add("BACKGROUND", (0, r), (-1, r), bg)
+                
+                s = summaries[r - 1]
+                for col_idx, (col_key, col_header, _) in enumerate(active_cols):
+                    if col_header == "Asistió" and not s.get("is_present"):
+                        t_style.add("BACKGROUND", (col_idx, r), (col_idx, r), colors.HexColor("#fee2e2"))
+                    elif col_header == "Tardanza" and s.get("is_late"):
+                        t_style.add("BACKGROUND", (col_idx, r), (col_idx, r), colors.HexColor("#fef3c7"))
+                    elif col_header == "Incompleto" and s.get("missing_punches"):
+                        t_style.add("BACKGROUND", (col_idx, r), (col_idx, r), colors.HexColor("#fef9c3"))
 
-    table.setStyle(t_style)
-    elements.append(table)
+        table.setStyle(t_style)
+        elements.append(table)
 
     return elements
 
 
-def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
+def _generate_individual_pdf(summaries: list, granularity: str, columns: Optional[list] = None) -> bytes:
     """Genera un reporte PDF con diseño ejecutivo vertical para un empleado individual."""
     from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate
@@ -963,14 +1256,14 @@ def _generate_individual_pdf(summaries: list, granularity: str) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        topMargin=0.8*cm, bottomMargin=0.8*cm, leftMargin=0.8*cm, rightMargin=0.8*cm
+        topMargin=0.8*cm, bottomMargin=1.6*cm, leftMargin=0.8*cm, rightMargin=0.8*cm
     )
-    elements = _get_employee_flowables(summaries, granularity)
-    doc.build(elements)
+    elements = _get_employee_flowables(summaries, granularity, columns=columns)
+    doc.build(elements, canvasmaker=NumberedCanvas)
     return doc.filename if hasattr(doc, 'filename') else buf.getvalue()
 
 
-def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback = None) -> bytes:
+def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback = None, columns: Optional[list] = None) -> bytes:
     """Genera un reporte PDF unificado con diseño ejecutivo vertical por persona separado por PageBreaks."""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
@@ -1007,7 +1300,6 @@ def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback =
     schedules_map = {}
     db = SessionLocal()
     try:
-        # Cargamos todos los empleados con sus horarios asociados
         employees = db.query(Employee).options(joinedload(Employee.schedule)).all()
         for emp in employees:
             if emp.schedule and emp.schedule.work_days:
@@ -1033,17 +1325,16 @@ def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback =
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        topMargin=0.8*cm, bottomMargin=0.8*cm, leftMargin=0.8*cm, rightMargin=0.8*cm
+        topMargin=0.8*cm, bottomMargin=1.6*cm, leftMargin=0.8*cm, rightMargin=0.8*cm
     )
     
     elements = []
     total_emps = len(sorted_emp_ids)
     for idx, emp_id in enumerate(sorted_emp_ids):
         emp_summaries = grouped[emp_id]
-        # Ordenar registros cronológicamente
         emp_summaries = sorted(emp_summaries, key=lambda x: x.get("date", ""))
         
-        emp_flowables = _get_employee_flowables(emp_summaries, granularity, schedules_map=schedules_map)
+        emp_flowables = _get_employee_flowables(emp_summaries, granularity, schedules_map=schedules_map, columns=columns)
         elements.extend(emp_flowables)
         
         # Añadir salto de página si no es el último empleado
@@ -1056,13 +1347,11 @@ def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback =
             except Exception as pe:
                 print(f"Error en progress_callback: {pe}")
             
-    doc.build(elements)
+    doc.build(elements, canvasmaker=NumberedCanvas)
     return buf.getvalue()
 
 
-def generate_attendance_pdf(summaries: list, granularity: str, progress_callback = None) -> bytes:
+def generate_attendance_pdf(summaries: list, granularity: str, progress_callback = None, columns: Optional[list] = None) -> bytes:
     """Genera un reporte de asistencia unificado en PDF (agrupado por persona si hay varios)."""
-    return _generate_grouped_pdf(summaries, granularity, progress_callback=progress_callback)
-
-
+    return _generate_grouped_pdf(summaries, granularity, progress_callback=progress_callback, columns=columns)
 

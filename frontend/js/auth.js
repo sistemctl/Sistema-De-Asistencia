@@ -175,3 +175,31 @@ const Modal = {
     };
   },
 };
+
+// ── Avatar color helper ───────────────────────────────────────────────────────
+// Genera un color bg+text consistente a partir del nombre del empleado
+function avatarColor(name) {
+  const palettes = [
+    { bg: 'rgba(99,102,241,0.14)',  color: '#6366f1' },  // indigo
+    { bg: 'rgba(14,165,233,0.14)',  color: '#0ea5e9' },  // sky
+    { bg: 'rgba(16,185,129,0.14)', color: '#059669' },   // emerald
+    { bg: 'rgba(245,158,11,0.14)', color: '#d97706' },   // amber
+    { bg: 'rgba(239,68,68,0.14)',  color: '#dc2626' },   // red
+    { bg: 'rgba(168,85,247,0.14)', color: '#9333ea' },   // purple
+    { bg: 'rgba(236,72,153,0.14)', color: '#db2777' },   // pink
+    { bg: 'rgba(20,184,166,0.14)', color: '#0d9488' },   // teal
+  ];
+  let hash = 0;
+  const str = (name || '?').toUpperCase();
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return palettes[Math.abs(hash) % palettes.length];
+}
+
+// Helper para generar el HTML del avatar con color dinámico
+function avatarHtml(name, extraStyle = '') {
+  const c = avatarColor(name);
+  const initial = (name || '?').charAt(0).toUpperCase();
+  return `<div class="emp-avatar" style="background:${c.bg};color:${c.color};font-weight:700;${extraStyle}">${initial}</div>`;
+}

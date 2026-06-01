@@ -37,6 +37,7 @@ def get_attendance_report(
     position_id: Optional[int] = Query(None),
     schedule_id: Optional[int] = Query(None),
     export: Optional[str] = Query(None),  # 'excel' or 'pdf'
+    columns: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -62,8 +63,10 @@ def get_attendance_report(
         schedule_id=schedule_id
     )
 
+    cols_list = columns.split(",") if columns else None
+
     if export == "excel":
-        content = generate_attendance_excel(results, granularity)
+        content = generate_attendance_excel(results, granularity, columns=cols_list)
         filename = f"reporte_asistencia_{granularity}_{date.today().isoformat()}.xlsx"
         return StreamingResponse(
             io.BytesIO(content),
@@ -71,7 +74,7 @@ def get_attendance_report(
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     elif export == "pdf":
-        content = generate_attendance_pdf(results, granularity)
+        content = generate_attendance_pdf(results, granularity, columns=cols_list)
         filename = f"reporte_asistencia_{granularity}_{date.today().isoformat()}.pdf"
         return StreamingResponse(
             io.BytesIO(content),
@@ -103,6 +106,7 @@ def get_attendance_report_async(
     department_id: Optional[int] = Query(None),
     position_id: Optional[int] = Query(None),
     schedule_id: Optional[int] = Query(None),
+    columns: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -135,13 +139,15 @@ def get_attendance_report_async(
         "error": None
     }
 
-    def background_pdf_gen(tid: str, res: list, gran: str):
+    cols_list = columns.split(",") if columns else None
+
+    def background_pdf_gen(tid: str, res: list, gran: str, cols: Optional[list]):
         try:
             def update_progress(p: int):
                 if tid in report_tasks:
                     report_tasks[tid]["progress"] = p
 
-            content = generate_attendance_pdf(res, gran, progress_callback=update_progress)
+            content = generate_attendance_pdf(res, gran, progress_callback=update_progress, columns=cols)
             if tid in report_tasks:
                 report_tasks[tid]["content"] = content
                 report_tasks[tid]["status"] = "completed"
@@ -153,7 +159,7 @@ def get_attendance_report_async(
                 report_tasks[tid]["status"] = "failed"
                 report_tasks[tid]["error"] = str(e)
 
-    t = threading.Thread(target=background_pdf_gen, args=(task_id, results, granularity), daemon=True)
+    t = threading.Thread(target=background_pdf_gen, args=(task_id, results, granularity, cols_list), daemon=True)
     t.start()
 
     return {"task_id": task_id, "status": "processing"}
@@ -265,11 +271,14 @@ def export_consolidated(
     department_id: Optional[int] = Query(None),
     position_id: Optional[int] = Query(None),
     schedule_id: Optional[int] = Query(None),
+    columns: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     df = datetime.combine(date_from, datetime.min.time()) if date_from else None
     dt = datetime.combine(date_to, datetime.max.time()) if date_to else None
+
+    cols_list = columns.split(",") if columns else None
 
     content = generate_consolidated_excel(
         db, 
@@ -277,7 +286,8 @@ def export_consolidated(
         date_to=dt,
         department_id=department_id,
         position_id=position_id,
-        schedule_id=schedule_id
+        schedule_id=schedule_id,
+        columns=cols_list
     )
     filename = f"consolidado_asistencia_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
@@ -458,3 +468,177 @@ def get_analytics(
             "late": trend_late
         }
     }
+
+
+@router.get("/analytics/details")
+def get_analytics_details(
+    type: str,
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    search: Optional[str] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from backend.utils import get_local_now
+    from datetime import datetime, timedelta
+    from backend.models import Employee, AttendanceRecord
+
+    if not date_from:
+        date_from = (get_local_now() - timedelta(days=30)).date()
+    if not date_to:
+        date_to = get_local_now().date()
+
+    df = datetime.combine(date_from, datetime.min.time())
+    dt = datetime.combine(date_to, datetime.max.time())
+
+    employee_query = db.query(Employee).filter(Employee.is_active == True)
+    if search:
+        employee_query = employee_query.filter(
+            (Employee.first_name.ilike(f"%{search}%")) |
+            (Employee.last_name.ilike(f"%{search}%")) |
+            (Employee.employee_code.ilike(f"%{search}%"))
+        )
+    if department_id:
+        employee_query = employee_query.filter(Employee.department_id == department_id)
+    if position_id:
+        employee_query = employee_query.filter(Employee.position_id == position_id)
+    if schedule_id:
+        employee_query = employee_query.filter(Employee.schedule_id == schedule_id)
+
+    employees = employee_query.all()
+    employee_ids = [e.id for e in employees]
+
+    if not employee_ids:
+        return []
+
+    records = db.query(AttendanceRecord).filter(
+        AttendanceRecord.event_time >= df,
+        AttendanceRecord.event_time <= dt,
+        AttendanceRecord.employee_id.in_(employee_ids)
+    ).all()
+
+    entries = [r for r in records if r.event_type == "entry"]
+
+    result = []
+
+    if type == "punctuality":
+        emp_stats = {}
+        for emp in employees:
+            emp_stats[emp.id] = {"emp": emp, "total": 0, "ontime": 0}
+
+        for r in entries:
+            if r.employee_id in emp_stats:
+                emp_stats[r.employee_id]["total"] += 1
+                if not r.is_late:
+                    emp_stats[r.employee_id]["ontime"] += 1
+
+        ranking = []
+        for eid, stats in emp_stats.items():
+            emp = stats["emp"]
+            total = stats["total"]
+            ontime = stats["ontime"]
+            late = total - ontime
+            rate = round((ontime / total * 100) if total else 100, 1)
+            ranking.append({
+                "employee_code": emp.employee_code,
+                "full_name": emp.full_name,
+                "department": emp.department.name if emp.department else "-",
+                "total_entries": total,
+                "ontime_entries": ontime,
+                "late_entries": late,
+                "rate": f"{rate}%",
+                "sort_rate": rate
+            })
+        ranking.sort(key=lambda x: x["sort_rate"])
+        return ranking
+
+    elif type == "lates":
+        late_entries = [r for r in entries if r.is_late]
+        late_entries.sort(key=lambda x: x.event_time, reverse=True)
+
+        employees_by_id = {e.id: e for e in employees}
+        for r in late_entries:
+            emp = employees_by_id.get(r.employee_id)
+            if emp:
+                delay_str = "Tarde"
+                if emp.schedule and emp.schedule.work_start_time:
+                    try:
+                        sched_start = emp.schedule.work_start_time
+                        sched_dt = datetime.combine(r.event_time.date(), datetime.strptime(sched_start, "%H:%M").time())
+                        diff = (r.event_time - sched_dt).total_seconds() / 60.0
+                        if diff > 0:
+                            delay_str = f"{int(diff)} min tarde"
+                    except Exception:
+                        pass
+
+                result.append({
+                    "employee_code": emp.employee_code,
+                    "full_name": emp.full_name,
+                    "department": emp.department.name if emp.department else "-",
+                    "date": r.event_time.date().isoformat(),
+                    "schedule_time": emp.schedule.work_start_time if emp.schedule else "-",
+                    "entry_time": r.event_time.strftime("%I:%M %p"),
+                    "delay": delay_str
+                })
+        return result
+
+    elif type == "avg_entry":
+        emp_entries = {}
+        for emp in employees:
+            emp_entries[emp.id] = {"emp": emp, "times": []}
+
+        for r in entries:
+            if r.employee_id in emp_entries:
+                sec = r.event_time.hour * 3600 + r.event_time.minute * 60 + r.event_time.second
+                emp_entries[r.employee_id]["times"].append(sec)
+
+        for eid, data_emp in emp_entries.items():
+            emp = data_emp["emp"]
+            times = data_emp["times"]
+            if times:
+                avg_sec = sum(times) // len(times)
+                avg_hour = avg_sec // 3600
+                avg_min = (avg_sec % 3600) // 60
+                avg_str = f"{avg_hour:02d}:{avg_min:02d}"
+                avg_dt = datetime.strptime(avg_str, "%H:%M")
+                avg_formatted = avg_dt.strftime("%I:%M %p")
+            else:
+                avg_formatted = "-"
+
+            result.append({
+                "employee_code": emp.employee_code,
+                "full_name": emp.full_name,
+                "department": emp.department.name if emp.department else "-",
+                "schedule_time": emp.schedule.work_start_time if emp.schedule else "-",
+                "avg_entry": avg_formatted
+            })
+        return result
+
+    elif type == "critical_day":
+        day_names = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        lates_by_day = {i: 0 for i in range(7)}
+        ontime_by_day = {i: 0 for i in range(7)}
+
+        for r in entries:
+            w = r.event_time.weekday()
+            if r.is_late:
+                lates_by_day[w] += 1
+            else:
+                ontime_by_day[w] += 1
+
+        for i in range(7):
+            total = lates_by_day[i] + ontime_by_day[i]
+            rate = round((ontime_by_day[i] / total * 100) if total else 100, 1)
+            result.append({
+                "day_name": day_names[i],
+                "total_entries": total,
+                "ontime_entries": ontime_by_day[i],
+                "late_entries": lates_by_day[i],
+                "rate": f"{rate}%"
+            })
+        return result
+
+    return []

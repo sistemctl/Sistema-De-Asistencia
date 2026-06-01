@@ -11,7 +11,7 @@ def parse_time(time_str: str) -> Optional[datetime.time]:
     except ValueError:
         return None
 
-def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: SystemConfig) -> Dict:
+def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: SystemConfig, daily_schedule = None) -> Dict:
     """
     Calculates the valid punches for an employee on a specific date, based on their schedule and system rules.
     """
@@ -26,6 +26,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         "employee_name": employee.full_name,
         "employee_code": employee.employee_code,
         "department": employee.department.name if employee.department else "-",
+        "photo_path": employee.photo_path,
         "date": target_date.isoformat(),
         "schedule_type": "none",
         "punches": {
@@ -38,9 +39,31 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         "is_present": False,
         "is_late": False,
         "missing_punches": False,
+        "hours_worked": None,         # float hours, e.g. 8.5
+        "hours_worked_str": "-",      # formatted, e.g. "8 h 30 min"
     }
 
-    schedule = employee.schedule
+    # Determine if there is a daily override, otherwise fallback to static schedule
+    is_off = False
+    if daily_schedule is not None:
+        if daily_schedule.is_off:
+            schedule = None
+            is_off = True
+        else:
+            schedule = daily_schedule.schedule
+    else:
+        schedule = employee.schedule
+        if schedule:
+            try:
+                work_days = [int(w) for w in schedule.work_days.split(",") if w.strip()]
+                is_off = (target_date.weekday() + 1) not in work_days
+            except Exception:
+                is_off = False
+        else:
+            is_off = True
+
+    summary["is_off"] = is_off
+
     if not schedule:
         # If no schedule, fallback to simply first and last punch of the day
         if day_records:
@@ -48,8 +71,15 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             summary["is_present"] = True
             if len(day_records) > 1:
                 summary["punches"]["exit_1"] = day_records[-1].event_time.isoformat()
+                # Calculate hours worked
+                worked_secs = (day_records[-1].event_time - day_records[0].event_time).total_seconds()
+                summary["hours_worked"] = round(worked_secs / 3600, 2)
+                h, m = divmod(int(worked_secs / 60), 60)
+                summary["hours_worked_str"] = f"{h} h {m:02d} min"
             else:
                 summary["missing_punches"] = True
+        if is_off:
+            summary["schedule_type"] = "off"
         return summary
 
     summary["schedule_type"] = schedule.shift_type
@@ -129,6 +159,19 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
                         summary["is_present"] = False
                 summary["missing_punches"] = True
 
+        # Calculate hours_worked for continuous shift
+        e1 = summary["punches"]["entry_1"]
+        x1 = summary["punches"]["exit_1"]
+        if e1 and x1:
+            try:
+                worked_secs = (datetime.fromisoformat(x1) - datetime.fromisoformat(e1)).total_seconds()
+                if worked_secs > 0:
+                    summary["hours_worked"] = round(worked_secs / 3600, 2)
+                    h, m = divmod(int(worked_secs / 60), 60)
+                    summary["hours_worked_str"] = f"{h} h {m:02d} min"
+            except Exception:
+                pass
+
     elif schedule.shift_type == "split":
         # 2 Entries, 2 Exits
         s_start = parse_time(schedule.work_start_time)
@@ -205,6 +248,24 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             if punches["entry_1"] or punches["exit_1"] or punches["entry_2"] or punches["exit_2"]:
                 summary["missing_punches"] = True
 
+        # Calculate hours_worked for split shift (session 1 + session 2)
+        e1 = summary["punches"]["entry_1"]
+        x1 = summary["punches"]["exit_1"]
+        e2 = summary["punches"]["entry_2"]
+        x2 = summary["punches"]["exit_2"]
+        total_secs = 0
+        try:
+            if e1 and x1:
+                total_secs += max((datetime.fromisoformat(x1) - datetime.fromisoformat(e1)).total_seconds(), 0)
+            if e2 and x2:
+                total_secs += max((datetime.fromisoformat(x2) - datetime.fromisoformat(e2)).total_seconds(), 0)
+            if total_secs > 0:
+                summary["hours_worked"] = round(total_secs / 3600, 2)
+                h, m = divmod(int(total_secs / 60), 60)
+                summary["hours_worked_str"] = f"{h} h {m:02d} min"
+        except Exception:
+            pass
+
     return summary
 
 def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
@@ -220,6 +281,13 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
     
     config = db.query(SystemConfig).first()
     
+    # Preload daily schedule overrides
+    from backend.models import EmployeeDailySchedule
+    dailies = db.query(EmployeeDailySchedule).filter(
+        EmployeeDailySchedule.date == target_date
+    ).all()
+    dailies_map = {d.employee_id: d for d in dailies}
+    
     # group by employee
     from collections import defaultdict
     records_by_emp = defaultdict(list)
@@ -230,7 +298,13 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
     summaries = []
     for emp in employees:
         emp_records = records_by_emp.get(emp.id, [])
-        summary = calculate_daily_summary(emp, emp_records, target_date, config)
+        summary = calculate_daily_summary(
+            emp, 
+            emp_records, 
+            target_date, 
+            config, 
+            daily_schedule=dailies_map.get(emp.id)
+        )
         summaries.append(summary)
         
     return summaries
@@ -300,12 +374,27 @@ def process_attendance_report(
             r_date = r.event_time.date()
             records_by_emp_day[(r.employee_id, r_date)].append(r)
 
+    # Preload daily schedule overrides
+    from backend.models import EmployeeDailySchedule
+    dailies = db.query(EmployeeDailySchedule).filter(
+        EmployeeDailySchedule.employee_id.in_(emp_ids),
+        EmployeeDailySchedule.date >= date_from,
+        EmployeeDailySchedule.date <= date_to
+    ).all()
+    dailies_map = {(d.employee_id, d.date): d for d in dailies}
+
     # 4. Generate daily summaries
     daily_summaries = []
     for emp in employees:
         for d in days:
             emp_records = records_by_emp_day.get((emp.id, d), [])
-            summary = calculate_daily_summary(emp, emp_records, d, config)
+            summary = calculate_daily_summary(
+                emp, 
+                emp_records, 
+                d, 
+                config, 
+                daily_schedule=dailies_map.get((emp.id, d))
+            )
             daily_summaries.append(summary)
 
     if granularity == "daily":
@@ -336,6 +425,7 @@ def process_attendance_report(
                 "employee_name": first["employee_name"],
                 "employee_code": first["employee_code"],
                 "department": first["department"],
+                "photo_path": first.get("photo_path"),
                 "date": p_start.isoformat(),
                 "schedule_type": first["schedule_type"],
                 "punches": {
@@ -381,6 +471,7 @@ def process_attendance_report(
                 "employee_name": first["employee_name"],
                 "employee_code": first["employee_code"],
                 "department": first["department"],
+                "photo_path": first.get("photo_path"),
                 "date": p_start.isoformat(),
                 "schedule_type": first["schedule_type"],
                 "punches": {

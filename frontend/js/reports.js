@@ -4,11 +4,14 @@ const ReportsPage = {
   currentTab: 'general',
   doughnutChart: null,
   lineChart: null,
+  loadedTabs: { analytics: false, records: false },
 
   async render() {
+    const hash = window.location.hash;
+    const isRecords = hash.includes('/records') || hash.includes('-records');
+
     document.getElementById('pageContent').innerHTML = `
       <style>
-
         /* Estilos para el Selector de Búsqueda Dinámica */
         .searchable-select-item {
           padding: 8px 12px;
@@ -31,198 +34,301 @@ const ReportsPage = {
           background: var(--border);
           border-radius: 3px;
         }
+        .export-menu-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          color: var(--text-2);
+          font-size: 0.82rem;
+          text-decoration: none;
+          font-weight: 500;
+          transition: background 0.15s, color 0.15s;
+        }
+        .export-menu-item:hover {
+          background: var(--surface-2);
+          color: var(--accent) !important;
+        }
+        .reports-tab-btn {
+          padding: 12px 24px;
+          background: none;
+          border: none;
+          border-bottom: 3px solid transparent;
+          color: var(--text-3);
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.92rem;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .reports-tab-btn:hover {
+          color: var(--text-1);
+        }
+        .reports-tab-btn.active {
+          border-bottom-color: var(--accent);
+          color: var(--accent);
+          font-weight: 700;
+        }
+
+        /* KPIs más compactos para la pestaña de Analíticas */
+        #repTabContentAnalytics .kpi-card {
+          padding: 16px 20px;
+        }
+        #repTabContentAnalytics .kpi-icon {
+          width: 36px;
+          height: 36px;
+          font-size: 16px;
+          margin-bottom: 10px;
+          border-radius: 8px;
+        }
+        #repTabContentAnalytics .kpi-icon svg {
+          width: 18px;
+          height: 18px;
+        }
+        #repTabContentAnalytics .kpi-value {
+          font-size: 1.65rem;
+        }
+        #repTabContentAnalytics .kpi-label {
+          font-size: 0.8rem;
+          margin-top: 6px;
+        }
+        #repTabContentAnalytics .kpi-sub {
+          font-size: 0.7rem;
+          margin-top: 2px;
+        }
+
+        /* Gráficos más compactos */
+        #repTabContentAnalytics .chart-container {
+          height: 200px !important;
+        }
+        #repTabContentAnalytics .card {
+          padding: 16px 20px;
+        }
       </style>
 
-      <!-- ── TARJETA 1: FILTROS DE CONSULTA ── -->
-      <div class="card" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
-        <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-          Filtros de Búsqueda
-        </div>
-        
-        <div class="grid-4" style="gap: 16px; align-items: flex-end; margin-bottom: 16px;">
-          <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
-          <div class="field" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
-            <div class="searchable-select-wrapper" style="position: relative; width: 100%;">
-              <input type="text" id="repFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
-              <input type="hidden" id="repFilterEntity" value="" />
-              <div class="searchable-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                <!-- Se llena dinámicamente -->
+      <!-- ── Navegación por Pestañas de Reportes ── -->
+      <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 24px;">
+        <button id="repTabBtnAnalytics" class="reports-tab-btn ${isRecords ? '' : 'active'}" onclick="ReportsPage.switchReportTab('analytics')">
+          📊 Analíticas y Consulta
+        </button>
+        <button id="repTabBtnRecords" class="reports-tab-btn ${isRecords ? 'active' : ''}" onclick="ReportsPage.switchReportTab('records')">
+          📋 Registros Detallados
+        </button>
+      </div>
+
+      <!-- ── PESTAÑA 1: ANALÍTICAS Y FILTROS ── -->
+      <div id="repTabContentAnalytics" style="${isRecords ? 'display: none;' : ''}">
+        <!-- ── TARJETA 1: FILTROS DE CONSULTA (ANALÍTICAS) ── -->
+        <div class="card" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            Filtros de Búsqueda (Analíticas)
+          </div>
+          
+          <div class="grid-3" style="gap: 16px; align-items: flex-end; margin-bottom: 16px;">
+            <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
+            <div class="field" style="margin: 0;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
+              <div class="searchable-select-wrapper an-select-wrapper" style="position: relative; width: 100%;">
+                <input type="text" id="anFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
+                <input type="hidden" id="anFilterEntity" value="" />
+                <div class="searchable-select-dropdown an-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                  <!-- Se llena dinámicamente -->
+                </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Selector Departamento -->
-          <div class="field" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Departamento</label>
-            <select id="repFilterDepartment" onchange="ReportsPage.onDropdownFilterChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-              <option value="">🏢 Todos los departamentos</option>
-            </select>
+            
+            <!-- Selector Departamento -->
+            <div class="field" style="margin: 0;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Departamento</label>
+              <select id="anFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <option value="">🏢 Todos los departamentos</option>
+              </select>
+            </div>
+
+            <!-- Selector Cargo -->
+            <div class="field" style="margin: 0;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Cargo</label>
+              <select id="anFilterPosition" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <option value="">💼 Todos los cargos</option>
+              </select>
+            </div>
           </div>
 
-          <!-- Selector Cargo -->
-          <div class="field" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Cargo</label>
-            <select id="repFilterPosition" onchange="ReportsPage.onDropdownFilterChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-              <option value="">💼 Todos los cargos</option>
-            </select>
+          <div class="grid-3" style="gap: 16px; align-items: flex-end; margin-bottom: 20px;">
+            <!-- Selector Horario -->
+            <div class="field" style="margin: 0;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Horario</label>
+              <select id="anFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <option value="">🕒 Todos los horarios</option>
+              </select>
+            </div>
+            
+            <!-- Selector de Rango de Fechas Único -->
+            <div class="field" style="margin: 0; grid-column: span 2;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
+              <input type="text" id="anDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+            </div>
           </div>
 
-          <!-- Selector Horario -->
-          <div class="field" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Horario</label>
-            <select id="repFilterSchedule" onchange="ReportsPage.onDropdownFilterChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-              <option value="">🕒 Todos los horarios</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid-4" style="gap: 16px; align-items: flex-end;">
-          <!-- Selector Granularidad -->
-          <div class="field" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Granularidad / Vista</label>
-            <select id="repGranularity" onchange="ReportsPage.onGranularityChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-              <option value="daily">📅 Vista Diaria</option>
-              <option value="weekly">📅 Vista Semanal</option>
-              <option value="monthly">📅 Vista Mensual</option>
-            </select>
-          </div>
-          
-          <!-- Selector de Rango de Fechas Único -->
-          <div class="field" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
-            <input type="text" id="unifiedDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
-          </div>
-
-          <!-- Espaciador -->
-          <div class="field" style="margin: 0;"></div>
-          
-          <!-- Botón Buscar -->
-          <div>
-            <button class="btn btn-primary" onclick="ReportsPage.onFilterChange()" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 600;">
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('an')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              Limpiar Filtros
+            </button>
+            <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('an')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
               Aplicar Filtros
             </button>
           </div>
         </div>
+
+        <div id="repAnalyticsDashboard">
+          <!-- ── TARJETAS DE KPI CORPORATE PRECISION ── -->
+          <div class="grid-4" style="margin-bottom: 24px;">
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('punctuality')">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Puntualidad General</span>
+              <span class="corp-display-lg" id="anTasaAsistencia">-</span>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Entradas sin tardanza</span>
+            </div>
+            
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('lates')">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Total Tardanzas</span>
+              <span class="corp-display-lg" id="anTotalTardanzas" style="color: var(--corp-secondary);">-</span>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Registros con retraso</span>
+            </div>
+            
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('avg_entry')">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Hora Promedio Entrada</span>
+              <span class="corp-display-lg" id="anPromedioEntrada">-</span>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Llegada general</span>
+            </div>
+            
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('critical_day')">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Día Crítico</span>
+              <span class="corp-display-lg" id="anDiaCritico">-</span>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Más retrasos</span>
+            </div>
+          </div>
+
+          <!-- ── GRÁFICOS ANALÍTICOS SINCRONIZADOS ── -->
+          <div class="grid-2" style="margin-bottom: 24px;">
+            <div class="corp-card" style="margin:0;">
+              <div style="margin-bottom: 24px; border-bottom: 1px solid var(--corp-outline); padding-bottom: 12px;">
+                <span class="corp-label-caps" style="display: block;">Distribución del Estado de Asistencia</span>
+                <span class="corp-body-sm" style="color: var(--corp-on-surface-var);">Resumen porcentual del comportamiento del personal</span>
+              </div>
+              <div class="chart-container" style="height:250px;"><canvas id="anDoughnutChart"></canvas></div>
+            </div>
+            
+            <div class="corp-card" style="margin:0;">
+              <div style="margin-bottom: 24px; border-bottom: 1px solid var(--corp-outline); padding-bottom: 12px;">
+                <span class="corp-label-caps" style="display: block;">Tendencia de Asistencia Diaria</span>
+                <span class="corp-body-sm" style="color: var(--corp-on-surface-var);">Evolución de puntualidad y retrasos a lo largo del tiempo</span>
+              </div>
+              <div class="chart-container" style="height:250px;"><canvas id="anLineChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TABLA COMPARATIVA DE ANALÍTICAS ── -->
+        <div id="repAnalyticsTableContainer" style="display:none; margin-bottom: 24px;"></div>
       </div>
 
-      <!-- ── TARJETA 2: ACCIONES DE EXPORTACIÓN Y DESCARGA ── -->
-      <div class="card" style="margin-bottom: 24px;">
-        <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Exportación de Reportes
-        </div>
-        
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn btn-success" onclick="ReportsPage.exportReport('excel')" style="flex: 1; min-width: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.82rem; padding: 12px;">
-            <span>📊</span> Descargar Excel Detallado
-          </button>
-          <button class="btn btn-primary" onclick="ReportsPage.exportReport('pdf')" style="flex: 1; min-width: 200px; background: var(--accent); border-color: var(--accent); color: #ffffff; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.82rem; padding: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);">
-            <span>📄</span> Descargar PDF Imprimible
-          </button>
-          <button class="btn btn-success" onclick="ReportsPage.exportConsolidated()" style="flex: 1; min-width: 200px; background: rgba(0, 230, 118, 0.08); border-color: rgba(0, 230, 118, 0.25); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.82rem; padding: 12px;">
-            <span>📅</span> Descargar Consolidado Diario
-          </button>
-        </div>
-      </div>
+      <!-- ── PESTAÑA 2: REGISTROS DETALLADOS ── -->
+      <div id="repTabContentRecords" style="${isRecords ? '' : 'display: none;'}">
+        <!-- ── UNIFICACIÓN: FILTROS Y TABLA EN UN SOLO CUADRO ── -->
+        <div class="card" style="overflow: visible; z-index: 10;">
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            Filtros de Búsqueda (Registros)
+          </div>
+          
+          <!-- Elementos ocultos pero necesarios para compatibilidad lógica -->
+          <select id="recFilterDepartment" style="display: none;"><option value=""></option></select>
+          <select id="recFilterPosition" style="display: none;"><option value=""></option></select>
+          <select id="recFilterSchedule" style="display: none;"><option value=""></option></select>
+          <select id="recGranularity" style="display: none;"><option value="daily" selected></option></select>
 
-      <div id="repAnalyticsDashboard">
-        <!-- ── TARJETAS DE KPI PREMIUM REDISEÑADAS ── -->
-        <div class="grid-4" style="margin-bottom: 24px;">
-          <div class="kpi-card" style="--accent-color:var(--accent);">
-            <div class="kpi-icon">
-              <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            </div>
-            <div class="kpi-value" id="anTasaAsistencia">-</div>
-            <div class="kpi-label">Puntualidad General</div>
-            <div class="kpi-sub">Entradas sin tardanza en el período</div>
-          </div>
-          
-          <div class="kpi-card" style="--accent-color:var(--warning);">
-            <div class="kpi-icon">
-              <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            </div>
-            <div class="kpi-value" id="anTotalTardanzas">-</div>
-            <div class="kpi-label">Total Tardanzas</div>
-            <div class="kpi-sub">Registros marcados como tarde</div>
-          </div>
-          
-          <div class="kpi-card" style="--accent-color:var(--success);">
-            <div class="kpi-icon">
-              <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            </div>
-            <div class="kpi-value" id="anPromedioEntrada">-</div>
-            <div class="kpi-label">Hora Promedio Entrada</div>
-            <div class="kpi-sub">Frecuencia promedio de llegada</div>
-          </div>
-          
-          <div class="kpi-card" style="--accent-color:var(--accent-2);">
-            <div class="kpi-icon">
-              <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            </div>
-            <div class="kpi-value" id="anDiaCritico">-</div>
-            <div class="kpi-label">Día Crítico</div>
-            <div class="kpi-sub">Día de la semana con más retrasos</div>
-          </div>
-        </div>
-
-        <!-- ── GRÁFICOS ANALÍTICOS SINCRONIZADOS ── -->
-        <div class="grid-2" style="margin-bottom: 24px;">
-          <div class="card" style="margin:0;">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Distribución del Estado de Asistencia</div>
-                <div class="card-sub">Resumen porcentual del comportamiento del personal</div>
+          <div class="grid-2" style="gap: 16px; align-items: flex-end; margin-bottom: 20px;">
+            <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
+            <div class="field" style="margin: 0;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
+              <div class="searchable-select-wrapper rec-select-wrapper" style="position: relative; width: 100%;">
+                <input type="text" id="recFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
+                <input type="hidden" id="recFilterEntity" value="" />
+                <div class="searchable-select-dropdown rec-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                  <!-- Se llena dinámicamente -->
+                </div>
               </div>
             </div>
-            <div class="chart-container" style="height:250px;"><canvas id="anDoughnutChart"></canvas></div>
+            
+            <!-- Selector de Rango de Fechas Único -->
+            <div class="field" style="margin: 0;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
+              <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+            </div>
           </div>
-          
-          <div class="card" style="margin:0;">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Tendencia de Asistencia Diaria</div>
-                <div class="card-sub">Evolución de puntualidad y retrasos a lo largo del tiempo</div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 24px;">
+            <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('rec')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              Limpiar Filtros
+            </button>
+            <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('rec')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              Aplicar Filtros
+            </button>
+          </div>
+
+          <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;" />
+
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Detalle de Registros del Reporte
+              </div>
+              <div class="card-sub">Registros estructurados según el tipo de horario del empleado y la granularidad seleccionada</div>
+            </div>
+
+            <!-- Dropdown Desplegable Premium de Exportación -->
+            <div style="position: relative;" id="repExportDropdownContainer">
+              <button class="btn btn-primary" onclick="ReportsPage.toggleExportMenu(event)" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Exportar...
+                <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div id="repExportMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px; width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100; overflow: hidden; animation: slideDown 0.2s ease;">
+                <a href="#" onclick="ReportsPage.exportReport('excel'); ReportsPage.closeExportMenu(); return false;" class="export-menu-item">
+                  <span style="font-size: 1.1rem; width: 20px;">📊</span> Excel Detallado
+                </a>
+                <a href="#" onclick="ReportsPage.exportReport('pdf'); ReportsPage.closeExportMenu(); return false;" class="export-menu-item" style="border-top: 1px solid var(--border);">
+                  <span style="font-size: 1.1rem; width: 20px;">📄</span> PDF Imprimible
+                </a>
+                <a href="#" onclick="ReportsPage.exportConsolidated(); ReportsPage.closeExportMenu(); return false;" class="export-menu-item" style="border-top: 1px solid var(--border);">
+                  <span style="font-size: 1.1rem; width: 20px;">📅</span> Consolidado Diario
+                </a>
               </div>
             </div>
-            <div class="chart-container" style="height:250px;"><canvas id="anLineChart"></canvas></div>
           </div>
-        </div>
-      </div>
 
-      <!-- ── TABLA COMPARATIVA DE ANALÍTICAS ── -->
-      <div id="repAnalyticsTableContainer" style="display:none; margin-bottom: 24px;"></div>
-
-      <!-- ── TABLA INTERACTIVA DE VISUALIZACIÓN DE REGISTROS ── -->
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">
-              <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              Detalle de Registros del Reporte
-            </div>
-            <div class="card-sub">Registros estructurados según el tipo de horario del empleado y la granularidad seleccionada</div>
+          <div class="table-wrap" style="margin-top:16px; border:none;">
+            <table class="corp-zebra-table">
+              <thead id="repTableHead">
+                <!-- Generado dinámicamente -->
+              </thead>
+              <tbody id="repTableBody">
+                <tr>
+                  <td colspan="10" style="text-align:center; color:var(--text-3); padding: 40px 20px;">
+                    <div class="spinner" style="margin: 0 auto 12px;"></div>
+                    Cargando reporte estructurado...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+          
+          <div class="pagination" id="repPagination" style="margin-top:16px;"></div>
         </div>
-
-        <div class="table-wrap" style="margin-top:16px;">
-          <table>
-            <thead id="repTableHead">
-              <!-- Generado dinámicamente -->
-            </thead>
-            <tbody id="repTableBody">
-              <tr>
-                <td colspan="10" style="text-align:center; color:var(--text-3); padding: 40px 20px;">
-                  <div class="spinner" style="margin: 0 auto 12px;"></div>
-                  Cargando reporte estructurado...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        
-        <div class="pagination" id="repPagination" style="margin-top:16px;"></div>
       </div>
     `;
 
@@ -231,8 +337,8 @@ const ReportsPage = {
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
 
-    // Inicializar el selector de fechas unificado
-    flatpickr("#unifiedDateRange", { 
+    // Inicializar los selectores de fechas independientes
+    flatpickr("#anDateRange", { 
       mode: "range", 
       locale: "es", 
       showMonths: 1,
@@ -241,114 +347,132 @@ const ReportsPage = {
       altFormat: "d M Y", 
       defaultDate: [thirtyDaysAgo, todayStr],
       onClose: () => {
-        // Se ejecuta cuando el selector de calendario se cierra
-        ReportsPage.onFilterChange();
+        ReportsPage.onFilterChange('an');
+      }
+    });
+
+    flatpickr("#recDateRange", { 
+      mode: "range", 
+      locale: "es", 
+      showMonths: 1,
+      dateFormat: "Y-m-d", 
+      altInput: true, 
+      altFormat: "d M Y", 
+      defaultDate: [thirtyDaysAgo, todayStr],
+      onClose: () => {
+        ReportsPage.onFilterChange('rec');
       }
     });
 
     // Cargar todas las opciones de los dropdowns y autocomplete
     await this.loadDropdownOptions();
 
-    // Configurar listeners del buscador dinámico
-    const input = document.getElementById('repFilterEntityInput');
-    const dropdown = document.querySelector('.searchable-select-dropdown');
-    
-    if (input && dropdown) {
-      input.addEventListener('focus', () => {
-        const available = this.getFilteredEmployees();
-        this.renderSearchableSelectItems(available);
-        dropdown.style.display = 'block';
-      });
+    // Configurar listeners del buscador dinámico para 'an' y 'rec'
+    ['an', 'rec'].forEach(prefix => {
+      const input = document.getElementById(`${prefix}FilterEntityInput`);
+      const dropdown = document.querySelector(`.${prefix}-dropdown`);
+      
+      if (input && dropdown) {
+        input.addEventListener('focus', () => {
+          const available = this.getFilteredEmployees(prefix);
+          this.renderSearchableSelectItems(available, prefix);
+          dropdown.style.display = 'block';
+        });
 
-      input.addEventListener('input', (e) => {
-        const query = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        const available = this.getFilteredEmployees();
-        if (!query) {
-          this.renderSearchableSelectItems(available);
-        } else {
-          const filtered = available.filter(item => item.searchable.includes(query));
-          this.renderSearchableSelectItems(filtered);
-        }
-      });
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          // Intentar seleccionar la primera coincidencia que no sea "Todos"
-          const firstItem = dropdown.querySelector('.searchable-select-item:not(.all-option)');
-          const allItem = dropdown.querySelector('.searchable-select-item');
-          const targetItem = firstItem || allItem;
-          if (targetItem) {
-            targetItem.click();
+        input.addEventListener('input', (e) => {
+          const query = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+          const available = this.getFilteredEmployees(prefix);
+          if (!query) {
+            this.renderSearchableSelectItems(available, prefix);
+          } else {
+            const filtered = available.filter(item => item.searchable.includes(query));
+            this.renderSearchableSelectItems(filtered, prefix);
           }
-        }
-      });
+        });
 
-      // Ocultar dropdown al hacer clic fuera
-      document.addEventListener('click', (e) => {
-        const wrapper = document.querySelector('.searchable-select-wrapper');
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstItem = dropdown.querySelector('.searchable-select-item:not(.all-option)');
+            const allItem = dropdown.querySelector('.searchable-select-item');
+            const targetItem = firstItem || allItem;
+            if (targetItem) {
+              targetItem.click();
+            }
+          }
+        });
+      }
+    });
+
+    // Listener global para clics fuera
+    document.addEventListener('click', (e) => {
+      ['an', 'rec'].forEach(prefix => {
+        const wrapper = document.querySelector(`.${prefix}-select-wrapper`);
+        const dropdown = document.querySelector(`.${prefix}-dropdown`);
+        const input = document.getElementById(`${prefix}FilterEntityInput`);
         if (wrapper && !wrapper.contains(e.target)) {
-          dropdown.style.display = 'none';
+          if (dropdown) dropdown.style.display = 'none';
           
-          // Reestablecer texto si lo dejó vacío o escribió algo no coincidente
-          const hiddenVal = document.getElementById('repFilterEntity')?.value;
+          const hiddenVal = document.getElementById(`${prefix}FilterEntity`)?.value;
           if (!hiddenVal) {
-            input.value = '';
+            if (input) input.value = '';
           } else {
             const currentObj = this.filterOptionsData.find(x => x.id == hiddenVal);
-            if (currentObj) {
+            if (currentObj && input) {
               input.value = currentObj.text;
             }
           }
         }
       });
-    }
+      
+      const expContainer = document.getElementById('repExportDropdownContainer');
+      if (expContainer && !expContainer.contains(e.target)) {
+        ReportsPage.closeExportMenu();
+      }
+    });
 
-    // Carga inicial sincronizada
-    await this.loadAnalytics();
-    await this.loadReportTable(1);
+    // Resetear banderas de pestañas cargadas
+    this.loadedTabs = { analytics: false, records: false };
+
+    // Cargar y mostrar la pestaña inicial
+    this.switchReportTab(isRecords ? 'records' : 'analytics');
   },
 
-  filterOptionsData: [],
-
   async loadDropdownOptions() {
-    const input = document.getElementById('repFilterEntityInput');
-    const hidden = document.getElementById('repFilterEntity');
-    const dropdown = document.querySelector('.searchable-select-dropdown');
-    if (!input || !dropdown) return;
-
-    hidden.value = '';
-    input.value = '';
-    input.placeholder = '👤 Todos los empleados';
-
     this.filterOptionsData = [];
 
     try {
       // 1. Cargar Departamentos
       const depts = await API.get('/api/employees/departments') || [];
-      const deptSel = document.getElementById('repFilterDepartment');
-      if (deptSel) {
-        deptSel.innerHTML = '<option value="">🏢 Todos los departamentos</option>' + 
-          depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-      }
+      ['an', 'rec'].forEach(prefix => {
+        const deptSel = document.getElementById(`${prefix}FilterDepartment`);
+        if (deptSel) {
+          deptSel.innerHTML = '<option value="">🏢 Todos los departamentos</option>' + 
+            depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        }
+      });
 
       // 2. Cargar Cargos
       const positions = await API.get('/api/employees/positions') || [];
-      const posSel = document.getElementById('repFilterPosition');
-      if (posSel) {
-        posSel.innerHTML = '<option value="">💼 Todos los cargos</option>' + 
-          positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-      }
+      ['an', 'rec'].forEach(prefix => {
+        const posSel = document.getElementById(`${prefix}FilterPosition`);
+        if (posSel) {
+          posSel.innerHTML = '<option value="">💼 Todos los cargos</option>' + 
+            positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        }
+      });
 
       // 3. Cargar Horarios
       const schedules = await API.get('/api/schedules') || [];
-      const schedSel = document.getElementById('repFilterSchedule');
-      if (schedSel) {
-        schedSel.innerHTML = '<option value="">🕒 Todos los horarios</option>' + 
-          schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-      }
+      ['an', 'rec'].forEach(prefix => {
+        const schedSel = document.getElementById(`${prefix}FilterSchedule`);
+        if (schedSel) {
+          schedSel.innerHTML = '<option value="">🕒 Todos los horarios</option>' + 
+            schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+      });
 
-      // 4. Cargar Empleados para buscador dinámico (con límite ampliado para evitar truncamiento)
+      // 4. Cargar Empleados para buscador dinámico
       const emps = await API.get('/api/employees?limit=5000') || [];
       this.filterOptionsData = emps.map(e => {
         const fullName = `${e.first_name} ${e.last_name} ${e.employee_code}`;
@@ -363,7 +487,16 @@ const ReportsPage = {
         };
       });
 
-      this.renderSearchableSelectItems(this.filterOptionsData);
+      ['an', 'rec'].forEach(prefix => {
+        const input = document.getElementById(`${prefix}FilterEntityInput`);
+        const hidden = document.getElementById(`${prefix}FilterEntity`);
+        if (input && hidden) {
+          hidden.value = '';
+          input.value = '';
+          input.placeholder = '👤 Todos los empleados';
+        }
+        this.renderSearchableSelectItems(this.filterOptionsData, prefix);
+      });
 
     } catch(e) {
       console.error('Error al cargar opciones de filtro de entidad', e);
@@ -371,10 +504,10 @@ const ReportsPage = {
     }
   },
 
-  getFilteredEmployees() {
-    const deptId = document.getElementById('repFilterDepartment')?.value;
-    const posId = document.getElementById('repFilterPosition')?.value;
-    const schedId = document.getElementById('repFilterSchedule')?.value;
+  getFilteredEmployees(prefix) {
+    const deptId = document.getElementById(`${prefix}FilterDepartment`)?.value;
+    const posId = document.getElementById(`${prefix}FilterPosition`)?.value;
+    const schedId = document.getElementById(`${prefix}FilterSchedule`)?.value;
     
     let list = this.filterOptionsData;
     if (deptId) list = list.filter(e => e.department_id == deptId);
@@ -383,15 +516,14 @@ const ReportsPage = {
     return list;
   },
 
-  onDropdownFilterChange() {
-    // Al cambiar departamento, cargo o turno, opcionalmente limpiamos la selección del empleado si no pertenece a la nueva selección.
-    const hiddenVal = document.getElementById('repFilterEntity')?.value;
+  onDropdownFilterChange(prefix) {
+    const hiddenVal = document.getElementById(`${prefix}FilterEntity`)?.value;
     if (hiddenVal) {
       const currentObj = this.filterOptionsData.find(x => x.id == hiddenVal);
       if (currentObj) {
-        const deptId = document.getElementById('repFilterDepartment')?.value;
-        const posId = document.getElementById('repFilterPosition')?.value;
-        const schedId = document.getElementById('repFilterSchedule')?.value;
+        const deptId = document.getElementById(`${prefix}FilterDepartment`)?.value;
+        const posId = document.getElementById(`${prefix}FilterPosition`)?.value;
+        const schedId = document.getElementById(`${prefix}FilterSchedule`)?.value;
         
         let isValid = true;
         if (deptId && currentObj.department_id != deptId) isValid = false;
@@ -399,25 +531,24 @@ const ReportsPage = {
         if (schedId && currentObj.schedule_id != schedId) isValid = false;
         
         if (!isValid) {
-          document.getElementById('repFilterEntity').value = '';
-          document.getElementById('repFilterEntityInput').value = '';
-          document.getElementById('repFilterEntityInput').placeholder = '👤 Todos los empleados';
+          document.getElementById(`${prefix}FilterEntity`).value = '';
+          document.getElementById(`${prefix}FilterEntityInput`).value = '';
+          document.getElementById(`${prefix}FilterEntityInput`).placeholder = '👤 Todos los empleados';
         }
       }
     }
     
-    this.onFilterChange();
+    this.onFilterChange(prefix);
   },
 
-  renderSearchableSelectItems(items) {
-    const dropdown = document.querySelector('.searchable-select-dropdown');
-    const input = document.getElementById('repFilterEntityInput');
-    const hidden = document.getElementById('repFilterEntity');
+  renderSearchableSelectItems(items, prefix) {
+    const dropdown = document.querySelector(`.${prefix}-dropdown`);
+    const input = document.getElementById(`${prefix}FilterEntityInput`);
+    const hidden = document.getElementById(`${prefix}FilterEntity`);
     if (!dropdown) return;
 
     dropdown.innerHTML = '';
 
-    // Opción por defecto (Todos)
     const allText = '👤 Todos los empleados';
 
     const allDiv = document.createElement('div');
@@ -428,7 +559,7 @@ const ReportsPage = {
       input.placeholder = allText;
       hidden.value = '';
       dropdown.style.display = 'none';
-      ReportsPage.onFilterChange();
+      ReportsPage.onFilterChange(prefix);
     });
     dropdown.appendChild(allDiv);
 
@@ -440,7 +571,7 @@ const ReportsPage = {
         input.value = item.text;
         hidden.value = item.id;
         dropdown.style.display = 'none';
-        ReportsPage.onFilterChange();
+        ReportsPage.onFilterChange(prefix);
       });
       dropdown.appendChild(div);
     });
@@ -493,14 +624,14 @@ const ReportsPage = {
       </div>
     `;
 
-    const { date_from, date_to } = this.getDates();
+    const { date_from, date_to } = this.getDates('anDateRange');
     let entities = [];
 
     try {
       let emps = await API.get('/api/employees?limit=5000') || [];
-      const deptId = document.getElementById('repFilterDepartment')?.value;
-      const posId = document.getElementById('repFilterPosition')?.value;
-      const schedId = document.getElementById('repFilterSchedule')?.value;
+      const deptId = document.getElementById('anFilterDepartment')?.value;
+      const posId = document.getElementById('anFilterPosition')?.value;
+      const schedId = document.getElementById('anFilterSchedule')?.value;
       
       if (deptId) emps = emps.filter(e => e.department_id == deptId);
       if (posId) emps = emps.filter(e => e.position_id == posId);
@@ -600,67 +731,147 @@ const ReportsPage = {
     }
   },
 
-  // Obtiene las fechas del Flatpickr unificado
-  getDates() {
-    const range = document.getElementById('unifiedDateRange').value;
+  // Obtiene las fechas del Flatpickr por ID de input
+  getDates(inputId) {
+    const el = document.getElementById(inputId);
+    const range = el ? el.value : '';
     const res = { date_from: '', date_to: '' };
     if (range) {
       const dates = range.split(range.includes(' a ') ? ' a ' : ' to ');
       if (dates.length > 0 && dates[0]) res.date_from = dates[0].trim();
       if (dates.length > 1 && dates[1]) res.date_to = dates[1].trim();
-      else if (dates.length === 1 && dates[0]) res.date_to = dates[0].trim();
+      else res.date_to = res.date_from; // Si no hay rango, date_to es igual a date_from
     }
     return res;
   },
 
-  // Evento al cambiar la selección del filtro principal o presionar filtrar
-  async onFilterChange() {
-    const filterVal = document.getElementById('repFilterEntity')?.value || '';
-    const dashboard = document.getElementById('repAnalyticsDashboard');
-    const compTable = document.getElementById('repAnalyticsTableContainer');
+  // Evento al cambiar la selección de algún filtro
+  async onFilterChange(prefix) {
+    if (prefix === 'an') {
+      const filterVal = document.getElementById('anFilterEntity')?.value || '';
+      const dashboard = document.getElementById('repAnalyticsDashboard');
+      const compTable = document.getElementById('repAnalyticsTableContainer');
 
-    if (filterVal === '') {
-      // Ocultar dashboard individual, mostrar tabla comparativa
-      if (dashboard) dashboard.style.display = 'none';
-      if (compTable) compTable.style.display = 'block';
-      await this.loadComparativeAnalytics();
-    } else {
-      // Mostrar dashboard individual, ocultar tabla comparativa
-      if (dashboard) dashboard.style.display = 'block';
-      if (compTable) compTable.style.display = 'none';
-      await this.loadAnalytics();
+      if (filterVal === '') {
+        if (dashboard) dashboard.style.display = 'none';
+        if (compTable) compTable.style.display = 'block';
+        await this.loadComparativeAnalytics();
+      } else {
+        if (dashboard) dashboard.style.display = 'block';
+        if (compTable) compTable.style.display = 'none';
+        await this.loadAnalytics();
+      }
+    } else if (prefix === 'rec') {
+      await this.loadReportTable(1);
     }
-
-    await this.loadReportTable(1);
   },
 
   // Evento al cambiar la granularidad (Diario, Semanal, Mensual)
   async onGranularityChange() {
-    // Al cambiar la granularidad, refrescamos la tabla con la nueva estructura
     await this.loadReportTable(1);
+  },
+
+  clearAllFilters(prefix) {
+    document.getElementById(`${prefix}FilterEntity`).value = '';
+    const input = document.getElementById(`${prefix}FilterEntityInput`);
+    if (input) {
+      input.value = '';
+      input.placeholder = '👤 Todos los empleados';
+    }
+    document.getElementById(`${prefix}FilterDepartment`).value = '';
+    document.getElementById(`${prefix}FilterPosition`).value = '';
+    document.getElementById(`${prefix}FilterSchedule`).value = '';
+    
+    if (prefix === 'rec') {
+      document.getElementById('recGranularity').value = 'daily';
+    }
+    
+    // Restablecer flatpickr fecha a los últimos 30 días
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+    const fp = document.getElementById(`${prefix}DateRange`)?._flatpickr;
+    if (fp) {
+      fp.setDate([thirtyDaysAgo, todayStr]);
+    }
+    
+    this.onFilterChange(prefix);
+  },
+
+  toggleExportMenu(event) {
+    event.stopPropagation();
+    const menu = document.getElementById('repExportMenu');
+    if (menu) {
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+  },
+
+  closeExportMenu() {
+    const menu = document.getElementById('repExportMenu');
+    if (menu) {
+      menu.style.display = 'none';
+    }
+  },
+
+  switchReportTab(tabName) {
+    const btnAnalytics = document.getElementById('repTabBtnAnalytics');
+    const btnRecords = document.getElementById('repTabBtnRecords');
+    const contentAnalytics = document.getElementById('repTabContentAnalytics');
+    const contentRecords = document.getElementById('repTabContentRecords');
+    
+    const isAnalyticsActive = btnAnalytics?.classList.contains('active');
+    const isRecordsActive = btnRecords?.classList.contains('active');
+    
+    if (tabName === 'analytics') {
+      if (isAnalyticsActive) return;
+      btnAnalytics?.classList.add('active');
+      btnRecords?.classList.remove('active');
+      if (contentAnalytics) contentAnalytics.style.display = 'block';
+      if (contentRecords) contentRecords.style.display = 'none';
+      if (window.location.hash.startsWith('#reports')) {
+        window.location.hash = 'reports/analytics';
+      }
+      if (!this.loadedTabs.analytics) {
+        this.loadedTabs.analytics = true;
+        this.loadAnalytics();
+      }
+    } else {
+      if (isRecordsActive) return;
+      btnAnalytics?.classList.remove('active');
+      btnRecords?.classList.add('active');
+      if (contentAnalytics) contentAnalytics.style.display = 'none';
+      if (contentRecords) contentRecords.style.display = 'block';
+      if (window.location.hash.startsWith('#reports')) {
+        window.location.hash = 'reports/records';
+      }
+      if (!this.loadedTabs.records) {
+        this.loadedTabs.records = true;
+        this.loadReportTable(1);
+      }
+    }
   },
 
   // Carga KPIs y Gráficos Sincronizados
   async loadAnalytics() {
     try {
-      const filterVal = document.getElementById('repFilterEntity')?.value || '';
-      const { date_from, date_to } = this.getDates();
+      const filterVal = document.getElementById('anFilterEntity')?.value || '';
+      const { date_from, date_to } = this.getDates('anDateRange');
       
       const params = new URLSearchParams();
       if (date_from) params.set('date_from', date_from);
       if (date_to) params.set('date_to', date_to);
 
       if (filterVal) {
-        const text = document.getElementById('repFilterEntityInput')?.value || '';
+        const text = document.getElementById('anFilterEntityInput')?.value || '';
         const match = text.match(/\(([^)]+)\)/);
         if (match && match[1]) {
           params.set('search', match[1]);
         }
       }
       
-      const deptId = document.getElementById('repFilterDepartment')?.value;
-      const posId = document.getElementById('repFilterPosition')?.value;
-      const schedId = document.getElementById('repFilterSchedule')?.value;
+      const deptId = document.getElementById('anFilterDepartment')?.value;
+      const posId = document.getElementById('anFilterPosition')?.value;
+      const schedId = document.getElementById('anFilterSchedule')?.value;
       if (deptId) params.set('department_id', deptId);
       if (posId) params.set('position_id', posId);
       if (schedId) params.set('schedule_id', schedId);
@@ -785,14 +996,14 @@ const ReportsPage = {
     }
   },
 
-  // Carga la Tabla de Datos según los Filtros Unificados
+  // Carga la Tabla de Datos según los Filtros de Registros (recPrefix)
   reportPage: 1,
 
   async loadReportTable(page = 1) {
     this.reportPage = page;
-    const filterVal = document.getElementById('repFilterEntity')?.value || '';
-    const repGranularity = document.getElementById('repGranularity').value;
-    const { date_from, date_to } = this.getDates();
+    const filterVal = document.getElementById('recFilterEntity')?.value || '';
+    const repGranularity = document.getElementById('recGranularity').value;
+    const { date_from, date_to } = this.getDates('recDateRange');
     
     const params = new URLSearchParams({
       page: this.reportPage,
@@ -805,9 +1016,9 @@ const ReportsPage = {
 
     if (filterVal) params.set('employee_id', filterVal);
     
-    const deptId = document.getElementById('repFilterDepartment')?.value;
-    const posId = document.getElementById('repFilterPosition')?.value;
-    const schedId = document.getElementById('repFilterSchedule')?.value;
+    const deptId = document.getElementById('recFilterDepartment')?.value;
+    const posId = document.getElementById('recFilterPosition')?.value;
+    const schedId = document.getElementById('recFilterSchedule')?.value;
     if (deptId) params.set('department_id', deptId);
     if (posId) params.set('position_id', posId);
     if (schedId) params.set('schedule_id', schedId);
@@ -866,29 +1077,26 @@ const ReportsPage = {
 
       tbody.innerHTML = data.items.map(r => {
         if (repGranularity === 'daily') {
-          let statusBadge = '<span class="badge badge-green">OK</span>';
-          if (!r.is_present) statusBadge = '<span class="badge badge-red">Ausente</span>';
-          else if (r.missing_punches) statusBadge = '<span class="badge badge-yellow">Incompleto</span>';
-          else if (r.is_late) statusBadge = '<span class="badge badge-yellow">Tardanza</span>';
+          let statusBadge = '<span class="corp-badge corp-badge-present">OK</span>';
+          if (!r.is_present) statusBadge = '<span class="corp-badge corp-badge-absent">Ausente</span>';
+          else if (r.missing_punches) statusBadge = '<span class="corp-badge corp-badge-late">Incompleto</span>';
+          else if (r.is_late) statusBadge = '<span class="corp-badge corp-badge-late">Tardanza</span>';
 
           const isSplit = r.schedule_type === 'split';
+          const typeBadge = isSplit ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continua</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>');
 
           return `
             <tr>
               <td>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <div class="emp-avatar" style="background:var(--accent-glow); color:var(--accent); font-weight:700;">${r.employee_name.charAt(0).toUpperCase()}</div>
+                  ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
                   <span style="font-weight:600">${r.employee_name}</span>
                 </div>
               </td>
               <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
               <td style="color:var(--text-2)">${r.department}</td>
               <td style="color:var(--text-2)">${new Date(r.date + "T00:00:00").toLocaleDateString('es')}</td>
-              <td>
-                <span class="badge ${isSplit ? 'badge-yellow' : (r.schedule_type === 'continuous' ? 'badge-green' : 'badge-gray')}">
-                  ${isSplit ? 'Partido' : (r.schedule_type === 'continuous' ? 'Continuo' : 'Sin Horario')}
-                </span>
-              </td>
+              <td>${typeBadge}</td>
               <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${formatTime(r.punches.entry_1)}</td>
               <td style="color:var(--text-3);font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.exit_1) : '—'}</td>
               <td style="color:var(--text-3);font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.entry_2) : '—'}</td>
@@ -904,21 +1112,17 @@ const ReportsPage = {
             <tr>
               <td>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <div class="emp-avatar" style="background:var(--accent-glow); color:var(--accent); font-weight:700;">${r.employee_name.charAt(0).toUpperCase()}</div>
+                  ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
                   <span style="font-weight:600">${r.employee_name}</span>
                 </div>
               </td>
               <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
               <td style="color:var(--text-2)">${r.department}</td>
               <td style="color:var(--text-2); font-weight:500;">${pStart} - ${pEnd}</td>
-              <td>
-                <span class="badge ${r.schedule_type === 'split' ? 'badge-yellow' : (r.schedule_type === 'continuous' ? 'badge-green' : 'badge-gray')}">
-                  ${r.schedule_type === 'split' ? 'Partido' : (r.schedule_type === 'continuous' ? 'Continuo' : 'Sin Horario')}
-                </span>
-              </td>
-              <td>${r.is_present ? '<span class="badge badge-green">Sí</span>' : '<span class="badge badge-red">No</span>'}</td>
-              <td>${r.is_late ? '<span class="badge badge-yellow">Sí</span>' : '<span class="badge badge-green">No</span>'}</td>
-              <td>${r.missing_punches ? '<span class="badge badge-yellow">Sí</span>' : '<span class="badge badge-green">No</span>'}</td>
+              <td>${r.schedule_type === 'split' ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continuo</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>')}</td>
+              <td>${r.is_present ? '<span class="corp-badge corp-badge-present">Sí</span>' : '<span class="corp-badge corp-badge-absent">No</span>'}</td>
+              <td>${r.is_late ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
+              <td>${r.missing_punches ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
               <td style="font-weight:600; font-family:'JetBrains Mono',monospace; text-align:center;">${r.total_raw_events}</td>
             </tr>
           `;
@@ -941,12 +1145,92 @@ const ReportsPage = {
     }
   },
 
-  // Exportar Excel o PDF Detallado unificado
+  // Abrir modal de selección de columnas antes de exportar
+  openColumnSelector(title, onConfirm) {
+    const html = `
+      <div style="padding: 10px 15px; text-align: left;">
+        <p style="font-weight: 600; font-size: 0.95rem; color: var(--text-1); margin-bottom: 16px; line-height: 1.4;">
+          Personaliza tu reporte seleccionando las columnas que deseas incluir:
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_period" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>📅 Fecha / Período</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_employee_code" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>🔑 Código de Empleado</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_employee_name" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>👤 Nombre Completo</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_department" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>🏢 Departamento</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_schedule" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>🕒 Horario Asignado</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_punches" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>📟 Marcaciones (Punches)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+            <input type="checkbox" id="col_status" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
+            <span>📊 Estado / Asistencia</span>
+          </label>
+        </div>
+      </div>
+    `;
+
+    const footer = `
+      <div style="display: flex; gap: 10px; width: 100%;">
+        <button class="btn btn-secondary" onclick="Modal.close()" style="flex: 1;">Cancelar</button>
+        <button class="btn btn-primary" id="btnConfirmExport" style="flex: 1; font-weight: 600;">Generar Reporte</button>
+      </div>
+    `;
+
+    Modal.open(title, html, footer);
+
+    document.getElementById('btnConfirmExport').addEventListener('click', () => {
+      const selected = [];
+      ['period', 'employee_code', 'employee_name', 'department', 'schedule', 'punches', 'status'].forEach(key => {
+        if (document.getElementById('col_' + key)?.checked) {
+          selected.push(key);
+        }
+      });
+
+      if (selected.length === 0) {
+        Toast.show('Debes seleccionar al menos una columna', 'warning');
+        return;
+      }
+
+      Modal.close();
+      onConfirm(selected.join(','));
+    });
+  },
+
   exportReport(format) {
+    const title = format === 'excel' ? 'Exportar Excel Detallado' : 'Exportar PDF Imprimible';
+    this.openColumnSelector(title, (columns) => {
+      this.executeExportReport(format, columns);
+    });
+  },
+
+  exportConsolidated() {
+    this.openColumnSelector('Exportar Consolidado Diario', (columns) => {
+      this.executeExportConsolidated(columns);
+    });
+  },
+
+  // Exportar Excel o PDF Detallado unificado (usa filtros de la pestaña de Registros 'rec')
+  executeExportReport(format, columns) {
     const token = API.token();
-    const filterVal = document.getElementById('repFilterEntity')?.value || '';
-    const repGranularity = document.getElementById('repGranularity').value;
-    const { date_from, date_to } = this.getDates();
+    const filterVal = document.getElementById('recFilterEntity')?.value || '';
+    const repGranularity = document.getElementById('recGranularity').value;
+    const { date_from, date_to } = this.getDates('recDateRange');
     
     const params = new URLSearchParams({
       granularity: repGranularity,
@@ -955,12 +1239,13 @@ const ReportsPage = {
 
     if (date_from) params.set('date_from', date_from);
     if (date_to) params.set('date_to', date_to);
+    if (columns) params.set('columns', columns);
 
     if (filterVal) params.set('employee_id', filterVal);
     
-    const deptId = document.getElementById('repFilterDepartment')?.value;
-    const posId = document.getElementById('repFilterPosition')?.value;
-    const schedId = document.getElementById('repFilterSchedule')?.value;
+    const deptId = document.getElementById('recFilterDepartment')?.value;
+    const posId = document.getElementById('recFilterPosition')?.value;
+    const schedId = document.getElementById('recFilterSchedule')?.value;
     if (deptId) params.set('department_id', deptId);
     if (posId) params.set('position_id', posId);
     if (schedId) params.set('schedule_id', schedId);
@@ -1108,18 +1393,21 @@ const ReportsPage = {
       });
   },
 
-  // Exportar Excel Consolidado unificado
-  exportConsolidated() {
+  // Exportar Excel Consolidado unificado (usa filtros de la pestaña de Registros 'rec')
+  executeExportConsolidated(columns) {
     const token = API.token();
-    const filterVal = document.getElementById('repFilterEntity')?.value || '';
-    const { date_from, date_to } = this.getDates();
+    const filterVal = document.getElementById('recFilterEntity')?.value || '';
+    const { date_from, date_to } = this.getDates('recDateRange');
     const params = new URLSearchParams();
     if (date_from) params.set('date_from', date_from);
     if (date_to) params.set('date_to', date_to);
+    if (columns) params.set('columns', columns);
 
-    const deptId = document.getElementById('repFilterDepartment')?.value;
-    const posId = document.getElementById('repFilterPosition')?.value;
-    const schedId = document.getElementById('repFilterSchedule')?.value;
+    if (filterVal) params.set('employee_id', filterVal);
+
+    const deptId = document.getElementById('recFilterDepartment')?.value;
+    const posId = document.getElementById('recFilterPosition')?.value;
+    const schedId = document.getElementById('recFilterSchedule')?.value;
     if (deptId) params.set('department_id', deptId);
     if (posId) params.set('position_id', posId);
     if (schedId) params.set('schedule_id', schedId);
@@ -1138,6 +1426,179 @@ const ReportsPage = {
         Toast.show('Reporte Consolidado descargado con éxito', 'success');
       })
       .catch(() => Toast.show('Error al generar Excel Consolidado', 'error'));
+  },
+
+  async showMetricDetails(type) {
+    const titles = {
+      punctuality: 'Ranking de Puntualidad en el Período',
+      lates: 'Detalle de Tardanzas en el Período',
+      avg_entry: 'Promedio de Hora de Entrada en el Período',
+      critical_day: 'Tasa de Asistencia por Día de la Semana'
+    };
+
+    Toast.show('Cargando detalles de analítica...', 'info');
+
+    try {
+      const filterVal = document.getElementById('anFilterEntity')?.value || '';
+      const { date_from, date_to } = this.getDates('anDateRange');
+      
+      const params = new URLSearchParams({ type });
+      if (date_from) params.set('date_from', date_from);
+      if (date_to) params.set('date_to', date_to);
+
+      if (filterVal) {
+        const text = document.getElementById('anFilterEntityInput')?.value || '';
+        const match = text.match(/\(([^)]+)\)/);
+        if (match && match[1]) {
+          params.set('search', match[1]);
+        }
+      }
+      
+      const deptId = document.getElementById('anFilterDepartment')?.value;
+      const posId = document.getElementById('anFilterPosition')?.value;
+      const schedId = document.getElementById('anFilterSchedule')?.value;
+      if (deptId) params.set('department_id', deptId);
+      if (posId) params.set('position_id', posId);
+      if (schedId) params.set('schedule_id', schedId);
+
+      const data = await API.get(`/api/reports/analytics/details?${params}`);
+
+      let html = '';
+      if (!data || data.length === 0) {
+        html = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-3);">
+            <div style="font-size: 3rem; margin-bottom: 10px;">📭</div>
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No se encontraron registros para mostrar.</p>
+          </div>
+        `;
+      } else {
+        html = `
+          <div style="max-height: 450px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+            <table style="width: 100%; min-width: auto; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+              <thead>
+                <tr style="background: var(--surface-2); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-1); position: sticky; top: 0; z-index: 10;">
+        `;
+
+        if (type === 'punctuality') {
+          html += `
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px; text-align: center;">Entradas</th>
+                  <th style="padding: 12px 16px; text-align: center;">A Tiempo</th>
+                  <th style="padding: 12px 16px; text-align: center;">Tardanzas</th>
+                  <th style="padding: 12px 16px; text-align: center;">Puntualidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(emp => {
+                  const rateNum = parseFloat(emp.rate);
+                  const rateColor = rateNum >= 90 ? 'var(--success)' : rateNum >= 75 ? 'var(--warning)' : 'var(--danger)';
+                  return `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${emp.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${emp.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${emp.department}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--text-1);">${emp.total_entries}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--success); font-weight: 600;">${emp.ontime_entries}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--warning); font-weight: 600;">${emp.late_entries}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: ${rateColor}; font-weight: 700;">${emp.rate}</td>
+                  </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else if (type === 'lates') {
+          html += `
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px;">Fecha</th>
+                  <th style="padding: 12px 16px;">H. Entrada Prog.</th>
+                  <th style="padding: 12px 16px;">H. Entrada Real</th>
+                  <th style="padding: 12px 16px;">Retraso</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
+                    <td style="padding: 12px 16px; color: var(--text-1); font-weight: 500;">${row.date}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.schedule_time}</td>
+                    <td style="padding: 12px 16px; color: var(--text-1);">${row.entry_time}</td>
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--warning);">${row.delay}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else if (type === 'avg_entry') {
+          html += `
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px;">Entrada Horario</th>
+                  <th style="padding: 12px 16px;">Promedio de Entrada</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.schedule_time}</td>
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--accent);">${row.avg_entry}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else if (type === 'critical_day') {
+          html += `
+                  <th style="padding: 12px 16px;">Día</th>
+                  <th style="padding: 12px 16px; text-align: center;">Total Entradas</th>
+                  <th style="padding: 12px 16px; text-align: center;">A Tiempo</th>
+                  <th style="padding: 12px 16px; text-align: center;">Tardanzas</th>
+                  <th style="padding: 12px 16px; text-align: center;">Puntualidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => {
+                  const rateNum = parseFloat(row.rate);
+                  const rateColor = rateNum >= 90 ? 'var(--success)' : rateNum >= 75 ? 'var(--warning)' : 'var(--danger)';
+                  return `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-1);">${row.day_name}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--text-1);">${row.total_entries}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--success); font-weight: 600;">${row.ontime_entries}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--warning); font-weight: 600;">${row.late_entries}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: ${rateColor}; font-weight: 700;">${row.rate}</td>
+                  </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
+        }
+      }
+
+      Modal.open(titles[type], html, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>`);
+      
+      const modalEl = document.querySelector('#modalOverlay .modal');
+      if (modalEl) {
+        modalEl.style.maxWidth = '780px';
+      }
+    } catch(err) {
+      Toast.show('Error al cargar los detalles: ' + err.message, 'error');
+    }
   }
 };
 

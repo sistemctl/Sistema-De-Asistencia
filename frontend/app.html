@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Asistencia</title>
+  <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/static/styles.css?v=8" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css?v=14" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -56,7 +59,7 @@
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         Empleados
       </div>
-      <div class="nav-item" data-page="reports" id="nav-reports">
+      <div class="nav-item" data-page="reports/analytics" id="nav-reports">
         <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         Reportes
       </div>
@@ -100,24 +103,7 @@
 
   <!-- ── MAIN ── -->
   <div class="main">
-    <header class="topbar">
-      <span class="topbar-title" id="topbarTitle">Dashboard</span>
-      <span class="topbar-subtitle" id="topbarSubtitle"></span>
-      <div class="topbar-right">
-        <div class="device-badge offline" id="deviceBadge">
-          <span class="status-dot"></span>
-          <span id="deviceBadgeText">Verificando...</span>
-        </div>
-        <button class="btn btn-sm btn-secondary" id="syncBtn" title="Sincronizar ahora">
-          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align: middle;">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          Sync
-        </button>
-      </div>
-    </header>
+
 
     <main class="content" id="pageContent">
       <div class="loading-overlay"><div class="spinner"></div></div>
@@ -142,18 +128,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
-<script src="/js/auth.js?v=4"></script>
-<script src="/js/dashboard.js?v=9"></script>
-<script src="/js/employees.js?v=14"></script>
+<script src="/js/auth.js?v=5"></script>
+<script src="/js/dashboard.js?v=12"></script>
+<script src="/js/employees.js?v=29"></script>
 <script src="/js/departments.js?v=7"></script>
 <script src="/js/positions.js?v=2"></script>
 <script src="/js/schedules.js?v=4"></script>
 <script src="/js/parameters.js?v=4"></script>
 <script src="/js/system_settings.js?v=4"></script>
-<script src="/js/attendance.js?v=4"></script>
-<script src="/js/reports.js?v=9"></script>
-<script src="/js/device.js?v=8"></script>
-<script src="/js/users.js?v=3"></script>
-<script src="/js/app.js?v=13"></script>
+<script src="/js/attendance.js?v=6"></script>
+<script src="/js/reports.js?v=19"></script>
+<script src="/js/device.js?v=10"></script>
+<script src="/js/users.js?v=5"></script>
+<script src="/js/app.js?v=18"></script>
 </body>
 </html>

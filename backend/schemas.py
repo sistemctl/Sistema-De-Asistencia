@@ -136,6 +136,38 @@ class ScheduleOut(BaseModel):
         from_attributes = True
 
 
+# ── Daily Schedules ───────────────────────────────────────────────────────────
+
+class DailyScheduleOut(BaseModel):
+    id: int
+    employee_id: int
+    date: date
+    schedule_id: Optional[int] = None
+    is_off: bool
+    schedule: Optional[ScheduleOut] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DailyScheduleGenerateInput(BaseModel):
+    employee_ids: List[int]
+    start_date: date
+    end_date: date
+    cycle_days_work: int
+    cycle_nights_work: int
+    cycle_days_off: int
+    day_schedule_id: int
+    night_schedule_id: int
+
+
+class DailyScheduleAssignInput(BaseModel):
+    employee_id: int
+    date: date
+    schedule_id: Optional[int] = None
+    is_off: bool = False
+
+
 # ── Employees ─────────────────────────────────────────────────────────────────
 
 class EmployeeCreate(BaseModel):

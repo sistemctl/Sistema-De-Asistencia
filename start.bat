@@ -47,6 +47,6 @@ echo.
 echo  Presiona Ctrl+C para detener el servidor.
 echo.
 
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+python manage.py runserver
 
 pause

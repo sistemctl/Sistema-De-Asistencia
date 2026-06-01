@@ -80,6 +80,7 @@ def delete_position(pos_id: int, db: Session = Depends(get_db), _=Depends(requir
 def list_employees(
     search: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
     is_active: Optional[bool] = Query(None),
     skip: int = 0,
     limit: int = 100,
@@ -96,6 +97,8 @@ def list_employees(
         )
     if department_id:
         q = q.filter(Employee.department_id == department_id)
+    if position_id:
+        q = q.filter(Employee.position_id == position_id)
     if is_active is not None:
         q = q.filter(Employee.is_active == is_active)
     return q.order_by(Employee.last_name).offset(skip).limit(limit).all()
@@ -164,6 +167,75 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _=Depen
         print(f"Error en auto-sincronizacion de nuevo empleado al dispositivo: {e}")
 
     return emp
+
+
+from pydantic import BaseModel
+from typing import List
+
+class BulkUpdateInput(BaseModel):
+    employee_ids: List[int]
+    department_id: Optional[int] = None
+    schedule_id: Optional[int] = None
+
+class BulkActionInput(BaseModel):
+    employee_ids: List[int]
+
+@router.put("/bulk-update")
+def bulk_update_employees(
+    data: BulkUpdateInput,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin)
+):
+    if not data.employee_ids:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
+    
+    if data.department_id is not None:
+        dept = db.query(Department).filter(Department.id == data.department_id).first()
+        if not dept:
+            raise HTTPException(status_code=404, detail="Departamento no encontrado")
+
+    if data.schedule_id is not None:
+        from backend.models import Schedule
+        sched = db.query(Schedule).filter(Schedule.id == data.schedule_id).first()
+        if not sched:
+            raise HTTPException(status_code=404, detail="Horario no encontrado")
+
+    employees = db.query(Employee).filter(Employee.id.in_(data.employee_ids)).all()
+    if not employees:
+        raise HTTPException(status_code=404, detail="Ninguno de los empleados seleccionados fue encontrado")
+
+    device_online = False
+    client = None
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            device_online = client.check_online()
+    except Exception:
+        pass
+
+    for emp in employees:
+        if data.department_id is not None:
+            emp.department_id = data.department_id
+        if data.schedule_id is not None:
+            emp.schedule_id = data.schedule_id
+            
+        if device_online and client:
+            try:
+                device_uid = emp.device_user_id or emp.employee_code
+                client.create_user(device_uid, emp.full_name, emp.card_number)
+                emp.device_user_id = device_uid
+                emp.synced_to_device = True
+            except Exception:
+                emp.synced_to_device = False
+        else:
+            emp.synced_to_device = False
+
+    db.commit()
+    return {"status": "success", "updated_count": len(employees)}
 
 
 @router.put("/{emp_id}", response_model=EmployeeOut)
@@ -482,4 +554,187 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
         raise HTTPException(status_code=500, detail=f"Error al importar desde el dispositivo: {str(e)}")
 
 
+@router.post("/bulk-sync")
+def bulk_sync_employees(
+    data: BulkActionInput,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin)
+):
+    if not data.employee_ids:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
 
+    from backend.models import DeviceConfig
+    from backend.services.hikvision import HikvisionClient
+
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=503, detail="No hay configuración de dispositivo")
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    if not client.check_online():
+        raise HTTPException(status_code=503, detail="El dispositivo biométrico está fuera de línea")
+
+    employees = db.query(Employee).filter(Employee.id.in_(data.employee_ids)).all()
+    synced = 0
+    failed = 0
+
+    for emp in employees:
+        try:
+            device_uid = emp.device_user_id or emp.employee_code
+            
+            client.create_user(device_uid, emp.full_name, emp.card_number)
+            emp.device_user_id = device_uid
+            emp.synced_to_device = True
+            db.commit()
+
+            if emp.photo_path:
+                dest = UPLOADS_DIR / f"{emp.employee_code}.jpg"
+                if dest.exists():
+                    with open(dest, "rb") as image_file:
+                        photo_bytes = image_file.read()
+                    client.upload_face_photo(device_uid, photo_bytes)
+            
+            synced += 1
+        except Exception as e:
+            failed += 1
+            print(f"Error al sincronizar empleado {emp.employee_code} en lote: {e}")
+
+    db.commit()
+    return {"status": "success", "synced": synced, "failed": failed}
+
+
+@router.post("/bulk-delete")
+def bulk_delete_employees(
+    data: BulkActionInput,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin)
+):
+    if not data.employee_ids:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
+
+    employees = db.query(Employee).filter(Employee.id.in_(data.employee_ids)).all()
+    if not employees:
+        raise HTTPException(status_code=404, detail="Ninguno de los empleados seleccionados fue encontrado")
+
+    device_online = False
+    client = None
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            device_online = client.check_online()
+    except Exception:
+        pass
+
+    deleted_count = 0
+    for emp in employees:
+        if emp.photo_path:
+            try:
+                path = UPLOADS_DIR.parent / emp.photo_path
+                if path.exists():
+                    path.unlink()
+            except Exception as e:
+                print(f"Error al eliminar foto local en lote para {emp.employee_code}: {e}")
+
+        if device_online and client:
+            try:
+                device_uid = emp.device_user_id or emp.employee_code
+                if device_uid:
+                    client.delete_user(device_uid)
+            except Exception as e:
+                print(f"Error al eliminar de biométrico en lote para {emp.employee_code}: {e}")
+
+        db.delete(emp)
+        deleted_count += 1
+
+    db.commit()
+    return {"status": "success", "deleted_count": deleted_count}
+
+
+# ── Perfil de Asistencia por Empleado ─────────────────────────────────────────
+
+@router.get("/{employee_id}/attendance-summary")
+def get_employee_attendance_summary(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user)
+):
+    """Retorna resumen de asistencia de los últimos 30 días y los últimos 20 registros para el modal de perfil."""
+    from datetime import date, timedelta
+    from backend.models import AttendanceRecord
+    from backend.services.attendance_processor import process_attendance_report
+    from backend.utils import get_local_now
+
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    today = get_local_now().date()
+    date_from = today - timedelta(days=29)
+
+    # Últimos 30 días de resumen procesado
+    summaries = process_attendance_report(
+        db=db,
+        date_from=date_from,
+        date_to=today,
+        employee_id=employee_id,
+        granularity="daily"
+    )
+
+    days_present = sum(1 for s in summaries if s["is_present"])
+    days_late = sum(1 for s in summaries if s["is_late"])
+    days_absent = sum(1 for s in summaries if not s["is_present"])
+    total_days = len(summaries)
+    attendance_rate = round((days_present / total_days * 100) if total_days else 0, 1)
+
+    # Sumar horas trabajadas del período
+    total_hours = sum(s["hours_worked"] for s in summaries if s.get("hours_worked"))
+    avg_hours_per_day = round(total_hours / days_present, 2) if days_present else 0
+
+    # Últimos 20 registros RAW del dispositivo
+    raw_records = (
+        db.query(AttendanceRecord)
+        .filter(AttendanceRecord.employee_id == employee_id)
+        .order_by(AttendanceRecord.event_time.desc())
+        .limit(20)
+        .all()
+    )
+
+    recent_records = []
+    for r in raw_records:
+        recent_records.append({
+            "event_time": r.event_time.isoformat(),
+            "event_type": r.event_type,
+            "auth_method": r.auth_method or "-",
+            "is_late": r.is_late,
+        })
+
+    return {
+        "employee": {
+            "id": emp.id,
+            "employee_code": emp.employee_code,
+            "full_name": emp.full_name,
+            "department": emp.department.name if emp.department else "-",
+            "position": emp.position.name if emp.position else "-",
+            "schedule": emp.schedule.name if emp.schedule else "Sin horario",
+            "photo_path": emp.photo_path,
+            "is_active": emp.is_active,
+        },
+        "period": {
+            "date_from": date_from.isoformat(),
+            "date_to": today.isoformat(),
+        },
+        "stats": {
+            "total_days": total_days,
+            "days_present": days_present,
+            "days_absent": days_absent,
+            "days_late": days_late,
+            "attendance_rate": attendance_rate,
+            "total_hours_worked": round(total_hours, 2),
+            "avg_hours_per_day": avg_hours_per_day,
+        },
+        "recent_records": recent_records,
+    }

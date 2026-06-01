@@ -81,22 +81,72 @@ El sistema maneja un esquema robusto en PostgreSQL:
 - [x] **Fase 2** — Integración ISAPI con el dispositivo Hikvision. (Mock implementado para pruebas). *¡Completado!*
 - [x] **Fase 3** — Frontend Web premium (dashboard, empleados, asistencia). *¡Completado!*
 - [x] **Fase 4** — Horarios Flexibles y Cargos Estructurados (modelos, routers, vistas y scripts de migración). *¡Completado!*
-- [x] **Fase 5** — Panel Unificado de Reportes y Analíticas de un solo clic (eliminación de controles redundantes, KPIs modernos y sincronización automática). *¡Completado!*
+- [x] **Fase 5** — Panel Unificado de Reportes y Analíticas (despliegue de métricas en modales y selector de columnas en reportes). *¡Completado!*
+- [x] **Fase 6** — Acciones en Lote (Bulk Actions) y Reorganización del Proyecto (estructura unificada y CLI manage.py). *¡Completado!*
 
 ---
 
-## 🏃‍♂️ Cómo arrancar el sistema
+## 📁 Nueva Estructura Organizativa del Proyecto
 
-1. Asegurarse de que el servicio de PostgreSQL local esté corriendo.
-2. Iniciar ejecutando el script (en Windows):
-   ```cmd
-   start.bat
-   ```
-3. Acceder al navegador:
-   - URL: `http://localhost:8000/`
-   - Usuario: `admin`
-   - Contraseña: `admin123`
+Para mantener el código limpio y profesional, hemos organizado el proyecto agrupando los scripts sueltos en carpetas específicas:
+- **`backend/`**: Servidor FastAPI (routers, base de datos, modelos, esquemas, servicios de Hikvision y reportes).
+- **`frontend/`**: Interfaz de usuario (HTML, estilos css y scripts js independientes por módulo).
+- **`migrations/`**: Directorio con todos los scripts de migración secuenciales de base de datos.
+- **`scripts/`**: Utilidades administrativas y de inicialización del sistema.
+- **`tests/`**: Pruebas y diagnósticos de red/cálculo.
+- **`manage.py`**: Interfaz CLI unificada del proyecto para no interactuar con scripts sueltos directamente.
 
 ---
 
-*Archivo actualizado automáticamente el 2026-05-26*
+## 🏃‍♂️ Cómo usar el sistema y herramientas administrativas
+
+### 1. Iniciar la aplicación
+Puedes iniciar la aplicación usando el script automático en Windows:
+```cmd
+start.bat
+```
+*(Nota: Internamente invoca `python manage.py runserver`).*
+
+### 2. Comandos Administrativos (Línea de Comandos)
+El proyecto incluye un gestor administrativo centralizado (`manage.py`). Ejecútalo desde el directorio raíz utilizando el entorno virtual activo:
+
+* **Iniciar servidor FastAPI**:
+  ```bash
+  python manage.py runserver
+  ```
+* **Crear base de datos PostgreSQL**:
+  ```bash
+  python manage.py create-db
+  ```
+* **Recrear base de datos y tablas**:
+  ```bash
+  python manage.py reset-db
+  ```
+* **Sembrar datos de prueba**:
+  ```bash
+  python manage.py seed-db
+  ```
+* **Ejecutar todas las migraciones del sistema en orden**:
+  ```bash
+  python manage.py migrate
+  ```
+* **Diagnosticar conexión y logs del biométrico**:
+  ```bash
+  python manage.py check-sync
+  ```
+* **Ejecutar batería de pruebas y diagnósticos**:
+  ```bash
+  python manage.py test
+  ```
+
+---
+
+## 🔑 Credenciales de Acceso
+- **URL**: `http://localhost:8000/`
+- **Usuario de administración**: `admin`
+- **Contraseña**: `admin123`
+
+---
+
+*Archivo actualizado automáticamente el 2026-05-31*
+

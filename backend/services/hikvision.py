@@ -175,6 +175,10 @@ class HikvisionClient:
         # Eliminar la cara previa antes de subir la nueva para evitar errores de duplicidad en el firmware
         self.delete_face_photo(user_id)
         
+        # Esperar un momento para dar tiempo al dispositivo a procesar la eliminación antes del nuevo registro
+        import time
+        time.sleep(0.5)
+        
         face_data = {
             "faceLibType": "blackFD",
             "FDID": "1",

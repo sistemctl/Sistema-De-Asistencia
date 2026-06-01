@@ -133,14 +133,14 @@ const DevicePage = {
     } else if (tab === 'branding') {
       contentEl.innerHTML = `
         <div class="section-header" style="margin-top: 10px;">
-          <div class="section-title">Personalización de Marca</div>
+          <div class="section-title">Personalización de Marca y Temas</div>
         </div>
         
         <div style="max-width: 600px; margin-top: 16px;">
           <div class="card">
             <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
               <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Branding del Sistema
+              Branding e Identidad del Sistema
             </div>
             
             <div class="field" style="margin-bottom: 16px;">
@@ -152,16 +152,16 @@ const DevicePage = {
               <label>Nombre de la Empresa / Sede</label>
               <input id="sysCompanyName" type="text" placeholder="Ej. Mi Empresa S.A.C." style="width: 100%; box-sizing: border-box;" />
             </div>
-            
-            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-              <div class="field" style="flex: 1;">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+              <div class="field">
                 <label>Color Primario (Tema)</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                   <input id="sysPrimaryColor" type="color" style="width: 40px; height: 40px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px;" />
                   <span id="sysPrimaryColorHex" style="font-family: monospace; font-size: 0.85rem; color: var(--text-2);">#1E3A5F</span>
                 </div>
               </div>
-              <div class="field" style="flex: 1;">
+              <div class="field">
                 <label>Color de Acento / Realce</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                   <input id="sysAccentColor" type="color" style="width: 40px; height: 40px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px;" />
@@ -170,6 +170,23 @@ const DevicePage = {
               </div>
             </div>
             
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+              <div class="field">
+                <label>Color de Fondo (Afuera)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input id="sysBgBaseColor" type="color" style="width: 40px; height: 40px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px;" />
+                  <span id="sysBgBaseColorHex" style="font-family: monospace; font-size: 0.85rem; color: var(--text-2);">#F8FAFC</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Color de Tarjeta (Fondo)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input id="sysBgSurfaceColor" type="color" style="width: 40px; height: 40px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px;" />
+                  <span id="sysBgSurfaceColorHex" style="font-family: monospace; font-size: 0.85rem; color: var(--text-2);">#FFFFFF</span>
+                </div>
+              </div>
+            </div>
+
             <div class="field" style="margin-bottom: 16px;">
               <label>Logotipo del Sistema (PNG, JPG o SVG)</label>
               <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 12px; border-radius: 12px; border: 1px dashed var(--border);">
@@ -197,12 +214,30 @@ const DevicePage = {
       // Setup color picker sync
       const pColor = document.getElementById('sysPrimaryColor');
       const aColor = document.getElementById('sysAccentColor');
-      if (pColor && aColor) {
+      const bColor = document.getElementById('sysBgBaseColor');
+      const sColor = document.getElementById('sysBgSurfaceColor');
+      if (pColor && aColor && bColor && sColor) {
+        const updatePreview = () => {
+          if (typeof window.applyThemeColors === 'function') {
+            window.applyThemeColors(pColor.value, aColor.value, bColor.value, sColor.value);
+          }
+        };
+
         pColor.addEventListener('input', (e) => {
           document.getElementById('sysPrimaryColorHex').textContent = e.target.value.toUpperCase();
+          updatePreview();
         });
         aColor.addEventListener('input', (e) => {
           document.getElementById('sysAccentColorHex').textContent = e.target.value.toUpperCase();
+          updatePreview();
+        });
+        bColor.addEventListener('input', (e) => {
+          document.getElementById('sysBgBaseColorHex').textContent = e.target.value.toUpperCase();
+          updatePreview();
+        });
+        sColor.addEventListener('input', (e) => {
+          document.getElementById('sysBgSurfaceColorHex').textContent = e.target.value.toUpperCase();
+          updatePreview();
         });
       }
 
@@ -439,6 +474,11 @@ const DevicePage = {
       document.getElementById('sysAccentColor').value = data.accent_color || '#00e676';
       document.getElementById('sysAccentColorHex').textContent = (data.accent_color || '#00e676').toUpperCase();
 
+      document.getElementById('sysBgBaseColor').value = data.bg_base_color || '#f8fafc';
+      document.getElementById('sysBgBaseColorHex').textContent = (data.bg_base_color || '#f8fafc').toUpperCase();
+      document.getElementById('sysBgSurfaceColor').value = data.bg_surface_color || '#ffffff';
+      document.getElementById('sysBgSurfaceColorHex').textContent = (data.bg_surface_color || '#ffffff').toUpperCase();
+
       const svgDef = document.getElementById('sysLogoSvgDefault');
       const imgPrev = document.getElementById('sysLogoImgPreview');
       const prevContainer = document.getElementById('sysLogoPreviewContainer');
@@ -448,12 +488,15 @@ const DevicePage = {
         imgPrev.style.display = 'block';
         if (prevContainer) {
           prevContainer.style.background = 'none';
-          prevContainer.style.width = 'auto';
-          prevContainer.style.height = '50px';
           prevContainer.style.border = 'none';
-          imgPrev.style.width = 'auto';
+          prevContainer.style.width = '64px';
+          prevContainer.style.height = '64px';
+          prevContainer.style.borderRadius = '50%';
+          prevContainer.style.overflow = 'hidden';
+          imgPrev.style.width = '100%';
           imgPrev.style.height = '100%';
-          imgPrev.style.maxWidth = '150px';
+          imgPrev.style.objectFit = 'cover';
+          imgPrev.style.maxWidth = '';
         }
       } else {
         svgDef.style.display = 'block';
@@ -463,11 +506,13 @@ const DevicePage = {
           prevContainer.style.width = '';
           prevContainer.style.height = '';
           prevContainer.style.border = '';
+          prevContainer.style.borderRadius = '';
+          prevContainer.style.overflow = '';
         }
       }
     } catch (e) {
       console.error(e);
-      Toast.show('Error al cargar la personalización', 'error');
+      Toast.show('Error al cargar la personalización de marca', 'error');
     }
   },
 
@@ -492,12 +537,15 @@ const DevicePage = {
       imgPrev.style.display = 'block';
       if (prevContainer) {
         prevContainer.style.background = 'none';
-        prevContainer.style.width = 'auto';
-        prevContainer.style.height = '50px';
         prevContainer.style.border = 'none';
-        imgPrev.style.width = 'auto';
+        prevContainer.style.width = '64px';
+        prevContainer.style.height = '64px';
+        prevContainer.style.borderRadius = '50%';
+        prevContainer.style.overflow = 'hidden';
+        imgPrev.style.width = '100%';
         imgPrev.style.height = '100%';
-        imgPrev.style.maxWidth = '150px';
+        imgPrev.style.objectFit = 'cover';
+        imgPrev.style.maxWidth = '';
       }
 
       if (window.loadSystemBranding) {
@@ -514,6 +562,8 @@ const DevicePage = {
     const companyName = document.getElementById('sysCompanyName').value.trim();
     const primaryColor = document.getElementById('sysPrimaryColor').value;
     const accentColor = document.getElementById('sysAccentColor').value;
+    const bgBaseColor = document.getElementById('sysBgBaseColor').value;
+    const bgSurfaceColor = document.getElementById('sysBgSurfaceColor').value;
 
     if (!systemName) {
       Toast.show('Por favor, ingresa el nombre del sistema', 'warning');
@@ -535,6 +585,8 @@ const DevicePage = {
         company_name: companyName,
         primary_color: primaryColor,
         accent_color: accentColor,
+        bg_base_color: bgBaseColor,
+        bg_surface_color: bgSurfaceColor,
         work_days: this.settings.work_days || '1,2,3,4,5',
         time_format: this.settings.time_format || '24h',
         entry_tolerance_minutes: this.settings.entry_tolerance_minutes ?? 10,
@@ -557,7 +609,7 @@ const DevicePage = {
         flexible_shift_end: this.settings.flexible_shift_end || '18:00:00'
       });
 
-      Toast.show('Personalización de marca guardada', 'success');
+      Toast.show('Personalización de marca y colores guardada correctamente', 'success');
 
       if (window.loadSystemBranding) {
         await window.loadSystemBranding();
