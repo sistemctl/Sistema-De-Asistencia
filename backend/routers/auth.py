@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.auth import authenticate_user, create_access_token, get_current_user, get_password_hash, require_admin
+from backend.auth import authenticate_user, create_access_token, get_current_user, get_password_hash, require_admin, check_permission
 from backend.database import get_db
 from backend.models import User
 from backend.schemas import LoginRequest, Token, UserCreate, UserOut, UserUpdate
@@ -31,12 +31,12 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/users", response_model=list[UserOut])
-def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def list_users(db: Session = Depends(get_db), _: User = Depends(check_permission("perm_manage_users"))):
     return db.query(User).all()
 
 
 @router.post("/users", response_model=UserOut, status_code=201)
-def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depends(check_permission("perm_manage_users"))):
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(status_code=400, detail="El usuario ya existe")
     user = User(
@@ -44,6 +44,15 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depen
         hashed_password=get_password_hash(data.password),
         full_name=data.full_name,
         role=data.role,
+        perm_manage_users=data.perm_manage_users,
+        perm_manage_device=data.perm_manage_device,
+        perm_manage_settings=data.perm_manage_settings,
+        perm_manage_employees=data.perm_manage_employees,
+        perm_manage_schedules=data.perm_manage_schedules,
+        perm_export_reports=data.perm_export_reports,
+        perm_manage_attendance=data.perm_manage_attendance,
+        perm_sync_device=data.perm_sync_device,
+        perm_view_employees=data.perm_view_employees,
     )
     db.add(user)
     db.commit()
@@ -52,7 +61,7 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depen
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
-def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _: User = Depends(check_permission("perm_manage_users"))):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -64,6 +73,26 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _
         user.role = data.role
     if data.is_active is not None:
         user.is_active = data.is_active
+    
+    if data.perm_manage_users is not None:
+        user.perm_manage_users = data.perm_manage_users
+    if data.perm_manage_device is not None:
+        user.perm_manage_device = data.perm_manage_device
+    if data.perm_manage_settings is not None:
+        user.perm_manage_settings = data.perm_manage_settings
+    if data.perm_manage_employees is not None:
+        user.perm_manage_employees = data.perm_manage_employees
+    if data.perm_manage_schedules is not None:
+        user.perm_manage_schedules = data.perm_manage_schedules
+    if data.perm_export_reports is not None:
+        user.perm_export_reports = data.perm_export_reports
+    if data.perm_manage_attendance is not None:
+        user.perm_manage_attendance = data.perm_manage_attendance
+    if data.perm_sync_device is not None:
+        user.perm_sync_device = data.perm_sync_device
+    if data.perm_view_employees is not None:
+        user.perm_view_employees = data.perm_view_employees
+
     db.commit()
     db.refresh(user)
     return user
@@ -73,7 +102,7 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(check_permission("perm_manage_users"))
 ):
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta")
@@ -84,3 +113,4 @@ def delete_user(
 
     db.delete(user)
     db.commit()
+

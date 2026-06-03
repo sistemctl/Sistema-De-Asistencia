@@ -46,7 +46,17 @@ const API = {
 const Auth = {
   user: () => JSON.parse(localStorage.getItem('user') || 'null'),
   isAdmin: () => Auth.user()?.role === 'admin',
-  canManageEmployees: () => ['admin', 'hr_admin'].includes(Auth.user()?.role),
+  canManageUsers: () => Auth.isAdmin() || !!Auth.user()?.perm_manage_users,
+  canManageDevice: () => Auth.isAdmin() || !!Auth.user()?.perm_manage_device,
+  canManageSettings: () => Auth.isAdmin() || !!Auth.user()?.perm_manage_settings,
+  canManageEmployees: () => Auth.isAdmin() || !!Auth.user()?.perm_manage_employees,
+  canManageSchedules: () => Auth.isAdmin() || !!Auth.user()?.perm_manage_schedules,
+  canExportReports: () => Auth.isAdmin() || !!Auth.user()?.perm_export_reports,
+  canManageAttendance: () => Auth.isAdmin() || !!Auth.user()?.perm_manage_attendance,
+  canSyncDevice: () => Auth.isAdmin() || !!Auth.user()?.perm_sync_device || !!Auth.user()?.perm_manage_device,
+  canViewEmployees: () => Auth.isAdmin() || !!Auth.user()?.perm_view_employees || !!Auth.user()?.perm_manage_employees,
+
+
 
   logout() {
     localStorage.removeItem('token');
@@ -75,6 +85,14 @@ const Toast = {
 /* Modal */
 const Modal = {
   open(title, bodyHTML, footerHTML = '') {
+    document.getElementById('modalBox').classList.remove('modal-drawer');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHTML;
+    document.getElementById('modalFooter').innerHTML = footerHTML;
+    document.getElementById('modalOverlay').classList.add('open');
+  },
+  openDrawer(title, bodyHTML, footerHTML = '') {
+    document.getElementById('modalBox').classList.add('modal-drawer');
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalBody').innerHTML = bodyHTML;
     document.getElementById('modalFooter').innerHTML = footerHTML;
@@ -82,6 +100,9 @@ const Modal = {
   },
   close() {
     document.getElementById('modalOverlay').classList.remove('open');
+    setTimeout(() => {
+      document.getElementById('modalBox').classList.remove('modal-drawer');
+    }, 450); // wait for translateX animation to complete
     const modalEl = document.querySelector('#modalOverlay .modal');
     if (modalEl) {
       modalEl.style.maxWidth = '';
@@ -201,5 +222,5 @@ function avatarColor(name) {
 function avatarHtml(name, extraStyle = '') {
   const c = avatarColor(name);
   const initial = (name || '?').charAt(0).toUpperCase();
-  return `<div class="emp-avatar" style="background:${c.bg};color:${c.color};font-weight:700;${extraStyle}">${initial}</div>`;
+  return `<div class="emp-avatar" aria-hidden="true" style="background:${c.bg};color:${c.color};font-weight:700;${extraStyle}">${initial}</div>`;
 }

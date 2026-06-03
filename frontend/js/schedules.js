@@ -243,6 +243,22 @@ const SchedulesPage = {
           border-radius: 12px;
           border: 1px solid var(--border);
           position: relative;
+          background: var(--bg-card, #ffffff);
+        }
+        .matrix-table-container::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .matrix-table-container::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.02);
+          border-radius: 3px;
+        }
+        .matrix-table-container::-webkit-scrollbar-thumb {
+          background: rgba(0, 0, 0, 0.08);
+          border-radius: 3px;
+        }
+        .matrix-table-container::-webkit-scrollbar-thumb:hover {
+          background: rgba(0, 0, 0, 0.15);
         }
         .matrix-table {
           min-width: 1100px;
@@ -252,7 +268,7 @@ const SchedulesPage = {
         .matrix-table thead th {
           position: sticky;
           top: 0;
-          background: var(--bg-card, #1e293b);
+          background: var(--bg-card, #ffffff);
           z-index: 10;
           box-shadow: inset 0 -1px 0 var(--border);
         }
@@ -278,15 +294,19 @@ const SchedulesPage = {
     `;
 
     try {
-      const [employees, schedules, dailySchedules] = await Promise.all([
+      const [employees, schedules, dailySchedules, leaves, holidays] = await Promise.all([
         API.get('/api/employees?limit=200'),
         API.get('/api/schedules'),
-        API.get(`/api/employees/daily-schedules?start_date=${start_date_str}&end_date=${end_date_str}`)
+        API.get(`/api/employees/daily-schedules?start_date=${start_date_str}&end_date=${end_date_str}`),
+        API.get(`/api/leaves?date_from=${start_date_str}&date_to=${end_date_str}`),
+        API.get(`/api/holidays?year=${this.currentWeekStart.getFullYear()}`)
       ]);
 
       this.cachedEmployees = employees || [];
       this.cachedSchedules = schedules || [];
       this.cachedDailySchedules = dailySchedules || [];
+      this.cachedLeaves = leaves || [];
+      this.cachedHolidays = holidays || [];
       this.datesOfWeek = datesOfWeek;
 
       this.displayMatrixRows();
@@ -323,6 +343,23 @@ const SchedulesPage = {
       dailyMap[`${ds.employee_id}_${ds.date}`] = ds;
     });
 
+    const leavesMap = {};
+    (this.cachedLeaves || []).forEach(l => {
+      const start = new Date(l.start_date + 'T00:00:00');
+      const end = new Date(l.end_date + 'T00:00:00');
+      const cur = new Date(start);
+      while (cur <= end) {
+        const curStr = cur.toISOString().split('T')[0];
+        leavesMap[`${l.employee_id}_${curStr}`] = l;
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+
+    const holidaysMap = {};
+    (this.cachedHolidays || []).forEach(h => {
+      holidaysMap[h.date] = h.name;
+    });
+
     tbody.innerHTML = filtered.map(e => {
       const empSchedule = this.cachedSchedules.find(s => s.id === e.schedule_id);
       const workDaysList = empSchedule ? empSchedule.work_days.split(',') : [];
@@ -330,13 +367,25 @@ const SchedulesPage = {
       const daysHtml = this.datesOfWeek.map((d, idx) => {
         const dateStr = d.toISOString().split('T')[0];
         const override = dailyMap[`${e.id}_${dateStr}`];
+        const leave = leavesMap[`${e.id}_${dateStr}`];
+        const holidayName = holidaysMap[dateStr];
         const weekdayNum = idx + 1; // 1-7
 
         let badgeHtml = '';
         let isOverride = false;
         let scheduleName = '';
 
-        if (override) {
+        if (leave) {
+          const typeLabels = {
+            vacation: { text: "Vacaciones", color: "#0f766e" },
+            medical: { text: "Incapacidad", color: "#7c3aed" },
+            paid_leave: { text: "Lic. Rem.", color: "#2563eb" },
+            unpaid_leave: { text: "Lic. No Rem.", color: "#4f46e5" },
+            suspension: { text: "Suspensión", color: "#b91c1c" }
+          };
+          const info = typeLabels[leave.leave_type] || { text: leave.leave_type, color: "#64748b" };
+          badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:${info.color}15;color:${info.color};border:1px solid ${info.color}30;border-radius:6px;display:inline-block;font-weight:600;" title="Novedad: ${info.text} (Administre en el menú de Novedades)">${info.text}</span>`;
+        } else if (override) {
           isOverride = true;
           if (override.is_off) {
             badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(148,163,184,0.1);color:var(--text-3);border:1px dashed var(--border);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Asignado por Rotación (Clic para modificar)">Libre (R)</span>`;
@@ -363,8 +412,20 @@ const SchedulesPage = {
         const currentScheduleId = override ? override.schedule_id : (empSchedule ? empSchedule.id : null);
         const currentIsOff = override ? override.is_off : (!empSchedule || !workDaysList.includes(String(weekdayNum)));
 
+        // Color coding classes mapping
+        let cellClass = 'cell-work';
+        let cellTitle = '';
+        if (holidayName) {
+          cellClass = 'cell-holiday';
+          cellTitle = `Día Festivo: ${holidayName}`;
+        } else if (leave) {
+          cellClass = 'cell-leave';
+        } else if (currentIsOff) {
+          cellClass = 'cell-rest';
+        }
+
         return `
-          <td style="text-align:center;padding:12px 6px;vertical-align:middle;" onclick="event.stopPropagation(); SchedulesPage.changeEmployeeDailySchedule(${e.id}, '${e.full_name.replace(/'/g, "\\'")}', '${dateStr}', ${currentScheduleId || 'null'}, ${currentIsOff})">
+          <td class="${cellClass}" id="cell-emp-${e.id}-date-${dateStr}" style="text-align:center;padding:12px 6px;vertical-align:middle;position:relative;" title="${cellTitle}" onclick="event.stopPropagation(); SchedulesPage.changeEmployeeDailySchedule(${e.id}, '${e.full_name.replace(/'/g, "\\'")}', '${dateStr}', ${currentScheduleId || 'null'}, ${currentIsOff})">
             ${badgeHtml}
           </td>`;
       }).join('');
@@ -475,7 +536,16 @@ const SchedulesPage = {
       });
       Modal.close();
       Toast.show('Turno diario modificado con éxito', 'success');
-      this.renderWeeklyMatrix(document.getElementById('schedSubContent'));
+      
+      // Volver a renderizar la tabla semanal
+      await this.renderWeeklyMatrix(document.getElementById('schedSubContent'));
+      
+      // Buscar celda en el DOM y aplicar el destello
+      const cell = document.getElementById(`cell-emp-${employeeId}-date-${dateStr}`);
+      if (cell) {
+        cell.classList.add('cell-updated');
+        setTimeout(() => cell.classList.remove('cell-updated'), 1000);
+      }
     } catch (e) {
       Toast.show(e.message, 'error');
     }

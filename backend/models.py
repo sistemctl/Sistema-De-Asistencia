@@ -25,6 +25,18 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.now)
     last_login = Column(DateTime, nullable=True)
 
+    # Granular Permissions
+    perm_manage_users = Column(Boolean, default=False)
+    perm_manage_device = Column(Boolean, default=False)
+    perm_manage_settings = Column(Boolean, default=False)
+    perm_manage_employees = Column(Boolean, default=False)
+    perm_manage_schedules = Column(Boolean, default=False)
+    perm_export_reports = Column(Boolean, default=False)
+    perm_manage_attendance = Column(Boolean, default=False)
+    perm_sync_device = Column(Boolean, default=False)
+    perm_view_employees = Column(Boolean, default=False)
+
+
 
 class Department(Base):
     """Departamentos / áreas de la empresa."""
@@ -219,4 +231,51 @@ class EmployeeDailySchedule(Base):
     __table_args__ = (
         UniqueConstraint("employee_id", "date", name="uq_emp_date"),
     )
+
+
+class Holiday(Base):
+    """Días festivos nacionales y personalizados de la empresa."""
+    __tablename__ = "holidays"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, unique=True, nullable=False, index=True)
+    name = Column(String(150), nullable=False)
+    is_active = Column(Boolean, default=True)  # True = es festivo/descanso, False = la empresa labora con normalidad
+    is_custom = Column(Boolean, default=False) # True = agregado manualmente por el administrador
+
+
+class EmployeeLeave(Base):
+    """Registro de novedades: vacaciones, incapacidades, licencias, etc."""
+    __tablename__ = "employee_leaves"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    leave_type = Column(String(50), nullable=False)  # 'vacation', 'medical', 'paid_leave', 'unpaid_leave', 'suspension'
+    start_date = Column(Date, nullable=False, index=True)
+    end_date = Column(Date, nullable=False, index=True)
+    description = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    employee = relationship("Employee")
+
+
+class AttendanceJustification(Base):
+    """Justificaciones individuales de faltas o retardos por día y empleado."""
+    __tablename__ = "attendance_justifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    justification_type = Column(String(50), nullable=False)  # 'absence', 'lateness', 'other'
+    reason = Column(String(500), nullable=False)
+    override_status = Column(String(50), nullable=False)      # 'present', 'on_time'
+    created_at = Column(DateTime, default=datetime.now)
+
+    employee = relationship("Employee")
+
+    __table_args__ = (
+        UniqueConstraint("employee_id", "date", name="uq_emp_justification_date"),
+    )
+
 

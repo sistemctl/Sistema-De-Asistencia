@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.auth import get_current_user
+from backend.auth import get_current_user, check_permission
 from backend.models import SystemConfig, User
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
 
 class SettingsUpdateSchema(BaseModel):
     system_name: str
@@ -106,11 +107,8 @@ def get_settings(db: Session = Depends(get_db)):
 def update_settings(
     data: SettingsUpdateSchema,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("perm_manage_settings"))
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="No tienes permisos para modificar la configuración.")
-        
     config = db.query(SystemConfig).first()
     if not config:
         config = SystemConfig()
@@ -151,17 +149,15 @@ def update_settings(
 def upload_logo(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("perm_manage_settings"))
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="No tienes permisos para modificar el logotipo.")
-        
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in [".png", ".jpg", ".jpeg", ".svg"]:
         raise HTTPException(status_code=400, detail="Formato de archivo no válido. Solo se admiten PNG, JPG, JPEG y SVG.")
         
     logo_dir = os.path.abspath("uploads/logo")
     os.makedirs(logo_dir, exist_ok=True)
+
     
     filename = f"logo{ext}"
     dest_path = os.path.join(logo_dir, filename)

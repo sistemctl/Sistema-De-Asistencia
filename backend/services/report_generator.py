@@ -481,8 +481,22 @@ def generate_attendance_excel(summaries: list, granularity: str, columns: Option
             entry_2 = format_time(s["punches"]["entry_2"]) if is_split else "-"
             exit_2 = format_time(s["punches"]["exit_2"]) if is_split else format_time(s["punches"]["exit_1"])
 
+            leave_map = {
+                "vacation": "Vacaciones",
+                "medical": "Incapacidad",
+                "paid_leave": "Licencia Remunerada",
+                "unpaid_leave": "Licencia No Remunerada",
+                "suspension": "Suspensión"
+            }
             status = "OK"
-            if not s["is_present"]:
+            if s.get("justification"):
+                if s["justification"]["override_status"] == "present":
+                    status = "Justificado"
+                else:
+                    status = "A Tiempo (Just.)"
+            elif s.get("leave_type") and s["leave_type"] in leave_map:
+                status = leave_map[s["leave_type"]]
+            elif not s["is_present"]:
                 status = "Ausente"
             elif s["missing_punches"]:
                 status = "Incompleto"
@@ -1100,9 +1114,24 @@ def _get_employee_flowables(summaries: list, granularity: str, schedules_map: di
             entry_2 = format_time(s["punches"].get("entry_2")) if is_split else "-"
             exit_2 = format_time(s["punches"].get("exit_2")) if is_split else format_time(s["punches"].get("exit_1"))
 
+            leave_map = {
+                "vacation": ("Vacaciones", "#0f766e"),
+                "medical": ("Incapacidad", "#7c3aed"),
+                "paid_leave": ("Licencia Rem.", "#2563eb"),
+                "unpaid_leave": ("Licencia No Rem.", "#4f46e5"),
+                "suspension": ("Suspensión", "#b91c1c")
+            }
             status_text = "OK"
             status_color = "#166534"
-            if not s.get("is_present", False):
+            if s.get("justification"):
+                status_color = "#7c3aed"  # Accent/Purple color for justifications
+                if s["justification"]["override_status"] == "present":
+                    status_text = "Justificado"
+                else:
+                    status_text = "A Tiempo (Just.)"
+            elif s.get("leave_type") and s["leave_type"] in leave_map:
+                status_text, status_color = leave_map[s["leave_type"]]
+            elif not s.get("is_present", False):
                 is_workday = True
                 try:
                     d_obj = datetime.strptime(s["date"], "%Y-%m-%d")

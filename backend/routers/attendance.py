@@ -2,13 +2,15 @@
 from datetime import datetime, date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user
+from backend.auth import get_current_user, check_permission_or
+get_current_user = check_permission_or("perm_manage_attendance", "perm_export_reports")
+
 from backend.database import get_db
-from backend.models import AttendanceRecord, Employee
-from backend.schemas import AttendanceOut
+from backend.models import AttendanceRecord, Employee, AttendanceJustification
+from backend.schemas import AttendanceOut, AttendanceJustificationCreate, AttendanceJustificationOut
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
@@ -146,3 +148,68 @@ def _serialize(r: AttendanceRecord) -> dict:
         "is_late": r.is_late,
         "temperature": r.temperature,
     }
+
+
+@router.post("/justify", response_model=AttendanceJustificationOut, status_code=201)
+def create_or_update_justification(
+    data: AttendanceJustificationCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    # Enforce perm_manage_attendance
+    if not (current_user.role == "admin" or getattr(current_user, "perm_manage_attendance", False)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para gestionar asistencias"
+        )
+    
+    # Check if employee exists
+    emp = db.query(Employee).filter(Employee.id == data.employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    # Find existing justification for employee and date
+    just = db.query(AttendanceJustification).filter(
+        AttendanceJustification.employee_id == data.employee_id,
+        AttendanceJustification.date == data.date
+    ).first()
+
+    if just:
+        just.justification_type = data.justification_type
+        just.reason = data.reason
+        just.override_status = data.override_status
+    else:
+        just = AttendanceJustification(
+            employee_id=data.employee_id,
+            date=data.date,
+            justification_type=data.justification_type,
+            reason=data.reason,
+            override_status=data.override_status
+        )
+        db.add(just)
+
+    db.commit()
+    db.refresh(just)
+    return just
+
+
+@router.delete("/justify/{justification_id}", status_code=204)
+def delete_justification(
+    justification_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    # Enforce perm_manage_attendance
+    if not (current_user.role == "admin" or getattr(current_user, "perm_manage_attendance", False)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para gestionar asistencias"
+        )
+
+    just = db.query(AttendanceJustification).filter(AttendanceJustification.id == justification_id).first()
+    if not just:
+        raise HTTPException(status_code=404, detail="Justificación no encontrada")
+
+    db.delete(just)
+    db.commit()
+

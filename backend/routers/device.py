@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user, require_admin
+from backend.auth import get_current_user, require_admin, check_permission, check_permission_or
 from backend.database import get_db
 from backend.models import DeviceConfig, SyncLog
 from backend.schemas import DeviceConfigOut, DeviceConfigUpdate, DeviceStatusOut, SyncLogOut
@@ -28,7 +28,7 @@ def get_device_status(db: Session = Depends(get_db), _=Depends(get_current_user)
 
 
 @router.get("/config", response_model=DeviceConfigOut)
-def get_config(db: Session = Depends(get_db), _=Depends(require_admin)):
+def get_config(db: Session = Depends(get_db), _=Depends(check_permission("perm_manage_device"))):
     cfg = db.query(DeviceConfig).first()
     if not cfg:
         raise HTTPException(status_code=404, detail="No hay configuración")
@@ -36,7 +36,7 @@ def get_config(db: Session = Depends(get_db), _=Depends(require_admin)):
 
 
 @router.put("/config", response_model=DeviceConfigOut)
-def update_config(data: DeviceConfigUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def update_config(data: DeviceConfigUpdate, db: Session = Depends(get_db), _=Depends(check_permission("perm_manage_device"))):
     cfg = db.query(DeviceConfig).first()
     if not cfg:
         raise HTTPException(status_code=404, detail="No hay configuración")
@@ -54,7 +54,7 @@ def update_config(data: DeviceConfigUpdate, db: Session = Depends(get_db), _=Dep
 
 
 @router.post("/sync")
-def manual_sync(_=Depends(require_admin)):
+def manual_sync(_=Depends(check_permission_or("perm_manage_device", "perm_sync_device"))):
     """Dispara una sincronización manual inmediata."""
     import threading
     t = threading.Thread(target=sched.sync_job, daemon=True)
@@ -69,7 +69,9 @@ class SyncHistoricRequest(BaseModel):
     end_date: str
 
 @router.post("/sync-historic")
-def historic_sync(req: SyncHistoricRequest, _=Depends(require_admin)):
+def historic_sync(req: SyncHistoricRequest, _=Depends(check_permission_or("perm_manage_device", "perm_sync_device"))):
+
+
     """Dispara la sincronización profunda e histórica con fechas."""
     import threading
     t = threading.Thread(target=sched.sync_historic_job, args=(req.start_date, req.end_date), daemon=True)

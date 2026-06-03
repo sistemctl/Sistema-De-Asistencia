@@ -239,62 +239,22 @@ const ReportsPage = {
       <div id="repTabContentRecords" style="${isRecords ? '' : 'display: none;'}">
         <!-- ── UNIFICACIÓN: FILTROS Y TABLA EN UN SOLO CUADRO ── -->
         <div class="card" style="overflow: visible; z-index: 10;">
-          <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-            Filtros de Búsqueda (Registros)
-          </div>
-          
-          <!-- Elementos ocultos pero necesarios para compatibilidad lógica -->
-          <select id="recFilterDepartment" style="display: none;"><option value=""></option></select>
-          <select id="recFilterPosition" style="display: none;"><option value=""></option></select>
-          <select id="recFilterSchedule" style="display: none;"><option value=""></option></select>
-          <select id="recGranularity" style="display: none;"><option value="daily" selected></option></select>
-
-          <div class="grid-2" style="gap: 16px; align-items: flex-end; margin-bottom: 20px;">
-            <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
-            <div class="field" style="margin: 0;">
-              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
-              <div class="searchable-select-wrapper rec-select-wrapper" style="position: relative; width: 100%;">
-                <input type="text" id="recFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
-                <input type="hidden" id="recFilterEntity" value="" />
-                <div class="searchable-select-dropdown rec-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                  <!-- Se llena dinámicamente -->
-                </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Reporte Detallado de Asistencia
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-3); font-weight: 600; margin-top: 2px;">
+                Configure el rango de fechas, filtre colaboradores y exporte el reporte en Excel o PDF
               </div>
             </div>
             
-            <!-- Selector de Rango de Fechas Único -->
-            <div class="field" style="margin: 0;">
-              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
-              <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 24px;">
-            <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('rec')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
-              Limpiar Filtros
-            </button>
-            <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('rec')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
-              Aplicar Filtros
-            </button>
-          </div>
-
-          <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;" />
-
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div>
-              <div class="card-title">
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                Detalle de Registros del Reporte
-              </div>
-              <div class="card-sub">Registros estructurados según el tipo de horario del empleado y la granularidad seleccionada</div>
-            </div>
-
             <!-- Dropdown Desplegable Premium de Exportación -->
             <div style="position: relative;" id="repExportDropdownContainer">
               <button class="btn btn-primary" onclick="ReportsPage.toggleExportMenu(event)" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Exportar...
+                Exportar Reporte
                 <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
               <div id="repExportMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px; width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100; overflow: hidden; animation: slideDown 0.2s ease;">
@@ -310,8 +270,46 @@ const ReportsPage = {
               </div>
             </div>
           </div>
+          
+          <!-- Elementos ocultos pero necesarios para compatibilidad lógica -->
+          <select id="recFilterDepartment" style="display: none;"><option value=""></option></select>
+          <select id="recFilterPosition" style="display: none;"><option value=""></option></select>
+          <select id="recFilterSchedule" style="display: none;"><option value=""></option></select>
+          <select id="recGranularity" style="display: none;"><option value="daily" selected></option></select>
 
-          <div class="table-wrap" style="margin-top:16px; border:none;">
+          <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;">
+            <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
+            <div class="field" style="margin: 0; flex: 1; min-width: 250px; max-width: 400px;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
+              <div class="searchable-select-wrapper rec-select-wrapper" style="position: relative; width: 100%;">
+                <input type="text" id="recFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
+                <input type="hidden" id="recFilterEntity" value="" />
+                <div class="searchable-select-dropdown rec-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                  <!-- Se llena dinámicamente -->
+                </div>
+              </div>
+            </div>
+            
+            <!-- Selector de Rango de Fechas Único -->
+            <div class="field" style="margin: 0; flex: 1; min-width: 200px; max-width: 320px;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
+              <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+            </div>
+
+            <!-- Botones alineados en la misma fila -->
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('rec')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                Limpiar
+              </button>
+              <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('rec')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                Filtrar
+              </button>
+            </div>
+          </div>
+
+          <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;" />
+
+          <div class="table-wrap" style="border:none;">
             <table class="corp-zebra-table">
               <thead id="repTableHead">
                 <!-- Generado dinámicamente -->
@@ -1212,6 +1210,25 @@ const ReportsPage = {
     });
   },
 
+  getExportFilename(extension, prefix = 'Reporte') {
+    const filterInput = document.getElementById('recFilterEntityInput');
+    let namePart = 'Todos';
+    if (filterInput && filterInput.value.trim() && !filterInput.value.includes('Todos')) {
+      let rawName = filterInput.value.split('(')[0].trim();
+      namePart = rawName.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s-]/g, '').trim().replace(/\s+/g, '_');
+    }
+    const { date_from, date_to } = this.getDates('recDateRange');
+    let datePart = '';
+    if (date_from && date_to) {
+      datePart = `_${date_from}_a_${date_to}`;
+    } else if (date_from) {
+      datePart = `_desde_${date_from}`;
+    } else {
+      datePart = `_${new Date().toISOString().split('T')[0]}`;
+    }
+    return `${prefix}_${namePart}${datePart}.${extension}`;
+  },
+
   exportReport(format) {
     const title = format === 'excel' ? 'Exportar Excel Detallado' : 'Exportar PDF Imprimible';
     this.openColumnSelector(title, (columns) => {
@@ -1261,7 +1278,7 @@ const ReportsPage = {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `reporte_${repGranularity}_${new Date().toISOString().split('T')[0]}.xlsx`;
+          a.download = this.getExportFilename('xlsx', 'Reporte');
           a.click();
           Toast.show('Reporte EXCEL descargado con éxito', 'success');
         })
@@ -1343,7 +1360,7 @@ const ReportsPage = {
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `reporte_${repGranularity}_${new Date().toISOString().split('T')[0]}.pdf`;
+                      a.download = this.getExportFilename('pdf', 'Reporte');
                       a.click();
                       
                       if (closeBtn) closeBtn.style.display = 'block';
@@ -1422,7 +1439,7 @@ const ReportsPage = {
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `consolidado_asistencia_${new Date().toISOString().split('T')[0]}.xlsx`; a.click();
+        a.href = url; a.download = this.getExportFilename('xlsx', 'Consolidado'); a.click();
         Toast.show('Reporte Consolidado descargado con éxito', 'success');
       })
       .catch(() => Toast.show('Error al generar Excel Consolidado', 'error'));

@@ -4,7 +4,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user, require_admin
+from backend.auth import get_current_user, check_permission
+require_admin = check_permission("perm_manage_schedules")
+
 from backend.database import get_db
 from backend.models import EmployeeDailySchedule, Schedule, Employee
 from backend.schemas import DailyScheduleOut, DailyScheduleGenerateInput, DailyScheduleAssignInput

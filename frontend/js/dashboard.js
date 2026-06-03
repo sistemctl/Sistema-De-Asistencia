@@ -11,17 +11,33 @@ const DashboardPage = {
 
     document.getElementById('pageContent').innerHTML = `
       <!-- Barra de fecha -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-          <span style="font-size:.85rem;font-weight:600;color:var(--text-2);">Viendo datos de:</span>
-          <input id="dashDatePicker" class="flatpickr-input" placeholder="Seleccionar fecha…"
-            style="padding:7px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;color:var(--text-1);font-size:.85rem;font-weight:600;font-family:inherit;cursor:pointer;width:180px;outline:none;" readonly />
-          <span id="dashDateLabel" style="font-size:.78rem;color:var(--text-3);font-weight:500;"></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="dash-date-selector" onclick="document.getElementById('dashDatePicker')._flatpickr?.open()">
+            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span style="font-size:0.82rem;font-weight:600;opacity:0.9;">Viendo datos de:</span>
+            <input id="dashDatePicker" class="dash-date-input" placeholder="Seleccionar fecha…" readonly />
+          </div>
+          <span id="dashDateLabel" style="font-size:.78rem;color:var(--text-3);font-weight:600;background:rgba(var(--accent-rgb),0.06);padding:4px 10px;border-radius:20px;border:1px dashed rgba(var(--accent-rgb),0.2);display:none;"></span>
         </div>
-        <button id="dashGoToday" class="btn btn-secondary btn-sm" style="display:none;">
+        <button id="dashGoToday" class="btn btn-secondary btn-sm" style="display:none;border-radius:20px;padding:6px 14px;font-weight:600;">
           ← Volver a hoy
         </button>
+      </div>
+
+      <!-- Banner de Bienvenida y Biométrico -->
+      <div class="welcome-banner">
+        <div class="welcome-banner-greeting">
+          <h2 id="welcomeGreeting">¡Hola!</h2>
+          <p id="welcomeSub">Que tengas una excelente jornada laboral hoy.</p>
+        </div>
+        <div class="biometric-badge" id="biometricStatusBadge">
+          <div class="biometric-indicator offline" id="biometricIndicator"></div>
+          <div class="biometric-details">
+            <span class="biometric-details-title">Dispositivo Biométrico</span>
+            <span class="biometric-details-sub" id="biometricInfo">Cargando estado...</span>
+          </div>
+        </div>
       </div>
 
       <!-- KPIs -->
@@ -52,6 +68,31 @@ const DashboardPage = {
                 <div style="flex:1"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-text w-25" style="margin-top:6px"></div></div>
               </div>`).join('')}
           </div>
+      </div>
+      
+      <!-- Leaderboard + Info -->
+      <div class="grid-2" style="margin-bottom:24px">
+        <div class="leaderboard-card" id="leaderboardCard">
+          <div class="leaderboard-header">
+            <div>
+              <div class="card-title">🏆 Podio de Puntualidad</div>
+              <div class="card-sub">Top 3 colaboradores con mayor asistencia y puntualidad este mes</div>
+            </div>
+          </div>
+          <div id="leaderboardBody" style="display:flex; flex-direction:column; gap:12px;">
+            ${[1,2,3].map(() => `<div class="skeleton" style="height:50px; border-radius:12px;"></div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Info del Sistema -->
+        <div class="card" style="display:flex; flex-direction:column; justify-content:center; padding:28px 32px; background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.02) 0%, rgba(var(--accent-2-rgb), 0.01) 100%); border: 1px solid var(--border);">
+          <div style="font-size:1.5rem; margin-bottom:12px;">⚡</div>
+          <h3 style="font-family:'Hanken Grotesk',sans-serif; font-size:1.15rem; font-weight:800; color:var(--text-1); margin:0 0 8px 0;">Control de Asistencia Activo</h3>
+          <p style="font-size:0.86rem; color:var(--text-3); margin:0 0 16px 0; line-height:1.5;">El sistema monitoriza y sincroniza automáticamente los eventos del lector biométrico en intervalos planificados. Recuerde registrar todas las novedades (vacaciones, incapacidades) para evitar reportar inasistencias injustificadas.</p>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary btn-sm" onclick="location.hash='#attendance'" style="border-radius:20px;">Ver Registros</button>
+            <button class="btn btn-secondary btn-sm" onclick="location.hash='#parameters'" style="border-radius:20px;">Configurar Parámetros</button>
+          </div>
         </div>
       </div>`;
 
@@ -69,11 +110,21 @@ const DashboardPage = {
           const isToday = dateStr === todayISO;
           const label = document.getElementById('dashDateLabel');
           const btn = document.getElementById('dashGoToday');
-          if (label) label.textContent = isToday ? '(Hoy)' : '';
+          if (label) {
+            label.textContent = isToday ? '(Hoy)' : '';
+            label.style.display = isToday ? 'inline-block' : 'none';
+          }
           if (btn) btn.style.display = isToday ? 'none' : 'inline-flex';
           this.reload();
         }
       });
+    }
+
+    // Set label inicial
+    const initialLabel = document.getElementById('dashDateLabel');
+    if (initialLabel) {
+      initialLabel.textContent = '(Hoy)';
+      initialLabel.style.display = 'inline-block';
     }
 
     // Botón "Volver a hoy"
@@ -82,7 +133,10 @@ const DashboardPage = {
       document.getElementById('dashDatePicker')._flatpickr?.setDate(todayISO, true);
       const label = document.getElementById('dashDateLabel');
       const btn = document.getElementById('dashGoToday');
-      if (label) label.textContent = '(Hoy)';
+      if (label) {
+        label.textContent = '(Hoy)';
+        label.style.display = 'inline-block';
+      }
       if (btn) btn.style.display = 'none';
       this.reload();
     });
@@ -92,10 +146,105 @@ const DashboardPage = {
 
   async reload() {
     await Promise.all([
+      this.loadWelcomeWidget(),
       this.loadKPIs(),
       this.loadWeekly(),
-      this.loadStatusCard()
+      this.loadStatusCard(),
+      this.loadLeaderboard()
     ]);
+  },
+
+  async loadWelcomeWidget() {
+    try {
+      const user = Auth.user();
+      const name = user ? (user.full_name || user.username) : 'Usuario';
+      
+      const hr = new Date().getHours();
+      let greeting = '¡Hola';
+      if (hr >= 6 && hr < 12) {
+        greeting = '¡Buenos días';
+      } else if (hr >= 12 && hr < 18.5) {
+        greeting = '¡Buenas tardes';
+      } else {
+        greeting = '¡Buenas noches';
+      }
+      
+      const titleEl = document.getElementById('welcomeGreeting');
+      if (titleEl) {
+        titleEl.textContent = `${greeting}, ${name}!`;
+      }
+      
+      const status = await API.get('/api/device/status');
+      const indicator = document.getElementById('biometricIndicator');
+      const info = document.getElementById('biometricInfo');
+      
+      if (indicator && info) {
+        if (status.is_online) {
+          indicator.className = 'biometric-indicator online';
+          info.innerHTML = `ONLINE`;
+        } else {
+          indicator.className = 'biometric-indicator offline';
+          info.innerHTML = `MOCK MODE`;
+        }
+      }
+    } catch (e) {
+      console.error('Error cargando widget de bienvenida:', e);
+      const indicator = document.getElementById('biometricIndicator');
+      const info = document.getElementById('biometricInfo');
+      if (indicator && info) {
+        indicator.className = 'biometric-indicator offline';
+        info.innerHTML = `DESCONECTADO`;
+      }
+    }
+  },
+
+  async loadLeaderboard() {
+    try {
+      const data = await API.get('/api/reports/analytics/details?type=punctuality');
+      const body = document.getElementById('leaderboardBody');
+      if (!body) return;
+      
+      if (!data || data.length === 0) {
+        body.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-3); font-size:0.86rem;">No hay suficientes datos para el podio.</div>`;
+        return;
+      }
+      
+      const sorted = [...data].sort((a, b) => {
+        const rateA = parseFloat(a.rate.replace('%', ''));
+        const rateB = parseFloat(b.rate.replace('%', ''));
+        return rateB - rateA;
+      });
+      
+      const top3 = sorted.slice(0, 3);
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+      
+      body.innerHTML = top3.map((emp, idx) => {
+        const rank = idx + 1;
+        const medalClass = `leaderboard-rank-${rank}`;
+        
+        return `
+          <div class="leaderboard-row">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="leaderboard-rank-badge ${medalClass}">${medals[rank]}</div>
+              <div>
+                <div style="font-weight:700; font-size:0.86rem; color:var(--text-1);">${emp.full_name}</div>
+                <div style="font-size:0.74rem; color:var(--text-3);">${emp.department} • ${emp.employee_code}</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:800; font-size:0.9rem; color:var(--accent);">${emp.rate}</div>
+              <div style="font-size:0.72rem; color:var(--text-3);">${emp.ontime_entries}/${emp.total_entries} a tiempo</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('Error cargando leaderboard:', e);
+      const body = document.getElementById('leaderboardBody');
+      if (body) {
+        body.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger); font-size:0.86rem;">Error al cargar el podio.</div>`;
+      }
+    }
   },
 
   dateParam() {
@@ -214,26 +363,26 @@ const DashboardPage = {
       const rows = [
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
-          label: 'Presentes', value: d.today_present, color: 'var(--success)', bg: 'rgba(0,230,118,.12)'
+          label: 'Presentes', value: d.today_present, color: 'var(--success)', bg: 'rgba(0,230,118,.12)', type: 'present'
         },
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
-          label: 'Ausentes', value: d.today_absent, color: 'var(--danger)', bg: 'rgba(255,61,0,.12)'
+          label: 'Ausentes', value: d.today_absent, color: 'var(--danger)', bg: 'rgba(255,61,0,.12)', type: 'absent'
         },
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
-          label: 'Tardanzas', value: d.today_late, color: 'var(--warning)', bg: 'rgba(255,179,0,.12)'
+          label: 'Tardanzas', value: d.today_late, color: 'var(--warning)', bg: 'rgba(255,179,0,.12)', type: 'late'
         },
         {
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M7 8V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3"></path><line x1="12" y1="8" x2="12" y2="20"></line></svg>`,
-          label: 'Vacaciones / Permiso', value: d.today_leaves, color: 'var(--accent-2)', bg: 'rgba(100,108,255,.12)'
+          label: 'Vacaciones / Permiso', value: d.today_leaves, color: 'var(--accent-2)', bg: 'rgba(100,108,255,.12)', type: 'leaves'
         },
       ];
 
       body.innerHTML = rows.map(r => {
         const pct = Math.round(((r.value || 0) / total) * 100);
         return `
-          <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="DashboardPage.showKPIDetails('${r.type}')" title="Ver detalles de ${r.label}">
             <div style="width:42px;height:42px;border-radius:50%;background:${r.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${r.color}">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="${r.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${r.icon.replace(/<svg[^>]*>|<\/svg>/g,'')}</svg>
             </div>

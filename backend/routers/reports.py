@@ -7,7 +7,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import io
 
-from backend.auth import get_current_user
+from backend.auth import get_current_user, check_permission
+get_current_user = check_permission("perm_export_reports")
 from backend.database import get_db
 from backend.services.report_generator import (
     generate_excel_report,

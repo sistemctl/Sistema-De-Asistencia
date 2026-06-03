@@ -15,7 +15,10 @@ const ParametersPage = {
         <button class="tab-btn" data-tab="schedules" onclick="ParametersPage.switchTab('schedules')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
           Horarios
         </button>
-        ${Auth.user()?.role === 'admin' ? `
+        <button class="tab-btn" data-tab="holidays" onclick="ParametersPage.switchTab('holidays')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+          Festivos
+        </button>
+        ${Auth.isAdmin() || Auth.user()?.perm_manage_settings ? `
         <button class="tab-btn" data-tab="settings" onclick="ParametersPage.switchTab('settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
           Reglas de Asistencia
         </button>
@@ -28,7 +31,7 @@ const ParametersPage = {
         .tab-btn:hover { color: var(--text-1) !important; }
       </style>
       <div id="paramContent">
-        <!-- Contenido dinámico (Departamentos, Cargos, Horarios, Configuración) -->
+        <!-- Contenido dinámico (Departamentos, Cargos, Horarios, Configuración, Festivos) -->
       </div>
     `;
 
@@ -51,11 +54,14 @@ const ParametersPage = {
       if (typeof PositionsPage !== 'undefined') await PositionsPage.render();
     } else if (tab === 'schedules') {
       if (typeof SchedulesPage !== 'undefined') await SchedulesPage.render();
+    } else if (tab === 'holidays') {
+      if (typeof HolidaysPage !== 'undefined') await HolidaysPage.render();
     } else if (tab === 'settings') {
       if (typeof SystemSettingsPage !== 'undefined') await SystemSettingsPage.render('settings');
     }
   }
 };
+
 
 
 

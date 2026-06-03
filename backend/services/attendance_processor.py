@@ -11,7 +11,7 @@ def parse_time(time_str: str) -> Optional[datetime.time]:
     except ValueError:
         return None
 
-def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: SystemConfig, daily_schedule = None) -> Dict:
+def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: SystemConfig, daily_schedule = None, is_holiday: bool = False, active_leave = None, justification = None) -> Dict:
     """
     Calculates the valid punches for an employee on a specific date, based on their schedule and system rules.
     """
@@ -41,6 +41,8 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         "missing_punches": False,
         "hours_worked": None,         # float hours, e.g. 8.5
         "hours_worked_str": "-",      # formatted, e.g. "8 h 30 min"
+        "is_holiday": is_holiday,
+        "leave_type": active_leave.leave_type if active_leave else None,
     }
 
     # Determine if there is a daily override, otherwise fallback to static schedule
@@ -62,7 +64,14 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         else:
             is_off = True
 
+    if is_holiday:
+        is_off = True
+
+    if active_leave is not None:
+        is_off = True
+
     summary["is_off"] = is_off
+
 
     if not schedule:
         # If no schedule, fallback to simply first and last punch of the day
@@ -266,6 +275,21 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         except Exception:
             pass
 
+    summary["justification"] = None
+    if justification:
+        summary["justification"] = {
+            "id": justification.id,
+            "justification_type": justification.justification_type,
+            "reason": justification.reason,
+            "override_status": justification.override_status
+        }
+        if justification.override_status == "present":
+            summary["is_present"] = True
+            summary["missing_punches"] = False
+        elif justification.override_status == "on_time":
+            summary["is_present"] = True
+            summary["is_late"] = False
+
     return summary
 
 def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
@@ -282,11 +306,27 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
     config = db.query(SystemConfig).first()
     
     # Preload daily schedule overrides
-    from backend.models import EmployeeDailySchedule
+    from backend.models import EmployeeDailySchedule, Holiday, EmployeeLeave
+    is_holiday = db.query(Holiday).filter(Holiday.date == target_date, Holiday.is_active == True).first() is not None
+
     dailies = db.query(EmployeeDailySchedule).filter(
         EmployeeDailySchedule.date == target_date
     ).all()
     dailies_map = {d.employee_id: d for d in dailies}
+
+    # Preload active leaves
+    leaves = db.query(EmployeeLeave).filter(
+        EmployeeLeave.start_date <= target_date,
+        EmployeeLeave.end_date >= target_date
+    ).all()
+    leaves_map = {l.employee_id: l for l in leaves}
+
+    # Preload justifications
+    from backend.models import AttendanceJustification
+    justs = db.query(AttendanceJustification).filter(
+        AttendanceJustification.date == target_date
+    ).all()
+    justs_map = {j.employee_id: j for j in justs}
     
     # group by employee
     from collections import defaultdict
@@ -303,11 +343,15 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
             emp_records, 
             target_date, 
             config, 
-            daily_schedule=dailies_map.get(emp.id)
+            daily_schedule=dailies_map.get(emp.id),
+            is_holiday=is_holiday,
+            active_leave=leaves_map.get(emp.id),
+            justification=justs_map.get(emp.id)
         )
         summaries.append(summary)
         
     return summaries
+
 
 
 def process_attendance_report(
@@ -375,13 +419,44 @@ def process_attendance_report(
             records_by_emp_day[(r.employee_id, r_date)].append(r)
 
     # Preload daily schedule overrides
-    from backend.models import EmployeeDailySchedule
+    from backend.models import EmployeeDailySchedule, Holiday, EmployeeLeave
+    holidays_in_range = db.query(Holiday).filter(
+        Holiday.date >= date_from,
+        Holiday.date <= date_to,
+        Holiday.is_active == True
+    ).all()
+    holiday_dates = {h.date for h in holidays_in_range}
+
     dailies = db.query(EmployeeDailySchedule).filter(
         EmployeeDailySchedule.employee_id.in_(emp_ids),
         EmployeeDailySchedule.date >= date_from,
         EmployeeDailySchedule.date <= date_to
     ).all()
     dailies_map = {(d.employee_id, d.date): d for d in dailies}
+
+    # Preload active leaves for the range
+    leaves_in_range = db.query(EmployeeLeave).filter(
+        EmployeeLeave.employee_id.in_(emp_ids),
+        EmployeeLeave.start_date <= date_to,
+        EmployeeLeave.end_date >= date_from
+    ).all()
+    
+    leaves_by_emp_day = {}
+    for leave in leaves_in_range:
+        cur_date = max(leave.start_date, date_from)
+        end_limit = min(leave.end_date, date_to)
+        while cur_date <= end_limit:
+            leaves_by_emp_day[(leave.employee_id, cur_date)] = leave
+            cur_date += timedelta(days=1)
+
+    # Preload justifications
+    from backend.models import AttendanceJustification
+    justs_in_range = db.query(AttendanceJustification).filter(
+        AttendanceJustification.employee_id.in_(emp_ids),
+        AttendanceJustification.date >= date_from,
+        AttendanceJustification.date <= date_to
+    ).all()
+    justs_by_emp_day = {(j.employee_id, j.date): j for j in justs_in_range}
 
     # 4. Generate daily summaries
     daily_summaries = []
@@ -393,9 +468,13 @@ def process_attendance_report(
                 emp_records, 
                 d, 
                 config, 
-                daily_schedule=dailies_map.get((emp.id, d))
+                daily_schedule=dailies_map.get((emp.id, d)),
+                is_holiday=(d in holiday_dates),
+                active_leave=leaves_by_emp_day.get((emp.id, d)),
+                justification=justs_by_emp_day.get((emp.id, d))
             )
             daily_summaries.append(summary)
+
 
     if granularity == "daily":
         daily_summaries.sort(key=lambda s: (s["date"], s["employee_name"]), reverse=True)

@@ -33,14 +33,45 @@ def get_kpis(date: str = None, db: Session = Depends(get_db), _=Depends(get_curr
 
     attendance_rate = round((today_present / total_employees * 100) if total_employees else 0, 1)
 
+    from backend.models import EmployeeLeave
+    today_leaves = db.query(EmployeeLeave).filter(
+        EmployeeLeave.start_date <= target_date,
+        EmployeeLeave.end_date >= target_date
+    ).count()
+
     cfg = db.query(DeviceConfig).first()
+
+    # Calcular cuántos empleados activos ya debieron haber entrado hoy y no lo han hecho
+    from backend.models import Schedule
+    today_unmarked_count = 0
+    
+    # Solo calcular si target_date es hoy para que tenga sentido el tiempo actual de control
+    if target_date == get_local_now().date():
+        current_time_str = get_local_now().strftime("%H:%M")
+        for s in summaries:
+            if not s["is_present"]:
+                # Obtener el horario asignado al empleado para ver si ya debió marcar entrada
+                emp = db.query(Employee).filter(Employee.id == s["employee_id"]).first()
+                if emp and emp.schedule:
+                    start_time = emp.schedule.work_start_time # formato "HH:MM"
+                    if start_time and start_time <= current_time_str:
+                        # Tampoco debe estar de vacaciones/permiso hoy
+                        from backend.models import EmployeeLeave
+                        has_leave = db.query(EmployeeLeave).filter(
+                            EmployeeLeave.employee_id == emp.id,
+                            EmployeeLeave.start_date <= target_date,
+                            EmployeeLeave.end_date >= target_date
+                        ).first()
+                        if not has_leave:
+                            today_unmarked_count += 1
 
     return {
         "target_date": target_date.isoformat(),
         "today_present": today_present,
         "today_absent": today_absent,
         "today_late": today_late,
-        "today_leaves": 3,  # Simulación para visualización en Chrome
+        "today_leaves": today_leaves,
+        "today_unmarked_count": today_unmarked_count,
         "total_employees": total_employees,
         "attendance_rate": attendance_rate,
         "last_sync": cfg.last_successful_sync.isoformat() if cfg and cfg.last_successful_sync else None,
@@ -188,17 +219,32 @@ def get_kpi_details(type: str, date: str = None, db: Session = Depends(get_db), 
                     "delay": delay_str
                 })
     elif type == "leaves":
-        # Simular 3 empleados con permisos usando datos reales para realismo
-        real_emps = db.query(Employee).filter(Employee.is_active == True).limit(3).all()
-        leave_types = ["Vacaciones", "Permiso Médico", "Asuntos Personales"]
-        for idx, emp in enumerate(real_emps):
-            result.append({
-                "employee_code": emp.employee_code,
-                "full_name": emp.full_name,
-                "department": emp.department.name if emp.department else "Administración",
-                "position": emp.position.name if emp.position else "Colaborador",
-                "leave_type": leave_types[idx % len(leave_types)]
-            })
+        from backend.models import EmployeeLeave
+        active_leaves = (
+            db.query(EmployeeLeave)
+            .filter(
+                EmployeeLeave.start_date <= today,
+                EmployeeLeave.end_date >= today
+            )
+            .all()
+        )
+        leave_labels = {
+            "vacation": "Vacaciones",
+            "medical": "Incapacidad Médica",
+            "paid_leave": "Licencia Remunerada",
+            "unpaid_leave": "Licencia No Remunerada",
+            "suspension": "Suspensión"
+        }
+        for leave in active_leaves:
+            emp = leave.employee
+            if emp and emp.is_active:
+                result.append({
+                    "employee_code": emp.employee_code,
+                    "full_name": emp.full_name,
+                    "department": emp.department.name if emp.department else "-",
+                    "position": emp.position.name if emp.position else "-",
+                    "leave_type": leave_labels.get(leave.leave_type, leave.leave_type)
+                })
             
     return result
 

@@ -74,6 +74,28 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def check_permission(perm_name: str):
+    def dep(current_user: User = Depends(get_current_user)):
+        if current_user.role == "admin": # El Super Admin siempre tiene todo permitido
+            return current_user
+        if not getattr(current_user, perm_name, False):
+            raise HTTPException(status_code=403, detail="No tienes los permisos requeridos")
+        return current_user
+    return dep
+
+
+def check_permission_or(perm_primary: str, perm_secondary: str):
+    def dep(current_user: User = Depends(get_current_user)):
+        if current_user.role == "admin": # El Super Admin siempre tiene todo permitido
+            return current_user
+        if getattr(current_user, perm_primary, False) or getattr(current_user, perm_secondary, False):
+            return current_user
+        raise HTTPException(status_code=403, detail="No tienes los permisos requeridos")
+    return dep
+
+
+
+
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(password, user.hashed_password):

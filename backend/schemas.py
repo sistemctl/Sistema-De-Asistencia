@@ -3,7 +3,7 @@ Pydantic schemas para validación de requests y serialización de responses.
 """
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -23,6 +23,15 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    perm_manage_users: bool = False
+    perm_manage_device: bool = False
+    perm_manage_settings: bool = False
+    perm_manage_employees: bool = False
+    perm_manage_schedules: bool = False
+    perm_export_reports: bool = False
+    perm_manage_attendance: bool = False
+    perm_sync_device: bool = False
+    perm_view_employees: bool = False
 
     class Config:
         from_attributes = True
@@ -32,12 +41,32 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     role: str = "viewer"
+    perm_manage_users: bool = False
+    perm_manage_device: bool = False
+    perm_manage_settings: bool = False
+    perm_manage_employees: bool = False
+    perm_manage_schedules: bool = False
+    perm_export_reports: bool = False
+    perm_manage_attendance: bool = False
+    perm_sync_device: bool = False
+    perm_view_employees: bool = False
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     password: Optional[str] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None
+    perm_manage_users: Optional[bool] = None
+    perm_manage_device: Optional[bool] = None
+    perm_manage_settings: Optional[bool] = None
+    perm_manage_employees: Optional[bool] = None
+    perm_manage_schedules: Optional[bool] = None
+    perm_export_reports: Optional[bool] = None
+    perm_manage_attendance: Optional[bool] = None
+    perm_sync_device: Optional[bool] = None
+    perm_view_employees: Optional[bool] = None
+
+
 
 
 # ── Departments ───────────────────────────────────────────────────────────────
@@ -333,3 +362,91 @@ class RecentEvent(BaseModel):
     event_type: str
     auth_method: Optional[str]
     photo_path: Optional[str]
+
+
+# ── Holidays ──────────────────────────────────────────────────────────────────
+
+class HolidayOut(BaseModel):
+    id: int
+    date: date
+    name: str
+    is_active: bool
+    is_custom: bool
+
+    class Config:
+        from_attributes = True
+
+class HolidayCreate(BaseModel):
+    date: date
+    name: str
+    is_active: bool = True
+
+class HolidayUpdate(BaseModel):
+    name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+# ── Employee Leaves (Novedades) ───────────────────────────────────────────────
+
+class LeaveOut(BaseModel):
+    id: int
+    employee_id: int
+    leave_type: str
+    start_date: date
+    end_date: date
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    employee: Optional[EmployeeOut] = None
+
+    class Config:
+        from_attributes = True
+
+class LeaveCreate(BaseModel):
+    employee_id: int
+    leave_type: str
+    start_date: date
+    end_date: date
+    description: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        if self.end_date < self.start_date:
+            raise ValueError("La fecha de fin no puede ser anterior a la fecha de inicio")
+        return self
+
+class LeaveUpdate(BaseModel):
+    leave_type: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    description: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("La fecha de fin no puede ser anterior a la fecha de inicio")
+        return self
+
+
+# ── Attendance Justification (Justificaciones) ────────────────────────────────
+
+class AttendanceJustificationOut(BaseModel):
+    id: int
+    employee_id: int
+    date: date
+    justification_type: str
+    reason: str
+    override_status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AttendanceJustificationCreate(BaseModel):
+    employee_id: int
+    date: date
+    justification_type: str  # 'absence', 'lateness', 'other'
+    reason: str
+    override_status: str     # 'present', 'on_time'
+
+

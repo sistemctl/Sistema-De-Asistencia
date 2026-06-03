@@ -228,12 +228,17 @@ const EmployeesPage = {
       const bulkDept = document.getElementById('bulkDeptSelect');
       if (bulkDept) bulkDept.innerHTML = '<option value="">-- Dep. --</option>' + deptOpts;
       const bulkSched = document.getElementById('bulkScheduleSelect');
-      if (bulkSched) bulkSched.innerHTML = '<option value="">-- Horario --</option>' + schedOpts;
+      if (bulkSched) bulkSched.innerHTML = '<option value="">-- Horario --</option><option value="none">Sin Horario</option>' + schedOpts;
     }
 
     // Listeners de búsqueda y filtros — filtrado automático al cambiar
+    let searchTimeout = null;
     document.getElementById('empSearch').addEventListener('input', (e) => {
-      this.search = e.target.value; this.page = 1; this.loadTable();
+      const val = e.target.value;
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        this.search = val; this.page = 1; this.loadTable();
+      }, 300);
     });
     document.getElementById('filterDept').addEventListener('change', (e) => {
       this.filterDept = e.target.value; this.page = 1; this.loadTable();
@@ -360,21 +365,21 @@ const EmployeesPage = {
               </div>
             </div>
           </td>
-          <td class="col-code"><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
+          <td class="col-code"><code class="copyable" title="Clic para copiar código de empleado" style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
           <td class="col-position" style="color:var(--text-2)">${e.position?.name||'-'}</td>
           <td class="col-dept">${e.department?.name||'-'}</td>
           <td class="col-schedule" style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
           <td class="col-device">
             ${e.synced_to_device 
               ? `<span class="badge badge-green">✓ Sync</span>` 
-              : `<span class="badge badge-gray" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Haga clic para sincronizar ahora con el biométrico">
+              : `<span id="sync-badge-${e.id}" class="badge badge-gray" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Haga clic para sincronizar ahora con el biométrico">
                   ⚠️ Sin sync 🔄
                  </span>`}
           </td>
           <td class="col-creds">
             <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start;">
               <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.35'}; font-size: 1.05rem;" class="biometric-icon">👤</span>
-              <span title="${e.card_number ? `Tarjeta registrada: ${e.card_number}` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.35'}; font-size: 1.05rem;" class="biometric-icon">💳</span>
+              <span title="${e.card_number ? `Tarjeta: ${e.card_number} (Clic para copiar)` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.35'}; font-size: 1.05rem;" class="${e.card_number ? 'copyable' : ''} biometric-icon" data-copy="${e.card_number || ''}">💳</span>
             </div>
           </td>
           <td class="col-status">${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
@@ -543,7 +548,7 @@ const EmployeesPage = {
         <div class="field">
           <label>Horario de Trabajo</label>
           <select id="fScheduleId" onchange="EmployeesPage.onScheduleChange(this)">
-            <option value="">Personalizado (Definir entrada/salida abajo)</option>
+            <option value="">Sin Horario / Personalizado (Definir abajo)</option>
             ${schedOpts}
           </select>
         </div>
@@ -555,7 +560,7 @@ const EmployeesPage = {
           </select>
         </div>
       </div>
-      <div class="form-row" id="manualHoursRow" style="${emp?.schedule_id ? 'display:none' : 'display:flex'}">
+      <div class="form-row collapse-section" id="manualHoursRow" style="${emp?.schedule_id ? '' : 'max-height: 100px; opacity: 1; margin-bottom: 16px;'}">
         <div class="field"><label>Hora de Entrada</label><input id="fStart" type="time" value="${emp?.work_start_time||'07:00'}" /></div>
         <div class="field"><label>Hora de Salida</label><input id="fEnd" type="time" value="${emp?.work_end_time||'18:00'}" /></div>
       </div>`,
@@ -565,14 +570,23 @@ const EmployeesPage = {
 
   onScheduleChange(selectEl) {
     const manualRow = document.getElementById('manualHoursRow');
-    if (selectEl.value === "") {
-      manualRow.style.display = 'flex';
-    } else {
-      manualRow.style.display = 'none';
+    if (manualRow) {
+      if (selectEl.value === "") {
+        manualRow.style.maxHeight = '100px';
+        manualRow.style.opacity = '1';
+        manualRow.style.marginBottom = '16px';
+      } else {
+        manualRow.style.maxHeight = '0';
+        manualRow.style.opacity = '0';
+        manualRow.style.marginBottom = '0';
+      }
     }
   },
 
   async saveEmployee(id) {
+    const saveBtn = document.querySelector('button[onclick^="EmployeesPage.saveEmployee"]');
+    if (saveBtn) saveBtn.classList.add('btn-loading');
+
     try {
       const schedId = document.getElementById('fScheduleId').value || null;
       let startTime = "07:00";
@@ -585,6 +599,7 @@ const EmployeesPage = {
 
       const empCode = document.getElementById('fCode').value.trim();
       if (!/^\d+$/.test(empCode)) {
+        if (saveBtn) saveBtn.classList.remove('btn-loading');
         Toast.show('El código de empleado debe contener únicamente números', 'error');
         return;
       }
@@ -628,6 +643,7 @@ const EmployeesPage = {
       Modal.close();
       this.loadTable();
     } catch(e) {
+      if (saveBtn) saveBtn.classList.remove('btn-loading');
       Toast.show(e.message || 'Error desconocido al guardar', 'error');
       console.error(e);
     }
@@ -884,7 +900,7 @@ const EmployeesPage = {
         <div class="field">
           <label>Horario de Trabajo</label>
           <select id="fScheduleId" onchange="EmployeesPage.onScheduleChange(this)">
-            <option value="">Personalizado (Definir entrada/salida abajo)</option>
+            <option value="">Sin Horario / Personalizado (Definir abajo)</option>
             ${schedOpts}
           </select>
         </div>
@@ -907,9 +923,15 @@ const EmployeesPage = {
       this.selectedPhotoFile = file;
       const previewImg = document.getElementById('fPhotoPreview');
       const placeholder = document.getElementById('fPhotoPlaceholder');
+      const photoContainer = previewImg?.parentElement;
       if (previewImg) {
         previewImg.src = URL.createObjectURL(file);
         previewImg.style.display = 'block';
+        if (photoContainer) {
+          photoContainer.classList.remove('success-flash');
+          void photoContainer.offsetWidth; // Force reflow
+          photoContainer.classList.add('success-flash');
+        }
       }
       if (placeholder) {
         placeholder.style.display = 'none';
@@ -1099,6 +1121,14 @@ const EmployeesPage = {
       `¿Estás seguro de que deseas eliminar al empleado <strong>${name}</strong>? Esta acción no se puede deshacer y también intentará eliminarlo del dispositivo biométrico si está conectado.`,
       async () => {
         try {
+          // Buscar la fila correspondiente en el DOM para aplicar animación de borrado
+          const checkbox = document.querySelector(`.emp-checkbox[value="${id}"]`);
+          const row = checkbox ? checkbox.closest('tr') : null;
+          if (row) {
+            row.classList.add('row-destroying');
+            await new Promise(resolve => setTimeout(resolve, 400)); // wait for CSS animation
+          }
+
           await API.delete(`/api/employees/${id}`);
           Toast.show('Empleado eliminado con éxito', 'success');
           this.loadTable();
@@ -1111,6 +1141,13 @@ const EmployeesPage = {
   },
 
   async syncEmployeeToDevice(id) {
+    const syncBadge = document.getElementById(`sync-badge-${id}`);
+    if (syncBadge) {
+      syncBadge.classList.add('syncing-badge');
+      syncBadge.innerHTML = `⟳ Syncing...`;
+      syncBadge.style.pointerEvents = 'none';
+    }
+
     Toast.show('Sincronizando empleado con el biométrico...', 'info');
     try {
       const res = await API.post(`/api/employees/${id}/sync-to-device`);
@@ -1118,9 +1155,19 @@ const EmployeesPage = {
         Toast.show('Empleado sincronizado con éxito', 'success');
         this.loadTable();
       } else {
+        if (syncBadge) {
+          syncBadge.classList.remove('syncing-badge');
+          syncBadge.innerHTML = `⚠️ Sin sync 🔄`;
+          syncBadge.style.pointerEvents = '';
+        }
         Toast.show(res.message || 'Error al sincronizar con el dispositivo', 'error');
       }
     } catch(e) {
+      if (syncBadge) {
+        syncBadge.classList.remove('syncing-badge');
+        syncBadge.innerHTML = `⚠️ Sin sync 🔄`;
+        syncBadge.style.pointerEvents = '';
+      }
       Toast.show(e.message || 'Error de conexión', 'error');
     }
   },
@@ -1184,11 +1231,11 @@ const EmployeesPage = {
     const ids = this.getSelectedEmployeeIds();
     if (!ids.length) return;
     const schedVal = document.getElementById('bulkScheduleSelect').value;
-    if (!schedVal) {
+    if (schedVal === '') {
       Toast.show('Seleccione un horario para aplicar', 'warning');
       return;
     }
-    const scheduleId = parseInt(schedVal);
+    const scheduleId = schedVal === 'none' ? null : parseInt(schedVal);
     
     Toast.show('Aplicando cambios...', 'info');
     try {

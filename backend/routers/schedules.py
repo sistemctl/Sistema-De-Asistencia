@@ -4,7 +4,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user, require_admin
+from backend.auth import get_current_user, check_permission
+require_admin = check_permission("perm_manage_schedules")
+
 from backend.database import get_db
 from backend.models import Schedule, Employee
 from backend.schemas import ScheduleCreate, ScheduleOut, ScheduleUpdate
@@ -67,6 +69,41 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), _=Depends(r
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail="Horario no encontrado")
+
+    from datetime import date
+    from backend.models import Employee, EmployeeDailySchedule
+
+    # 1. Validar uso en perfil de empleados
+    using_employees = db.query(Employee).filter(Employee.schedule_id == schedule_id).all()
+    if using_employees:
+        names = [emp.full_name for emp in using_employees[:5]]
+        names_str = ", ".join(names)
+        if len(using_employees) > 5:
+            names_str += f" y {len(using_employees) - 5} más"
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede eliminar el horario porque está asignado como horario base a: {names_str}. "
+                   f"Reasigne o deje sin horario a estos empleados antes de eliminarlo."
+        )
+
+    # 2. Validar uso en la planificación futura del calendario semanal
+    today = date.today()
+    using_dailies = db.query(EmployeeDailySchedule).filter(
+        EmployeeDailySchedule.schedule_id == schedule_id,
+        EmployeeDailySchedule.date >= today
+    ).all()
+    if using_dailies:
+        emp_ids = list(set([d.employee_id for d in using_dailies]))
+        using_emp_names = db.query(Employee).filter(Employee.id.in_(emp_ids)).all()
+        names = [emp.full_name for emp in using_emp_names[:5]]
+        names_str = ", ".join(names)
+        if len(using_emp_names) > 5:
+            names_str += f" y {len(using_emp_names) - 5} más"
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede eliminar el horario porque está planificado en el calendario de: {names_str}. "
+                   f"Limpie o cambie los turnos de estos empleados en el Calendario Semanal antes de eliminarlo."
+        )
         
     db.delete(schedule)
     db.commit()

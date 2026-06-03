@@ -6,6 +6,7 @@ const PAGES = {
   dashboard:  { module: DashboardPage,  title: 'Dashboard',   sub: 'Resumen general' },
   attendance: { module: AttendancePage, title: 'Asistencia',  sub: 'Registros del dispositivo' },
   employees:  { module: EmployeesPage,  title: 'Empleados',   sub: 'Gestión de personal' },
+  leaves:     { module: LeavesPage,     title: 'Novedades',   sub: 'Gestión de incapacidades, vacaciones y licencias' },
   parameters: { module: ParametersPage, title: 'Parámetros',  sub: 'Configuración de departamentos, cargos y horarios' },
   reports:    { module: ReportsPage,    title: 'Reportes',    sub: 'Exportar datos' },
   device:     { module: DevicePage,     title: 'Dispositivo', sub: 'DS-K1T323MBWX' },
@@ -111,6 +112,46 @@ if (syncBtn) {
 document.getElementById('modalClose').addEventListener('click', Modal.close);
 document.getElementById('modalOverlay').addEventListener('click', (e) => {
   if (e.target === document.getElementById('modalOverlay')) Modal.close();
+});
+
+// ── Copy to Clipboard global helper with elastic tooltip ────────────────────
+document.addEventListener('click', async (e) => {
+  const copyEl = e.target.closest('.copyable');
+  if (!copyEl) return;
+
+  const textToCopy = copyEl.getAttribute('data-copy') || copyEl.innerText.trim();
+  if (!textToCopy) return;
+
+  try {
+    await navigator.clipboard.writeText(textToCopy);
+    
+    // Remover tooltip anterior si existe
+    const existingTooltip = copyEl.querySelector('.copy-tooltip');
+    if (existingTooltip) existingTooltip.remove();
+
+    // Crear tooltip flotante elástico
+    const tooltip = document.createElement('span');
+    tooltip.className = 'copy-tooltip';
+    tooltip.innerText = '¡Copiado!';
+    
+    // Asegurar posicionamiento relativo del padre
+    const originalPosition = window.getComputedStyle(copyEl).position;
+    if (originalPosition === 'static') {
+      copyEl.style.position = 'relative';
+    }
+
+    copyEl.appendChild(tooltip);
+
+    // Auto-eliminar tooltip al terminar animación
+    setTimeout(() => {
+      tooltip.remove();
+      if (originalPosition === 'static') {
+        copyEl.style.position = '';
+      }
+    }, 600);
+  } catch (err) {
+    console.error('Fallo al copiar texto: ', err);
+  }
 });
 
 // ── User info en sidebar ─────────────────────────────────────────────────────
@@ -374,5 +415,7 @@ const initialPage = window.location.hash.slice(1) || 'dashboard';
 navigate(initialPage);
 
 // Actualizar badge cada 60 seg
-devicePollInterval = setInterval(updateDeviceBadge, 60000);
+devicePollInterval = setInterval(() => {
+  updateDeviceBadge();
+}, 60000);
 

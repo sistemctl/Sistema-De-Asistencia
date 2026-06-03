@@ -7,8 +7,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user, require_admin
+from backend.auth import get_current_user, check_permission, check_permission_or
+require_admin = check_permission("perm_manage_employees")
+get_current_user = check_permission_or("perm_manage_employees", "perm_view_employees")
 from backend.config import UPLOADS_DIR
+
+
 from backend.database import get_db
 from backend.models import Department, Position, Employee
 from backend.schemas import (
@@ -189,14 +193,16 @@ def bulk_update_employees(
     if not data.employee_ids:
         raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
     
-    if data.department_id is not None:
-        dept = db.query(Department).filter(Department.id == data.department_id).first()
+    fields = data.model_dump(exclude_unset=True)
+
+    if fields.get("department_id") is not None:
+        dept = db.query(Department).filter(Department.id == fields["department_id"]).first()
         if not dept:
             raise HTTPException(status_code=404, detail="Departamento no encontrado")
 
-    if data.schedule_id is not None:
+    if fields.get("schedule_id") is not None:
         from backend.models import Schedule
-        sched = db.query(Schedule).filter(Schedule.id == data.schedule_id).first()
+        sched = db.query(Schedule).filter(Schedule.id == fields["schedule_id"]).first()
         if not sched:
             raise HTTPException(status_code=404, detail="Horario no encontrado")
 
@@ -217,11 +223,20 @@ def bulk_update_employees(
     except Exception:
         pass
 
+    if "schedule_id" in fields:
+        from datetime import date
+        from backend.models import EmployeeDailySchedule
+        today = date.today()
+        db.query(EmployeeDailySchedule).filter(
+            EmployeeDailySchedule.employee_id.in_([emp.id for emp in employees]),
+            EmployeeDailySchedule.date >= today
+        ).delete(synchronize_session=False)
+
     for emp in employees:
-        if data.department_id is not None:
-            emp.department_id = data.department_id
-        if data.schedule_id is not None:
-            emp.schedule_id = data.schedule_id
+        if "department_id" in fields:
+            emp.department_id = fields["department_id"]
+        if "schedule_id" in fields:
+            emp.schedule_id = fields["schedule_id"]
             
         if device_online and client:
             try:
@@ -243,7 +258,18 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    
+    fields = data.model_dump(exclude_unset=True)
+    if "schedule_id" in fields:
+        from datetime import date
+        from backend.models import EmployeeDailySchedule
+        today = date.today()
+        db.query(EmployeeDailySchedule).filter(
+            EmployeeDailySchedule.employee_id == emp_id,
+            EmployeeDailySchedule.date >= today
+        ).delete(synchronize_session=False)
+
+    for field, value in fields.items():
         setattr(emp, field, value)
     db.commit()
     db.refresh(emp)
