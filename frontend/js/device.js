@@ -8,8 +8,28 @@ const DevicePage = {
   async render(tab = 'device_status') {
     this.currentTab = tab;
 
-    if (tab === 'branding') {
+    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings') {
       document.getElementById('pageContent').innerHTML = `
+        <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
+          <button class="tab-btn active" data-tab="branding" onclick="DevicePage.switchTab('branding')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Personalización de Marca
+          </button>
+          <button class="tab-btn" data-tab="email_settings" onclick="DevicePage.switchTab('email_settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Configuración de Correo
+          </button>
+          <button class="tab-btn" data-tab="backup_settings" onclick="DevicePage.switchTab('backup_settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Copias de Seguridad
+          </button>
+          <button class="tab-btn" data-tab="audit" onclick="DevicePage.switchTab('audit')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Historial de Auditoría
+          </button>
+        </div>
+        <style>
+          .tab-btn.active { color: var(--accent) !important; }
+          .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
+          .tab-btn.active::after { transform: scaleX(1); }
+          .tab-btn:hover { color: var(--text-1) !important; }
+        </style>
         <div id="deviceTabContent">
         </div>
       `;
@@ -41,14 +61,16 @@ const DevicePage = {
     this.currentTab = tab;
     
     // Sincronizar hash de la SPA según la pestaña activa
-    if (tab === 'branding') {
-      if (window.location.hash !== '#system') {
-        window.location.hash = 'system';
+    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings') {
+      const targetHash = `#system/${tab}`;
+      if (window.location.hash !== targetHash) {
+        window.location.hash = `system/${tab}`;
         return;
       }
     } else {
-      if (window.location.hash !== '#device') {
-        window.location.hash = 'device';
+      const targetHash = tab === 'device_status' ? '#device' : `#device/${tab}`;
+      if (window.location.hash !== '#device' && window.location.hash !== targetHash) {
+        window.location.hash = tab === 'device_status' ? 'device' : `device/${tab}`;
         return;
       }
     }
@@ -130,6 +152,150 @@ const DevicePage = {
         </div>
       `;
       await this.loadLogs();
+    } else if (tab === 'audit') {
+      if (typeof AuditPage !== 'undefined') {
+        AuditPage.render('deviceTabContent');
+      } else {
+        contentEl.innerHTML = '<p>Cargando módulo de auditoría...</p>';
+      }
+    } else if (tab === 'email_settings') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Configuración de Alertas por Correo</div>
+        </div>
+        
+        <div style="max-width: 600px; margin-top: 16px;">
+          <div class="card">
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              Servidor SMTP y Notificaciones
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+              <label class="switch">
+                <input type="checkbox" id="sysEmailNotificationsEnabled">
+                <span class="slider"></span>
+              </label>
+              <div>
+                <div style="font-weight: 600; font-size: 0.9rem;">Habilitar Notificaciones de Asistencia</div>
+                <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">Si se activa, el sistema enviará correos de alertas en incidencias (tardanzas, ausencias).</div>
+              </div>
+            </div>
+
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Servidor SMTP (Host)</label>
+              <input id="sysSmtpHost" type="text" placeholder="Ej. smtp.gmail.com" style="width: 100%; box-sizing: border-box;" />
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+              <div class="field">
+                <label>Puerto SMTP</label>
+                <input id="sysSmtpPort" type="number" placeholder="Ej. 587" style="width: 100%; box-sizing: border-box;" />
+              </div>
+              <div class="field" style="display: flex; align-items: center; gap: 12px; margin-top: 20px;">
+                <label class="switch">
+                  <input type="checkbox" id="sysSmtpUseTls">
+                  <span class="slider"></span>
+                </label>
+                <div>
+                  <div style="font-weight: 600; font-size: 0.9rem;">Usar TLS</div>
+                  <div style="font-size: 0.72rem; color: var(--text-3);">STARTTLS. Si está desactivado, usará SSL.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Usuario SMTP (Correo Electrónico)</label>
+              <input id="sysSmtpUsername" type="email" placeholder="Ej. tu_correo@gmail.com" style="width: 100%; box-sizing: border-box;" />
+            </div>
+
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Contraseña SMTP</label>
+              <input id="sysSmtpPassword" type="password" placeholder="••••••••" style="width: 100%; box-sizing: border-box;" />
+            </div>
+
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Destinatarios de Alertas (correos separados por comas)</label>
+              <input id="sysEmailAlertsRecipients" type="text" placeholder="admin1@empresa.com, admin2@empresa.com" style="width: 100%; box-sizing: border-box;" />
+            </div>
+
+            <div style="display: flex; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 24px;">
+              <button class="btn btn-secondary" id="btnTestEmail" style="flex: 1; padding: 12px; font-weight: bold;">
+                Probar Conexión
+              </button>
+              <button class="btn btn-primary" id="btnSaveEmailSettings" style="flex: 1; padding: 12px; font-weight: bold;">
+                Guardar Configuración
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('btnTestEmail')?.addEventListener('click', () => this.testEmail());
+      document.getElementById('btnSaveEmailSettings')?.addEventListener('click', () => this.saveEmailSettings());
+      await this.loadEmailSettings();
+    } else if (tab === 'backup_settings') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Copias de Seguridad (Backup & Restore)</div>
+        </div>
+        
+        <div style="max-width: 600px; margin-top: 16px;">
+          <div class="card" style="margin-bottom: 24px;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Exportar Copia de Seguridad
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
+              Descarga un archivo comprimido que contiene la base de datos PostgreSQL y todas las imágenes del sistema (logotipo y fotos de empleados).
+            </p>
+            <button class="btn btn-primary" id="btnExportBackup" style="width: 100%; padding: 12px; font-weight: bold;">
+              Generar y Descargar Backup (.zip)
+            </button>
+            <div id="exportProgress" style="display:none; margin-top:16px;">
+              <div style="font-size:0.85rem; color:var(--text-3); margin-bottom:8px;">Generando y descargando archivo, por favor espera...</div>
+              <div style="width: 100%; height: 4px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
+                <div style="width: 100%; height: 100%; background-color: var(--accent); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--danger); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Restaurar Copia de Seguridad
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
+              Selecciona un archivo de copia de seguridad para restaurar. Si es un archivo .zip, se restaurarán también las imágenes.
+              <br><strong style="color: var(--danger);">ADVERTENCIA: Esto sobrescribirá todos los datos actuales.</strong>
+            </p>
+            
+            <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px dashed var(--border);">
+              <input id="restoreFileInput" type="file" accept=".zip,.sql,.backup" style="display: none;" />
+              <button class="btn btn-secondary" onclick="document.getElementById('restoreFileInput').click()">Seleccionar archivo</button>
+              <span id="restoreFileName" style="font-size: 0.85rem; color: var(--text-3);">Ningún archivo seleccionado</span>
+            </div>
+
+            <button class="btn btn-primary" id="btnRestoreBackup" style="width: 100%; padding: 12px; font-weight: bold; margin-top: 20px; background: var(--danger); border-color: var(--danger);">
+              Restaurar Base de Datos
+            </button>
+            <div id="restoreProgress" style="display:none; margin-top:16px;">
+              <div style="font-size:0.85rem; color:var(--text-3); margin-bottom:8px;">Subiendo y restaurando datos, por favor espera...</div>
+              <div style="width: 100%; height: 4px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
+                <div style="width: 100%; height: 100%; background-color: var(--danger); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const fInput = document.getElementById('restoreFileInput');
+      if (fInput) {
+        fInput.addEventListener('change', (e) => {
+          const fn = e.target.files[0]?.name || 'Ningún archivo seleccionado';
+          document.getElementById('restoreFileName').textContent = fn;
+        });
+      }
+      document.getElementById('btnExportBackup')?.addEventListener('click', () => this.exportBackup());
+      document.getElementById('btnRestoreBackup')?.addEventListener('click', () => this.restoreBackup());
     } else if (tab === 'branding') {
       contentEl.innerHTML = `
         <div class="section-header" style="margin-top: 10px;">
@@ -618,6 +784,157 @@ const DevicePage = {
       console.error(e);
       Toast.show(e.message, 'error');
     }
+  },
+
+  async loadEmailSettings() {
+    try {
+      const data = await API.get('/api/settings');
+      this.settings = data;
+
+      document.getElementById('sysEmailNotificationsEnabled').checked = data.email_notifications_enabled ?? false;
+      document.getElementById('sysSmtpHost').value = data.smtp_host || 'smtp.gmail.com';
+      document.getElementById('sysSmtpPort').value = data.smtp_port ?? 587;
+      document.getElementById('sysSmtpUseTls').checked = data.smtp_use_tls ?? true;
+      document.getElementById('sysSmtpUsername').value = data.smtp_username || '';
+      document.getElementById('sysSmtpPassword').value = data.smtp_password ? '••••••••' : '';
+      document.getElementById('sysEmailAlertsRecipients').value = data.email_alerts_recipients || '';
+    } catch (e) {
+      console.error(e);
+      Toast.show('Error al cargar la configuración de correo', 'error');
+    }
+  },
+
+  async saveEmailSettings() {
+    const enabled = document.getElementById('sysEmailNotificationsEnabled').checked;
+    const host = document.getElementById('sysSmtpHost').value.trim();
+    const port = parseInt(document.getElementById('sysSmtpPort').value) || 587;
+    const username = document.getElementById('sysSmtpUsername').value.trim();
+    const password = document.getElementById('sysSmtpPassword').value;
+    const useTls = document.getElementById('sysSmtpUseTls').checked;
+    const recipients = document.getElementById('sysEmailAlertsRecipients').value.trim();
+
+    try {
+      if (!this.settings.work_days) {
+        const currentData = await API.get('/api/settings');
+        this.settings = currentData;
+      }
+
+      await API.put('/api/settings', {
+        ...this.settings,
+        smtp_host: host,
+        smtp_port: port,
+        smtp_username: username,
+        smtp_password: password,
+        smtp_use_tls: useTls,
+        email_notifications_enabled: enabled,
+        email_alerts_recipients: recipients
+      });
+
+      Toast.show('Configuración de correo guardada correctamente', 'success');
+      
+      this.settings.smtp_host = host;
+      this.settings.smtp_port = port;
+      this.settings.smtp_username = username;
+      if (password && password !== '••••••••') this.settings.smtp_password = password;
+      this.settings.smtp_use_tls = useTls;
+      this.settings.email_notifications_enabled = enabled;
+      this.settings.email_alerts_recipients = recipients;
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message, 'error');
+    }
+  },
+
+  async testEmail() {
+    const recipient = prompt("Introduce el correo de destino para la prueba:");
+    if (!recipient) return;
+
+    Toast.show('Enviando correo de prueba...', 'info');
+    try {
+      const response = await API.post('/api/settings/test-email', { recipient: recipient });
+      Toast.show(response.message || '¡Correo de prueba enviado con éxito!', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show('Error al enviar correo de prueba: ' + e.message, 'error');
+    }
+  },
+
+  async exportBackup() {
+    const btn = document.getElementById('btnExportBackup');
+    const progress = document.getElementById('exportProgress');
+    if (btn) btn.disabled = true;
+    if (progress) progress.style.display = 'block';
+    
+    Toast.show('Generando copia de seguridad...', 'info');
+    try {
+      const token = API.token();
+      const response = await fetch('/api/backup/export', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Error al generar la copia de seguridad.');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_${new Date().toISOString().slice(0,10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      Toast.show('Copia de seguridad descargada.', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+      if (progress) progress.style.display = 'none';
+    }
+  },
+
+  async restoreBackup() {
+    const fileInput = document.getElementById('restoreFileInput');
+    const file = fileInput.files[0];
+    if (!file) {
+      Toast.show('Selecciona un archivo de copia de seguridad (.zip, .sql o .backup).', 'warning');
+      return;
+    }
+
+    Modal.confirm(
+      '¿Restaurar Base de Datos e Imágenes?',
+      '¿Estás seguro de restaurar? Todos los datos actuales del sistema y las fotos de los empleados serán sobrescritos por el respaldo. El servidor podría reiniciarse.',
+      async () => {
+        const btn = document.getElementById('btnRestoreBackup');
+        const progress = document.getElementById('restoreProgress');
+        if (btn) btn.disabled = true;
+        if (progress) progress.style.display = 'block';
+
+        Toast.show('Restaurando base de datos, por favor espera...', 'info');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const token = API.token();
+          const response = await fetch('/api/backup/restore', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.detail || 'Fallo al restaurar.');
+          Toast.show('Base de datos restaurada correctamente. Recargando la aplicación...', 'success');
+          setTimeout(() => window.location.reload(), 2000);
+        } catch (e) {
+          console.error(e);
+          Toast.show(e.message || 'Error al restaurar base de datos.', 'error');
+          if (btn) btn.disabled = false;
+          if (progress) progress.style.display = 'none';
+        }
+      },
+      'danger'
+    );
   },
   
   destroy() {

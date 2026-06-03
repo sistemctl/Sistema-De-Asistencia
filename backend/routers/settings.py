@@ -39,6 +39,13 @@ class SettingsUpdateSchema(BaseModel):
     no_checkout_status: str
     flexible_shift_start: str
     flexible_shift_end: str
+    smtp_host: Optional[str] = "smtp.gmail.com"
+    smtp_port: Optional[int] = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_use_tls: Optional[bool] = True
+    email_notifications_enabled: Optional[bool] = False
+    email_alerts_recipients: Optional[str] = None
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
@@ -71,7 +78,14 @@ def get_settings(db: Session = Depends(get_db)):
             "no_checkout_enable": True,
             "no_checkout_status": "Absent",
             "flexible_shift_start": "09:00:00",
-            "flexible_shift_end": "18:00:00"
+            "flexible_shift_end": "18:00:00",
+            "smtp_host": "smtp.gmail.com",
+            "smtp_port": 587,
+            "smtp_username": "",
+            "smtp_password": "",
+            "smtp_use_tls": True,
+            "email_notifications_enabled": False,
+            "email_alerts_recipients": ""
         }
     return {
         "system_name": config.system_name,
@@ -100,7 +114,14 @@ def get_settings(db: Session = Depends(get_db)):
         "no_checkout_enable": config.no_checkout_enable,
         "no_checkout_status": config.no_checkout_status,
         "flexible_shift_start": config.flexible_shift_start,
-        "flexible_shift_end": config.flexible_shift_end
+        "flexible_shift_end": config.flexible_shift_end,
+        "smtp_host": config.smtp_host,
+        "smtp_port": config.smtp_port,
+        "smtp_username": config.smtp_username,
+        "smtp_password": config.smtp_password,
+        "smtp_use_tls": config.smtp_use_tls,
+        "email_notifications_enabled": config.email_notifications_enabled,
+        "email_alerts_recipients": config.email_alerts_recipients
     }
 
 @router.put("")
@@ -141,9 +162,44 @@ def update_settings(
     config.flexible_shift_start = data.flexible_shift_start
     config.flexible_shift_end = data.flexible_shift_end
     
+    # Guardar campos SMTP
+    config.smtp_host = data.smtp_host
+    config.smtp_port = data.smtp_port
+    config.smtp_username = data.smtp_username
+    if data.smtp_password and data.smtp_password != '••••••••' and data.smtp_password.strip() != '':
+        config.smtp_password = data.smtp_password
+    config.smtp_use_tls = data.smtp_use_tls
+    config.email_notifications_enabled = data.email_notifications_enabled
+    config.email_alerts_recipients = data.email_alerts_recipients
+    
     db.commit()
     db.refresh(config)
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "SystemConfig", str(config.id), "Configuración general del sistema actualizada")
+
     return {"status": "success", "message": "Configuración actualizada correctamente."}
+
+@router.post("/test-email")
+def test_email(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("perm_manage_settings"))
+):
+    recipient = payload.get("recipient")
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Por favor, especifica el correo destinatario de prueba.")
+        
+    config = db.query(SystemConfig).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuración no encontrada. Guarda los cambios primero.")
+        
+    try:
+        from backend.services.email import send_test_email
+        send_test_email(config, recipient)
+        return {"status": "success", "message": f"Correo de prueba enviado con éxito a {recipient}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error de envío SMTP: {str(e)}")
 
 @router.post("/logo")
 def upload_logo(

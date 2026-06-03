@@ -9,6 +9,9 @@ Esta guía contiene los pasos necesarios para actualizar el **Sistema de Asisten
 - **Gestión Avanzada de Feriados y Permisos:** Nuevos módulos para registrar días festivos (`holidays`) y permisos temporales/licencias por empleado (`leaves`), evitando que el sistema los califique como inasistencia.
 - **Dashboard Interactivo y Analítica de KPIs:** Nuevos KPIs dinámicos y widgets avanzados, incluyendo una vista del mejor empleado (Podio) y soporte ampliado para reportes de desempeño de los empleados.
 - **Evolución del Panel de Administración y Configuración:** Se agregaron permisos granulares, alertas y notificaciones proactivas de discrepancias (e.g. empleado sin horario).
+- **Historial de Auditoría Completo:** Módulo de auditoría que registra todas las creaciones, actualizaciones y eliminaciones de empleados (individuales y en lote), departamentos, cargos, y descargas de copias de seguridad de forma segura y transparente.
+- **Configuración de Servidor de Correo SMTP:** Permite configurar un servidor de correo saliente para el envío de notificaciones automáticas y reportes periódicos.
+- **Copias de Seguridad Todo en Uno (.zip):** Nuevo sistema de copias de seguridad y restauración que empaqueta tanto los volcados SQL de la base de datos como las fotos de perfil de los empleados y recursos multimedia en un solo archivo comprimido `.zip` con barra de progreso.
 
 ---
 
@@ -43,14 +46,18 @@ pip install -r requirements.txt
 ---
 
 ### Paso 3: Aplicar Migraciones de Base de Datos
-La versión 2.2 trae nuevas tablas de base de datos (`holidays`, `leaves`, `attendance_justifications`, etc.). Ejecuta los siguientes scripts en orden para actualizar la estructura de la base de datos de manera segura sin perder información.
+La versión 2.2 trae nuevas tablas de base de datos (`holidays`, `leaves`, `attendance_justifications`, `audit_logs`, etc.). Ejecuta los siguientes scripts en orden para actualizar la estructura de la base de datos de manera segura sin perder información.
 
 ```bash
-# Estando dentro del entorno virtual, ejecuta:
+# Estando dentro del entorno virtual, ejecuta las migraciones base:
 python migrations/migration_user_permissions.py
 python migrations/migration_additional_permissions.py
 python migrations/migration_holidays.py
 python migrations/migration_leaves.py
+
+# Ejecuta las migraciones de auditoría y configuración SMTP:
+python scripts/migration_audit.py
+python scripts/migration_smtp.py
 ```
 
 ---

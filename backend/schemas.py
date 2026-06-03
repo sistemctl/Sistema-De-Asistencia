@@ -450,3 +450,28 @@ class AttendanceJustificationCreate(BaseModel):
     override_status: str     # 'present', 'on_time'
 
 
+# ── Audit Logs ────────────────────────────────────────────────────────────────
+
+class AuditLogOut(BaseModel):
+    id: int
+    user_id: Optional[int]
+    action: str
+    entity: str
+    entity_id: Optional[str]
+    details: Optional[str]
+    ip_address: Optional[str]
+    created_at: datetime
+    user: Optional[UserOut] = None
+
+    class Config:
+        from_attributes = True
+
+class AuditLogCreate(BaseModel):
+    user_id: Optional[int] = None
+    action: str
+    entity: str
+    entity_id: Optional[str] = None
+    details: Optional[str] = None
+    ip_address: Optional[str] = None
+
+

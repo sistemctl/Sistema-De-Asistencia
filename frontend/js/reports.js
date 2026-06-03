@@ -109,13 +109,17 @@ const ReportsPage = {
       </style>
 
       <!-- ── Navegación por Pestañas de Reportes ── -->
-      <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 24px;">
-        <button id="repTabBtnAnalytics" class="reports-tab-btn ${isRecords ? '' : 'active'}" onclick="ReportsPage.switchReportTab('analytics')">
-          📊 Analíticas y Consulta
-        </button>
-        <button id="repTabBtnRecords" class="reports-tab-btn ${isRecords ? 'active' : ''}" onclick="ReportsPage.switchReportTab('records')">
-          📋 Registros Detallados
-        </button>
+      <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+        <div class="segmented-control">
+          <button id="repTabBtnAnalytics" class="segmented-btn ${isRecords ? '' : 'active'}" onclick="ReportsPage.switchReportTab('analytics')">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            Analíticas y Consulta
+          </button>
+          <button id="repTabBtnRecords" class="segmented-btn ${isRecords ? 'active' : ''}" onclick="ReportsPage.switchReportTab('records')">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            Registros Detallados
+          </button>
+        </div>
       </div>
 
       <!-- ── PESTAÑA 1: ANALÍTICAS Y FILTROS ── -->
@@ -127,9 +131,9 @@ const ReportsPage = {
             Filtros de Búsqueda (Analíticas)
           </div>
           
-          <div class="grid-3" style="gap: 16px; align-items: flex-end; margin-bottom: 16px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 20px;">
             <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
-            <div class="field" style="margin: 0;">
+            <div class="field" style="margin: 0; flex: 1; min-width: 250px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
               <div class="searchable-select-wrapper an-select-wrapper" style="position: relative; width: 100%;">
                 <input type="text" id="anFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
@@ -140,46 +144,39 @@ const ReportsPage = {
               </div>
             </div>
             
-            <!-- Selector Departamento -->
-            <div class="field" style="margin: 0;">
-              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Departamento</label>
-              <select id="anFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                <option value="">🏢 Todos los departamentos</option>
-              </select>
-            </div>
-
-            <!-- Selector Cargo -->
-            <div class="field" style="margin: 0;">
-              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Cargo</label>
-              <select id="anFilterPosition" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                <option value="">💼 Todos los cargos</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="grid-3" style="gap: 16px; align-items: flex-end; margin-bottom: 20px;">
-            <!-- Selector Horario -->
-            <div class="field" style="margin: 0;">
-              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Horario</label>
-              <select id="anFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                <option value="">🕒 Todos los horarios</option>
-              </select>
-            </div>
-            
             <!-- Selector de Rango de Fechas Único -->
-            <div class="field" style="margin: 0; grid-column: span 2;">
+            <div class="field" style="margin: 0; flex: 1; min-width: 200px; max-width: 320px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
               <input type="text" id="anDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
             </div>
-          </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 10px;">
-            <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('an')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
-              Limpiar Filtros
-            </button>
-            <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('an')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
-              Aplicar Filtros
-            </button>
+            <!-- Botón Filtros Avanzados y Acciones -->
+            <div style="display: flex; gap: 10px; align-items: flex-end; position: relative;">
+              <button class="btn btn-secondary" onclick="document.getElementById('anAdvancedFilters').style.display = document.getElementById('anAdvancedFilters').style.display === 'none' ? 'flex' : 'none';" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                Filtros
+              </button>
+              
+              <div id="anAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
+                <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Adicionales</h4>
+                <select id="anFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                  <option value="">🏢 Todos los departamentos</option>
+                </select>
+                <select id="anFilterPosition" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                  <option value="">💼 Todos los cargos</option>
+                </select>
+                <select id="anFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                  <option value="">🕒 Todos los horarios</option>
+                </select>
+              </div>
+
+              <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('an')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                Limpiar
+              </button>
+              <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('an')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                Aplicar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -271,15 +268,11 @@ const ReportsPage = {
             </div>
           </div>
           
-          <!-- Elementos ocultos pero necesarios para compatibilidad lógica -->
-          <select id="recFilterDepartment" style="display: none;"><option value=""></option></select>
-          <select id="recFilterPosition" style="display: none;"><option value=""></option></select>
-          <select id="recFilterSchedule" style="display: none;"><option value=""></option></select>
           <select id="recGranularity" style="display: none;"><option value="daily" selected></option></select>
 
           <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;">
-            <!-- Selector Dinámico de Empleado (Búsqueda Dinámica) -->
-            <div class="field" style="margin: 0; flex: 1; min-width: 250px; max-width: 400px;">
+            <!-- Selector Dinámico de Empleado -->
+            <div class="field" style="margin: 0; flex: 1; min-width: 250px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
               <div class="searchable-select-wrapper rec-select-wrapper" style="position: relative; width: 100%;">
                 <input type="text" id="recFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
@@ -296,8 +289,26 @@ const ReportsPage = {
               <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
             </div>
 
-            <!-- Botones alineados en la misma fila -->
-            <div style="display: flex; gap: 10px;">
+            <!-- Botones alineados en la misma fila con Filtros -->
+            <div style="display: flex; gap: 10px; position: relative;">
+              <button class="btn btn-secondary" onclick="document.getElementById('recAdvancedFilters').style.display = document.getElementById('recAdvancedFilters').style.display === 'none' ? 'flex' : 'none';" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                Filtros
+              </button>
+              
+              <div id="recAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
+                <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Adicionales</h4>
+                <select id="recFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                  <option value="">🏢 Todos los departamentos</option>
+                </select>
+                <select id="recFilterPosition" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                  <option value="">💼 Todos los cargos</option>
+                </select>
+                <select id="recFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                  <option value="">🕒 Todos los horarios</option>
+                </select>
+              </div>
+
               <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('rec')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
                 Limpiar
               </button>
@@ -420,6 +431,14 @@ const ReportsPage = {
               input.value = currentObj.text;
             }
           }
+        }
+      });
+      
+      ['an', 'rec'].forEach(prefix => {
+        const advFilters = document.getElementById(`${prefix}AdvancedFilters`);
+        const advBtn = advFilters?.previousElementSibling;
+        if (advFilters && advBtn && !advFilters.contains(e.target) && !advBtn.contains(e.target)) {
+          advFilters.style.display = 'none';
         }
       });
       
@@ -1131,9 +1150,13 @@ const ReportsPage = {
       const pag = document.getElementById('repPagination');
       pag.innerHTML = `
         <span class="pagination-info">${data.total} registros encontrados — Página ${data.page} de ${data.pages}</span>
-        <div class="pagination-btns">
-          <button class="page-btn" ${data.page <= 1 ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page - 1})">← Anterior</button>
-          <button class="page-btn" ${data.page >= data.pages ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page + 1})">Siguiente →</button>
+        <div class="pagination-btns" style="display:flex; gap:8px;">
+          <button class="page-btn" ${data.page <= 1 ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page - 1})" style="display:flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg> Anterior
+          </button>
+          <button class="page-btn" ${data.page >= data.pages ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page + 1})" style="display:flex;align-items:center;gap:6px;">
+            Siguiente <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </div>
       `;
 

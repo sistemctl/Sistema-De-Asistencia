@@ -32,23 +32,31 @@ def list_departments(db: Session = Depends(get_db), _=Depends(get_current_user))
 
 
 @router.post("/departments", response_model=DepartmentOut, status_code=201)
-def create_department(data: DepartmentCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def create_department(data: DepartmentCreate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     if db.query(Department).filter(Department.name == data.name).first():
         raise HTTPException(status_code=400, detail="El departamento ya existe")
     dept = Department(**data.model_dump())
     db.add(dept)
     db.commit()
     db.refresh(dept)
+    
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "CREATE", "Department", str(dept.id), f"Creado departamento {dept.name}")
+    
     return dept
 
 
 @router.delete("/departments/{dept_id}", status_code=204)
-def delete_department(dept_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_department(dept_id: int, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
+    dept_name = dept.name
     db.delete(dept)
     db.commit()
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "DELETE", "Department", str(dept_id), f"Eliminado departamento {dept_name}")
 
 
 # ── Cargos (Positions) ────────────────────────────────────────────────────────
@@ -59,23 +67,31 @@ def list_positions(db: Session = Depends(get_db), _=Depends(get_current_user)):
 
 
 @router.post("/positions", response_model=PositionOut, status_code=201)
-def create_position(data: PositionCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def create_position(data: PositionCreate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     if db.query(Position).filter(Position.name == data.name).first():
         raise HTTPException(status_code=400, detail="El cargo ya existe")
     pos = Position(**data.model_dump())
     db.add(pos)
     db.commit()
     db.refresh(pos)
+    
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "CREATE", "Position", str(pos.id), f"Creado cargo {pos.name}")
+    
     return pos
 
 
 @router.delete("/positions/{pos_id}", status_code=204)
-def delete_position(pos_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_position(pos_id: int, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     pos = db.query(Position).filter(Position.id == pos_id).first()
     if not pos:
         raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    pos_name = pos.name
     db.delete(pos)
     db.commit()
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "DELETE", "Position", str(pos_id), f"Eliminado cargo {pos_name}")
 
 
 # ── Empleados ─────────────────────────────────────────────────────────────────
@@ -144,13 +160,16 @@ def get_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(get_curre
 
 
 @router.post("", response_model=EmployeeOut, status_code=201)
-def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     if db.query(Employee).filter(Employee.employee_code == data.employee_code).first():
         raise HTTPException(status_code=400, detail="El código de empleado ya existe")
     emp = Employee(**data.model_dump())
     db.add(emp)
     db.commit()
     db.refresh(emp)
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "CREATE", "Employee", str(emp.id), f"Creado empleado {emp.employee_code} ({emp.full_name})")
 
     # Sincronizar automáticamente con el dispositivo si está online
     try:
@@ -188,7 +207,7 @@ class BulkActionInput(BaseModel):
 def bulk_update_employees(
     data: BulkUpdateInput,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    current_user=Depends(require_admin)
 ):
     if not data.employee_ids:
         raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
@@ -250,11 +269,16 @@ def bulk_update_employees(
             emp.synced_to_device = False
 
     db.commit()
+
+    from backend.services.audit import log_action
+    emp_codes_names = [f"{emp.employee_code} ({emp.full_name})" for emp in employees]
+    log_action(db, current_user.id, "UPDATE", "Employee", None, f"Actualizados en lote {len(employees)} empleados: {', '.join(emp_codes_names)}")
+
     return {"status": "success", "updated_count": len(employees)}
 
 
 @router.put("/{emp_id}", response_model=EmployeeOut)
-def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -273,6 +297,9 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
         setattr(emp, field, value)
     db.commit()
     db.refresh(emp)
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "Employee", str(emp.id), f"Actualizado empleado {emp.employee_code}")
 
     # Sincronizar automáticamente la actualización con el dispositivo
     try:
@@ -296,7 +323,7 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
 
 
 @router.delete("/{emp_id}", status_code=204)
-def delete_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_employee(emp_id: int, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -328,8 +355,13 @@ def delete_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(requir
         print(f"Error en la eliminación automática del empleado {emp.employee_code} del dispositivo: {e}")
 
     # 3. Eliminar de la base de datos
+    emp_code = emp.employee_code
+    emp_name = emp.full_name
     db.delete(emp)
     db.commit()
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "DELETE", "Employee", str(emp_id), f"Eliminado empleado {emp_code} ({emp_name})")
 
 
 # ── Foto ──────────────────────────────────────────────────────────────────────
@@ -584,7 +616,7 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
 def bulk_sync_employees(
     data: BulkActionInput,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    current_user=Depends(require_admin)
 ):
     if not data.employee_ids:
         raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
@@ -603,6 +635,7 @@ def bulk_sync_employees(
     employees = db.query(Employee).filter(Employee.id.in_(data.employee_ids)).all()
     synced = 0
     failed = 0
+    emp_details = []
 
     for emp in employees:
         try:
@@ -621,11 +654,16 @@ def bulk_sync_employees(
                     client.upload_face_photo(device_uid, photo_bytes)
             
             synced += 1
+            emp_details.append(f"{emp.employee_code} ({emp.full_name})")
         except Exception as e:
             failed += 1
             print(f"Error al sincronizar empleado {emp.employee_code} en lote: {e}")
 
     db.commit()
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "SYNC", "Employee", None, f"Sincronizados en lote {synced} empleados con el biométrico (Fallidos: {failed}): {', '.join(emp_details)}")
+
     return {"status": "success", "synced": synced, "failed": failed}
 
 
@@ -633,7 +671,7 @@ def bulk_sync_employees(
 def bulk_delete_employees(
     data: BulkActionInput,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    current_user=Depends(require_admin)
 ):
     if not data.employee_ids:
         raise HTTPException(status_code=400, detail="Debe seleccionar al menos un empleado")
@@ -655,6 +693,7 @@ def bulk_delete_employees(
     except Exception:
         pass
 
+    emp_details = [f"{emp.employee_code} ({emp.full_name})" for emp in employees]
     deleted_count = 0
     for emp in employees:
         if emp.photo_path:
@@ -677,6 +716,10 @@ def bulk_delete_employees(
         deleted_count += 1
 
     db.commit()
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "DELETE", "Employee", None, f"Eliminados en lote {deleted_count} empleados: {', '.join(emp_details)}")
+
     return {"status": "success", "deleted_count": deleted_count}
 
 

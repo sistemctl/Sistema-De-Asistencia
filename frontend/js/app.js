@@ -10,7 +10,7 @@ const PAGES = {
   parameters: { module: ParametersPage, title: 'Parámetros',  sub: 'Configuración de departamentos, cargos y horarios' },
   reports:    { module: ReportsPage,    title: 'Reportes',    sub: 'Exportar datos' },
   device:     { module: DevicePage,     title: 'Dispositivo', sub: 'DS-K1T323MBWX' },
-  system:     { module: DevicePage,     title: 'Configuración del Sistema', sub: 'Personalización de marca y branding' },
+  system:     { module: DevicePage,     title: 'Configuración del Sistema', sub: 'Personalización de marca y auditoría' },
   users:      { module: UsersPage,      title: 'Usuarios',    sub: 'Gestionar administradores' },
 };
 
@@ -51,7 +51,8 @@ function navigate(page) {
   if (basePage !== previousBasePage) {
     contentEl.classList.remove('page-fade-in');
     if (basePage === 'system') {
-      PAGES[basePage].module.render('branding');
+      const subRoute = page.split('/')[1] || 'branding';
+      PAGES[basePage].module.render(subRoute);
     } else if (basePage === 'device') {
       PAGES[basePage].module.render('device_status');
     } else {
@@ -64,6 +65,9 @@ function navigate(page) {
     if (basePage === 'reports') {
       const subRoute = page.split('/')[1] || 'analytics';
       ReportsPage.switchReportTab(subRoute);
+    } else if (basePage === 'system') {
+      const subRoute = page.split('/')[1] || 'branding';
+      DevicePage.switchTab(subRoute);
     }
   }
 }

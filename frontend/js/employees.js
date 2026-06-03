@@ -24,28 +24,35 @@ const EmployeesPage = {
               <!-- Divisor vertical -->
               <div style="width:1px; height:28px; background:var(--border); flex-shrink:0;"></div>
 
-              <!-- Filtros -->
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <select id="filterDept" class="emp-filter-select">
-                  <option value="">🏢 Departamento</option>
-                </select>
-                <select id="filterPosition" class="emp-filter-select">
-                  <option value="">💼 Cargo</option>
-                </select>
-                <select id="filterStatus" class="emp-filter-select">
-                  <option value="">👤 Estado</option>
-                  <option value="true">✅ Activo</option>
-                  <option value="false">⛔ Inactivo</option>
-                </select>
-                <select id="pageSize" class="emp-filter-select" style="min-width: 110px;">
-                  <option value="10">📄 10 filas</option>
-                  <option value="50" selected>📄 50 filas</option>
-                  <option value="100">📄 100 filas</option>
-                  <option value="200">📄 200 filas</option>
-                  <option value="500">📄 500 filas</option>
-                  <option value="1000">📄 1000 filas</option>
-                  <option value="10000">📄 Todos</option>
-                </select>
+              <!-- Filtros Dropdown -->
+              <div style="position:relative;">
+                <button class="btn btn-secondary" onclick="document.getElementById('advancedFiltersMenu').style.display = document.getElementById('advancedFiltersMenu').style.display === 'none' ? 'flex' : 'none';" style="padding:8px 12px; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                  Filtros
+                </button>
+                <div id="advancedFiltersMenu" style="display:none; position:absolute; top:40px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:200px; flex-direction:column; gap:12px;">
+                  <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Avanzados</h4>
+                  <select id="filterDept" class="emp-filter-select" style="width:100%;">
+                    <option value="">🏢 Departamento</option>
+                  </select>
+                  <select id="filterPosition" class="emp-filter-select" style="width:100%;">
+                    <option value="">💼 Cargo</option>
+                  </select>
+                  <select id="filterStatus" class="emp-filter-select" style="width:100%;">
+                    <option value="">👤 Estado</option>
+                    <option value="true">✅ Activo</option>
+                    <option value="false">⛔ Inactivo</option>
+                  </select>
+                  <select id="pageSize" class="emp-filter-select" style="width:100%;">
+                    <option value="10">📄 10 filas</option>
+                    <option value="50" selected>📄 50 filas</option>
+                    <option value="100">📄 100 filas</option>
+                    <option value="200">📄 200 filas</option>
+                    <option value="500">📄 500 filas</option>
+                    <option value="1000">📄 1000 filas</option>
+                    <option value="10000">📄 Todos</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -265,12 +272,18 @@ const EmployeesPage = {
       document.getElementById('btnNewEmp')?.addEventListener('click', () => this.openForm());
       document.getElementById('btnImportFromDevice')?.addEventListener('click', () => this.importFromDevice());
     }
-    // Close columns dropdown if clicked outside
+    // Close dropdowns if clicked outside
     document.addEventListener('click', (e) => {
-      const dropdown = document.getElementById('colSelectorDropdown');
-      const btn = document.getElementById('btnToggleColSelector');
-      if (dropdown && btn && !dropdown.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-        dropdown.style.display = 'none';
+      const colDropdown = document.getElementById('colSelectorDropdown');
+      const colBtn = document.getElementById('btnToggleColSelector');
+      if (colDropdown && colBtn && !colDropdown.contains(e.target) && !colBtn.contains(e.target)) {
+        colDropdown.style.display = 'none';
+      }
+      
+      const filterMenu = document.getElementById('advancedFiltersMenu');
+      const filterBtn = filterMenu?.previousElementSibling;
+      if (filterMenu && filterBtn && !filterMenu.contains(e.target) && !filterBtn.contains(e.target)) {
+        filterMenu.style.display = 'none';
       }
     });
 
@@ -348,9 +361,13 @@ const EmployeesPage = {
       if (bar) bar.style.display = 'none';
 
       if (!emps?.length) { 
-        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 10 : 9}"><div class="empty-state"><div class="icon">
-          <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        </div><h3>Aún no hay equipo</h3><p>Registra a tu primer empleado o importa desde el dispositivo.</p></div></td></tr>`; 
+        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 10 : 9}"><div class="empty-state" style="padding:80px 20px;">
+          <div style="margin-bottom:24px; color:var(--text-3); opacity:0.6;">
+            <svg viewBox="0 0 24 24" width="80" height="80" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+          </div>
+          <h3 style="font-size:1.2rem; margin-bottom:8px;">Aún no hay equipo</h3>
+          <p style="font-size:0.9rem;">Registra a tu primer empleado o importa desde el dispositivo biométrico.</p>
+        </div></td></tr>`; 
         return; 
       }
       tbody.innerHTML = emps.map(e => `
@@ -378,13 +395,17 @@ const EmployeesPage = {
           </td>
           <td class="col-creds">
             <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start;">
-              <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.35'}; font-size: 1.05rem;" class="biometric-icon">👤</span>
-              <span title="${e.card_number ? `Tarjeta: ${e.card_number} (Clic para copiar)` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.35'}; font-size: 1.05rem;" class="${e.card_number ? 'copyable' : ''} biometric-icon" data-copy="${e.card_number || ''}">💳</span>
+              <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.4'}; display:flex; filter: ${e.photo_path ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'};">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8V5c0-1.1.9-2 2-2h3"></path><path d="M16 3h3c1.1 0 2 .9 2 2v3"></path><path d="M19 16v3c0 1.1-.9 2-2 2h-3"></path><path d="M8 21H5c-1.1 0-2-.9-2-2v-3"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </span>
+              <span title="${e.card_number ? `Tarjeta: ${e.card_number} (Clic para copiar)` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.4'}; display:flex; filter: ${e.card_number ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'}; cursor: ${e.card_number ? 'pointer' : 'default'};" class="${e.card_number ? 'copyable' : ''}" data-copy="${e.card_number || ''}">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+              </span>
             </div>
           </td>
           <td class="col-status">${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
           <td>
-            <div style="display:flex;gap:6px">
+            <div class="table-actions" style="display:flex;gap:6px">
               <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia" style="color:var(--accent);border-color:rgba(var(--accent-rgb),0.2);background:rgba(var(--accent-rgb),0.06);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               </button>
@@ -1329,63 +1350,84 @@ const EmployeesPage = {
         return icon + late;
       };
 
+      // SVG Circle math for donut chart
+      const radius = 28;
+      const circumference = 2 * Math.PI * radius;
+      const rate = stats.attendance_rate || 0;
+      const strokeDashoffset = circumference - (rate / 100) * circumference;
+      const chartColor = rate >= 80 ? 'var(--success)' : rate >= 50 ? 'var(--warning)' : 'var(--danger)';
+
       const html = `
         <!-- Cabecera del perfil -->
-        <div style="display:flex;gap:16px;align-items:center;padding:20px;background:linear-gradient(135deg,rgba(var(--accent-rgb),0.06),transparent);border-radius:12px;margin-bottom:20px;border:1px solid rgba(var(--accent-rgb),0.1);">
+        <div style="display:flex;gap:16px;align-items:center;padding:24px;background:var(--surface-1);border-radius:16px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.03);border:1px solid var(--border);">
           ${avatar}
           <div style="flex:1;min-width:0;">
-            <div style="font-size:1.15rem;font-weight:800;color:var(--text-1);">${emp.full_name}</div>
-            <div style="font-size:.82rem;color:var(--text-3);margin-top:2px;">${emp.position} · ${emp.department}</div>
-            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-              <span class="badge badge-blue">🗓 ${emp.schedule}</span>
-              <span class="badge ${emp.is_active ? 'badge-green' : 'badge-red'}">${emp.is_active ? '✓ Activo' : '⛔ Inactivo'}</span>
-              <code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.72rem;font-family:'JetBrains Mono',monospace;">${emp.employee_code}</code>
+            <div style="font-size:1.25rem;font-weight:800;color:var(--text-1);">${emp.full_name}</div>
+            <div style="font-size:.85rem;color:var(--text-3);margin-top:2px;">${emp.position} · ${emp.department}</div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+              <span class="badge" style="background:var(--surface-3);color:var(--text-2);display:flex;align-items:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                ${emp.schedule}
+              </span>
+              <span class="badge ${emp.is_active ? 'badge-green' : 'badge-red'}" style="display:flex;align-items:center;gap:4px;">
+                ${emp.is_active ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Activo' : '⛔ Inactivo'}
+              </span>
+              <code style="background:var(--surface-3);color:var(--text-2);padding:2px 8px;border-radius:5px;font-size:.75rem;font-family:'JetBrains Mono',monospace;">ID: ${emp.employee_code}</code>
             </div>
           </div>
-          <div style="text-align:center;padding:12px 16px;background:var(--surface-2);border-radius:12px;border:1px solid var(--border);min-width:90px;">
-            <div style="font-size:2rem;font-weight:800;color:${stats.attendance_rate >= 80 ? 'var(--success)' : stats.attendance_rate >= 50 ? 'var(--warning)' : 'var(--danger)'};">${stats.attendance_rate}%</div>
-            <div style="font-size:.7rem;color:var(--text-3);font-weight:600;">Asistencia</div>
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px; background:var(--surface-2); border-radius:12px; border:1px solid var(--border); width:120px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);">
+            <div style="position:relative; width:64px; height:64px; display:flex; align-items:center; justify-content:center;">
+              <svg width="64" height="64" viewBox="0 0 64 64" style="transform: rotate(-90deg);">
+                <!-- Background circle -->
+                <circle cx="32" cy="32" r="28" fill="none" stroke="var(--surface-3)" stroke-width="6" />
+                <!-- Progress circle -->
+                <circle cx="32" cy="32" r="28" fill="none" stroke="${chartColor}" stroke-width="6" stroke-linecap="round" 
+                  stroke-dasharray="${circumference}" stroke-dashoffset="${strokeDashoffset}" 
+                  style="transition: stroke-dashoffset 1s ease-in-out;" />
+              </svg>
+              <div style="position:absolute; font-size:.9rem; font-weight:800; color:${chartColor};">${rate}%</div>
+            </div>
+            <div style="font-size:.7rem;color:var(--text-3);font-weight:700;margin-top:6px;text-transform:uppercase;letter-spacing:0.05em;">Asistencia</div>
           </div>
         </div>
 
         <!-- Período -->
-        <div style="font-size:.72rem;color:var(--text-3);font-weight:600;text-align:center;margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase;">
+        <div style="font-size:.75rem;color:var(--text-3);font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:10px;">
+          <div style="height:1px;background:var(--border);flex:1;max-width:50px;"></div>
           Últimos 30 días · ${period.date_from} al ${period.date_to}
+          <div style="height:1px;background:var(--border);flex:1;max-width:50px;"></div>
         </div>
 
-        <!-- Stats KPIs pequeños -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+        <!-- Stats KPIs con íconos -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
           ${[
-            {label:'Presentes', value: stats.days_present, color:'var(--success)', bg:'rgba(0,230,118,.08)'},
-            {label:'Ausentes', value: stats.days_absent, color:'var(--danger)', bg:'rgba(255,61,0,.08)'},
-            {label:'Tardanzas', value: stats.days_late, color:'var(--warning)', bg:'rgba(255,179,0,.08)'},
-            {label:'Horas totales', value: stats.total_hours_worked > 0 ? stats.total_hours_worked + 'h' : '-', color:'var(--accent)', bg:'rgba(var(--accent-rgb),.08)'},
+            {label:'Presentes', value: stats.days_present, color:'var(--success)', bg:'rgba(0,230,118,.1)', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'},
+            {label:'Ausentes', value: stats.days_absent, color:'#f43f5e', bg:'rgba(244,63,94,.1)', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'},
+            {label:'Tardanzas', value: stats.days_late, color:'#f59e0b', bg:'rgba(245,158,11,.1)', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'},
+            {label:'Horas totales', value: stats.total_hours_worked > 0 ? stats.total_hours_worked + 'h' : '-', color:'var(--text-2)', bg:'var(--surface-2)', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'},
           ].map(k => `
-            <div style="padding:12px;background:${k.bg};border-radius:10px;border:1px solid rgba(0,0,0,.04);text-align:center;">
-              <div style="font-size:1.4rem;font-weight:800;color:${k.color};">${k.value}</div>
-              <div style="font-size:.7rem;color:var(--text-3);font-weight:600;margin-top:2px;">${k.label}</div>
+            <div style="padding:16px;background:${k.bg};border-radius:12px;border:1px solid rgba(0,0,0,.02);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform 0.2s;cursor:default;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="color:${k.color};margin-bottom:8px;opacity:0.9;">${k.icon}</div>
+              <div style="font-size:1.5rem;font-weight:800;color:${k.color};line-height:1;">${k.value}</div>
+              <div style="font-size:.72rem;color:var(--text-3);font-weight:600;margin-top:6px;text-transform:uppercase;letter-spacing:0.02em;">${k.label}</div>
             </div>`).join('')}
         </div>
 
-        <!-- Barras de progreso -->
-        <div style="margin-bottom:20px;">
-          ${statBar('Días presentes', stats.days_present, stats.total_days, 'var(--success)')}
-          ${statBar('Tardanzas', stats.days_late, stats.days_present || 1, 'var(--warning)')}
-          ${stats.avg_hours_per_day > 0 ? statBar(`Promedio diario (${stats.avg_hours_per_day}h)`, Math.round(stats.avg_hours_per_day * 10), 100, 'var(--accent)') : ''}
-        </div>
-
         <!-- Últimos registros -->
-        <div style="border-top:1px solid var(--border);padding-top:16px;">
-          <div style="font-size:.78rem;font-weight:700;color:var(--text-2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em;">Últimos Registros del Dispositivo</div>
+        <div style="border-top:1px solid var(--border);padding-top:20px;">
+          <div style="font-size:.8rem;font-weight:700;color:var(--text-2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+             Últimos Registros del Dispositivo
+          </div>
           ${records.length === 0
-            ? `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.86rem;">Sin registros recientes</div>`
-            : `<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+            ? `<div style="text-align:center;padding:24px;background:var(--surface-2);border-radius:10px;color:var(--text-3);font-size:.86rem;font-weight:500;">Sin registros recientes</div>`
+            : `<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;box-shadow:inset 0 2px 10px rgba(0,0,0,0.01);">
                 <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
                   <thead>
                     <tr style="background:var(--surface-2);position:sticky;top:0;">
-                      <th style="padding:8px 12px;text-align:left;font-weight:700;color:var(--text-2);">Fecha y hora</th>
-                      <th style="padding:8px 12px;text-align:left;font-weight:700;color:var(--text-2);">Tipo</th>
-                      <th style="padding:8px 12px;text-align:left;font-weight:700;color:var(--text-2);">Método</th>
+                      <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Fecha y hora</th>
+                      <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Tipo</th>
+                      <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Método</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1393,10 +1435,10 @@ const EmployeesPage = {
                       const dt = new Date(r.event_time);
                       const dateStr = dt.toLocaleDateString('es-PE', {day:'2-digit',month:'short',year:'2-digit'});
                       const timeStr = dt.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit',hour12:false});
-                      return `<tr style="border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-                        <td style="padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:.78rem;"><span style="color:var(--text-3);">${dateStr}</span> <strong>${timeStr}</strong></td>
-                        <td style="padding:8px 12px;">${eventTypeLabel(r.event_type, r.is_late)}</td>
-                        <td style="padding:8px 12px;color:var(--text-3);font-size:.75rem;">${r.auth_method}</td>
+                      return `<tr style="border-bottom:1px solid var(--border);transition:background 0.2s;" onmouseover="this.style.background='var(--surface-1)'" onmouseout="this.style.background='transparent'">
+                        <td style="padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:.78rem;"><span style="color:var(--text-3);">${dateStr}</span> <strong>${timeStr}</strong></td>
+                        <td style="padding:10px 14px;font-weight:600;">${eventTypeLabel(r.event_type, r.is_late)}</td>
+                        <td style="padding:10px 14px;color:var(--text-3);font-size:.75rem;">${r.auth_method}</td>
                       </tr>`;
                     }).join('')}
                   </tbody>

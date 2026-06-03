@@ -23,3 +23,11 @@ uploads/
 # Sistema Operativo
 .DS_Store
 Thumbs.db
+
+# Temporales y Scratch
+scratch/
+*.sql
+*.zip
+*.xlsx
+*.pdf
+

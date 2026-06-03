@@ -212,6 +212,15 @@ class SystemConfig(Base):
     flexible_shift_start = Column(String(10), default="09:00:00")
     flexible_shift_end = Column(String(10), default="18:00:00")
     
+    # Configuración de Correo SMTP y Alertas
+    smtp_host = Column(String(100), default="smtp.gmail.com", nullable=True)
+    smtp_port = Column(Integer, default=587, nullable=True)
+    smtp_username = Column(String(150), nullable=True)
+    smtp_password = Column(String(255), nullable=True)
+    smtp_use_tls = Column(Boolean, default=True)
+    email_notifications_enabled = Column(Boolean, default=False)
+    email_alerts_recipients = Column(String(500), nullable=True)
+
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
@@ -277,5 +286,22 @@ class AttendanceJustification(Base):
     __table_args__ = (
         UniqueConstraint("employee_id", "date", name="uq_emp_justification_date"),
     )
+
+
+class AuditLog(Base):
+    """Registro de acciones administrativas (Audit Logs) para trazabilidad de seguridad."""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String(100), nullable=False, index=True)      # e.g., 'CREATE_EMPLOYEE', 'UPDATE_SETTINGS'
+    entity = Column(String(100), nullable=False, index=True)      # e.g., 'Employee', 'SystemConfig'
+    entity_id = Column(String(100), nullable=True)                # El ID del registro afectado (string por si no es numérico)
+    details = Column(Text, nullable=True)                         # Información en JSON crudo de lo que cambió
+    ip_address = Column(String(50), nullable=True)                # IP desde donde se realizó el cambio
+    created_at = Column(DateTime, default=datetime.now, index=True)
+
+    user = relationship("User")
+
 
 

@@ -10,6 +10,12 @@ import os
 import argparse
 import subprocess
 
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 def run_script(script_path):
     """Ejecuta un script de Python en un subproceso con el PYTHONPATH correcto."""
     env = os.environ.copy()
