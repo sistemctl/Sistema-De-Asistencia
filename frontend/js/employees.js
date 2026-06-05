@@ -7,7 +7,8 @@ const EmployeesPage = {
   async render() {
     const isAdmin = Auth.canManageEmployees();
     document.getElementById('pageContent').innerHTML = `      <!-- ── CONTENEDOR ÚNICO DE TABLA Y FILTROS ── -->
-      <div class="card" style="padding: 0; display: flex; flex-direction: column; overflow: hidden;">
+      <div class="double-bezel-outer" style="height: 100%; display: flex; flex-direction: column;">
+        <div class="double-bezel-inner" style="padding: 0; display: flex; flex-direction: column; overflow: hidden; height: 100%; border: none; box-shadow: none;">
         
         <!-- Cabecera: Búsqueda y Filtros -->
         <div style="padding: 16px 20px; background: var(--surface-1);">
@@ -207,7 +208,8 @@ const EmployeesPage = {
           <div class="pagination" id="empPagination" style="margin-top: 0;"></div>
         </div>
 
-      </div>`;
+      </div>
+    </div>`;
 
     this.depts     = await API.get('/api/employees/departments') || [];
     this.positions = await API.get('/api/employees/positions')   || [];
@@ -410,6 +412,10 @@ const EmployeesPage = {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               </button>
               ${isAdmin ? `
+                ${e.qr_enabled ? `
+                <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showBadge(${e.id})" title="Imprimir Gafete" style="color:#0ea5e9;border-color:rgba(14,165,233,0.2);background:rgba(14,165,233,0.06);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                </button>` : ''}
                 <button class="btn btn-icon btn-sm" onclick="EmployeesPage.openForm(${e.id})" title="Editar">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
@@ -563,7 +569,18 @@ const EmployeesPage = {
           </label>
           <select id="fDept"><option value="">Sin departamento</option>${depOpts}</select>
         </div>
-        <div class="field"><label>N° Tarjeta M1</label><input id="fCard" value="${emp?.card_number||''}" placeholder="Opcional" /></div>
+        <div class="field"><label>N° Tarjeta M1</label><input id="fCard" value="${emp?.card_number||''}" placeholder="Opcional" ${emp?.qr_enabled ? 'readonly title="Gestionado por Gafete QR"' : ''} /></div>
+      </div>
+      <div class="form-row">
+        <div class="field" style="display:flex; align-items:center;">
+          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface-3); padding:10px 16px; border-radius:10px; border:1px solid var(--border); width: 100%;">
+            <span style="font-weight:600; color:var(--text-1); font-size: 0.85rem;">Habilitar Gafete / Código QR</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="fQrEnabled" ${emp?.qr_enabled ? 'checked' : ''} />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
       </div>
       <div class="form-row">
         <div class="field">
@@ -635,6 +652,7 @@ const EmployeesPage = {
         department_id: document.getElementById('fDept').value || null,
         schedule_id: schedId ? parseInt(schedId) : null,
         card_number: document.getElementById('fCard').value.trim() || null,
+        qr_enabled: document.getElementById('fQrEnabled')?.checked || false,
         work_start_time: startTime,
         work_end_time: endTime,
         is_active: document.getElementById('fIsActive').value === 'true',
@@ -915,7 +933,18 @@ const EmployeesPage = {
           </label>
           <select id="fDept"><option value="">Sin departamento</option>${depOpts}</select>
         </div>
-        <div class="field"><label>N° Tarjeta M1</label><input id="fCard" value="${state.card_number}" placeholder="Opcional" /></div>
+        <div class="field"><label>N° Tarjeta M1</label><input id="fCard" value="${state.card_number}" placeholder="Opcional" ${state.qr_enabled ? 'readonly title="Gestionado por Gafete QR"' : ''} /></div>
+      </div>
+      <div class="form-row">
+        <div class="field" style="display:flex; align-items:center;">
+          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface-3); padding:10px 16px; border-radius:10px; border:1px solid var(--border); width: 100%;">
+            <span style="font-weight:600; color:var(--text-1); font-size: 0.85rem;">Habilitar Gafete / Código QR</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="fQrEnabled" ${state.qr_enabled ? 'checked' : ''} />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
       </div>
       <div class="form-row">
         <div class="field">
@@ -957,6 +986,79 @@ const EmployeesPage = {
       if (placeholder) {
         placeholder.style.display = 'none';
       }
+    }
+  },
+
+  async showBadge(id) {
+    try {
+      const emp = await API.get(`/api/employees/${id}`);
+      if (!emp) return;
+      if (!emp.card_number) {
+        Toast.show("Este empleado no tiene código QR generado.", "error");
+        return;
+      }
+      
+      const settings = await API.get('/api/settings') || {};
+      const companyName = settings.company_name || "Mi Empresa";
+      const primaryColor = settings.primary_color || "#4f46e5";
+      const logoPath = settings.logo_path || "";
+      
+      const photoSrc = emp.photo_path ? `/uploads/${emp.photo_path}?t=${new Date().getTime()}` : null;
+      const initial = emp.first_name.charAt(0);
+      
+      Modal.open('Credencial / Gafete', `
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <p style="font-size:0.8rem; color:var(--text-3); text-align:center; margin-bottom:20px;">
+            Presiona el botón de abajo para imprimir esta credencial.
+          </p>
+          
+          <!-- CONTENEDOR A IMPRIMIR (Tamaño CR80 - Tarjeta de PVC) -->
+          <div id="printBadgeContainer" style="width: 213px; height: 338px; background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; position: relative; font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+            <!-- Fondo Superior -->
+            <div style="height: 120px; background: linear-gradient(135deg, ${primaryColor}, #312e81); position: relative; text-align: center; padding-top: 15px;">
+              ${logoPath ? `<img src="${logoPath}" style="max-height:35px; max-width:80%; object-fit:contain; filter: brightness(0) invert(1);" />` : `<div style="color:#fff; font-weight:800; font-size:1.1rem; letter-spacing:-0.5px;">${companyName}</div>`}
+              <div style="position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%); width: 70px; height: 70px; border-radius: 50%; background: #fff; border: 3px solid #fff; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                ${photoSrc ? `<img src="${photoSrc}" style="width:100%; height:100%; object-fit:cover;" />` : `<div style="width:100%; height:100%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:bold; color:var(--text-3);">${initial}</div>`}
+              </div>
+            </div>
+            
+            <!-- Datos del empleado -->
+            <div style="margin-top: 45px; text-align: center; padding: 0 15px;">
+              <div style="font-weight: 800; font-size: 1.1rem; color: #0f172a; line-height: 1.1; margin-bottom: 4px;">${emp.first_name}<br/>${emp.last_name}</div>
+              <div style="font-size: 0.75rem; font-weight: 600; color: ${primaryColor}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">${emp.position?.name || 'EMPLEADO'}</div>
+              
+              <!-- Contenedor del QR -->
+              <div style="display:flex; justify-content:center; margin-bottom:8px;">
+                <div id="qrcodeBadge" style="padding:4px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;"></div>
+              </div>
+              
+              <div style="font-size: 0.65rem; color: #64748b; font-family: monospace; font-weight: 600; letter-spacing:1px;">ID: ${emp.employee_code}</div>
+            </div>
+            
+            <!-- Franja inferior -->
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 8px; background: ${primaryColor};"></div>
+          </div>
+        </div>
+      `, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>
+          <button class="btn btn-primary" onclick="window.print()" style="display:flex; align-items:center; gap:6px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Imprimir
+          </button>`);
+          
+      // Generar el código QR dentro del div correspondiente
+      setTimeout(() => {
+        new QRCode(document.getElementById("qrcodeBadge"), {
+          text: emp.card_number,
+          width: 70,
+          height: 70,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }, 50);
+      
+    } catch(e) {
+      Toast.show(e.message, "error");
     }
   },
 

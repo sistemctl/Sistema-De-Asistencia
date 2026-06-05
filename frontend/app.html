@@ -21,6 +21,8 @@
   <div class="glow-orb orb-3"></div>
 </div>
 
+<div class="noise-overlay"></div>
+
 <div class="app-shell">
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar" id="sidebar">
@@ -108,7 +110,22 @@
 
   <!-- ── MAIN ── -->
   <div class="main">
-
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="topbar-title" id="topbarTitle">Dashboard</h1>
+        <span class="topbar-subtitle" id="topbarSubtitle">Resumen general</span>
+      </div>
+      <div class="topbar-right">
+        <div class="device-badge" id="deviceBadge">
+          <span class="status-dot"></span>
+          <span id="deviceBadgeText">Dispositivo</span>
+        </div>
+        <div class="topbar-clock">
+          <span class="topbar-clock-time" id="topbarClockTime">00:00:00</span>
+          <span class="topbar-clock-date" id="topbarClockDate">fecha</span>
+        </div>
+      </div>
+    </header>
 
     <main class="content" id="pageContent">
       <div class="loading-overlay"><div class="spinner"></div></div>
@@ -132,6 +149,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 <script src="/js/auth.js?v=9"></script>
 <script src="/js/dashboard.js?v=19"></script>

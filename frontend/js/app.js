@@ -120,6 +120,30 @@ document.getElementById('modalOverlay').addEventListener('click', (e) => {
 
 // ── Copy to Clipboard global helper with elastic tooltip ────────────────────
 document.addEventListener('click', async (e) => {
+  // Ripple effect para botones
+  const btn = e.target.closest('.btn');
+  if (btn) {
+    const circle = document.createElement('span');
+    const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+    const radius = diameter / 2;
+    const rect = btn.getBoundingClientRect();
+    
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${e.clientX - rect.left - radius}px`;
+    circle.style.top = `${e.clientY - rect.top - radius}px`;
+    circle.classList.add('ripple-effect');
+    
+    // Remover ripples anteriores si los hay
+    const existingRipple = btn.querySelector('.ripple-effect');
+    if (existingRipple) {
+      existingRipple.remove();
+    }
+    
+    btn.appendChild(circle);
+    setTimeout(() => circle.remove(), 600);
+  }
+
+  // Copy to clipboard
   const copyEl = e.target.closest('.copyable');
   if (!copyEl) return;
 

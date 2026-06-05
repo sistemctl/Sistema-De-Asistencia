@@ -8,7 +8,7 @@ const DevicePage = {
   async render(tab = 'device_status') {
     this.currentTab = tab;
 
-    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings') {
+    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings' || tab === 'maintenance') {
       document.getElementById('pageContent').innerHTML = `
         <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
           <button class="tab-btn active" data-tab="branding" onclick="DevicePage.switchTab('branding')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
@@ -19,6 +19,9 @@ const DevicePage = {
           </button>
           <button class="tab-btn" data-tab="backup_settings" onclick="DevicePage.switchTab('backup_settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
             Copias de Seguridad
+          </button>
+          <button class="tab-btn" data-tab="maintenance" onclick="DevicePage.switchTab('maintenance')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+            Mantenimiento de Datos
           </button>
           <button class="tab-btn" data-tab="audit" onclick="DevicePage.switchTab('audit')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
             Historial de Auditoría
@@ -61,7 +64,7 @@ const DevicePage = {
     this.currentTab = tab;
     
     // Sincronizar hash de la SPA según la pestaña activa
-    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings') {
+    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings' || tab === 'maintenance') {
       const targetHash = `#system/${tab}`;
       if (window.location.hash !== targetHash) {
         window.location.hash = `system/${tab}`;
@@ -111,6 +114,57 @@ const DevicePage = {
           <div class="card" id="deviceStatusCard"><div class="loading-overlay"><div class="spinner"></div></div></div>
           ${Auth.isAdmin() ? `<div class="card" id="deviceConfigCard"><div class="loading-overlay"><div class="spinner"></div></div></div>` : '<div></div>'}
         </div>
+
+        ${Auth.isAdmin() ? `
+        <div class="card" style="margin-bottom:24px;">
+          <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            Panel de Control Remoto
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <button class="btn btn-secondary" onclick="DevicePage.remoteOpenDoor()" style="display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 12px; height: auto;">
+              <svg viewBox="0 0 24 24" width="32" height="32" stroke="var(--accent)" stroke-width="2" fill="none"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"></path><path d="M2 20h20"></path><path d="M14 12v.01"></path></svg>
+              <span>Abrir Puerta</span>
+            </button>
+            <button class="btn btn-secondary" onclick="DevicePage.remoteSyncTime()" style="display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 12px; height: auto;">
+              <svg viewBox="0 0 24 24" width="32" height="32" stroke="#00b0ff" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Sincronizar Hora</span>
+            </button>
+            <button class="btn btn-secondary" onclick="DevicePage.remoteReboot()" style="display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 12px; height: auto; border-color: rgba(255,59,48,0.3);">
+              <svg viewBox="0 0 24 24" width="32" height="32" stroke="var(--danger)" stroke-width="2" fill="none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+              <span style="color: var(--danger)">Reiniciar Biométrico</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-bottom:24px;">
+          <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Configuraciones de Seguridad
+          </div>
+          <div class="grid-2">
+            <div style="background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-2); margin-bottom: 8px; display: block;">Nivel de Verificación Global</label>
+              <select id="secVerifyMode" class="form-control" style="width: 100%; margin-bottom: 12px;">
+                <option value="faceOnly">Solo Rostro</option>
+                <option value="faceAndCard">Rostro + Tarjeta</option>
+                <option value="faceOrCard">Rostro o Tarjeta</option>
+                <option value="faceOrFp">Rostro o Huella</option>
+              </select>
+              <button class="btn btn-secondary" onclick="DevicePage.setVerifyMode()" style="width: 100%;">Aplicar Nivel</button>
+            </div>
+            
+            <div style="background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-2); margin-bottom: 8px; display: block;">Volumen del Dispositivo</label>
+              <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                <input type="range" id="secVolumeRange" min="0" max="100" value="50" style="flex: 1;" oninput="document.getElementById('secVolumeText').textContent = this.value + '%'">
+                <span id="secVolumeText" style="font-size: 0.85rem; width: 40px; text-align: right; font-weight: 600;">50%</span>
+              </div>
+              <button class="btn btn-secondary" onclick="DevicePage.setVolume()" style="width: 100%;">Ajustar Volumen</button>
+            </div>
+          </div>
+        </div>
+        ` : ''}
       `;
       await Promise.all([this.loadStatus(), this.loadConfig()]);
     } else if (tab === 'sync_history') {
@@ -177,8 +231,45 @@ const DevicePage = {
                 <span class="slider"></span>
               </label>
               <div>
-                <div style="font-weight: 600; font-size: 0.9rem;">Habilitar Notificaciones de Asistencia</div>
-                <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">Si se activa, el sistema enviará correos de alertas en incidencias (tardanzas, ausencias).</div>
+                <div style="font-weight: 600; font-size: 0.9rem;">Habilitar Notificaciones (Maestro)</div>
+                <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">Interruptor principal. Si se apaga, no se enviará ningún correo.</div>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 24px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-1);">
+              <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; color: var(--text-1);">Tipos de Alertas a Enviar</div>
+              
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <label class="switch">
+                  <input type="checkbox" id="sysAlertDeviceOffline">
+                  <span class="slider"></span>
+                </label>
+                <div>
+                  <div style="font-weight: 500; font-size: 0.85rem;">Notificar si el biométrico se desconecta</div>
+                  <div style="font-size: 0.7rem; color: var(--text-3);">Se envía de inmediato al soporte técnico.</div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <label class="switch">
+                  <input type="checkbox" id="sysAlertEmployeeLateness">
+                  <span class="slider"></span>
+                </label>
+                <div>
+                  <div style="font-weight: 500; font-size: 0.85rem;">Notificar llegadas tardías (retardos) a empleados</div>
+                  <div style="font-size: 0.7rem; color: var(--text-3);">Envía un correo automático al empleado recomendando puntualidad.</div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <label class="switch">
+                  <input type="checkbox" id="sysAlertAdminDailyReport">
+                  <span class="slider"></span>
+                </label>
+                <div>
+                  <div style="font-weight: 500; font-size: 0.85rem;">Enviar reporte diario (18:00) a administradores</div>
+                  <div style="font-size: 0.7rem; color: var(--text-3);">Resumen consolidado de asistencias, faltas y retardos del día.</div>
+                </div>
               </div>
             </div>
 
@@ -284,6 +375,7 @@ const DevicePage = {
                 <div style="width: 100%; height: 100%; background-color: var(--danger); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
               </div>
             </div>
+            </div>
           </div>
         </div>
       `;
@@ -296,6 +388,89 @@ const DevicePage = {
       }
       document.getElementById('btnExportBackup')?.addEventListener('click', () => this.exportBackup());
       document.getElementById('btnRestoreBackup')?.addEventListener('click', () => this.restoreBackup());
+    } else if (tab === 'maintenance') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Mantenimiento y Retención de Datos</div>
+        </div>
+        
+        <div style="max-width: 600px; margin-top: 16px;">
+          <div class="card">
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path></svg>
+              Retención y Limpieza
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
+              Configura la limpieza automática para evitar que la base de datos crezca infinitamente. 
+            </p>
+            
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+              <label class="switch">
+                <input type="checkbox" id="sysCleanupEnabled">
+                <span class="slider"></span>
+              </label>
+              <div style="flex:1">
+                <div style="font-weight: 600; font-size: 0.9rem;">Habilitar Limpieza Automática</div>
+                <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">Si se activa, el sistema borrará información antigua de forma automática.</div>
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; color: var(--text-3); display: block; margin-bottom: 4px;">Hora (HH:MM)</label>
+                <input type="time" id="sysCleanupTime" style="padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1);">
+              </div>
+            </div>
+
+            <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <input type="checkbox" id="sysCleanupAttendanceEnabled">
+                  <label for="sysCleanupAttendanceEnabled" style="font-size: 0.85rem;">Asistencias y Faltas</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.8rem; color: var(--text-3);">Conservar por</span>
+                  <input type="number" id="sysRetAttendance" min="1" style="width: 70px; padding: 4px 8px;">
+                  <span style="font-size: 0.8rem; color: var(--text-3);">días</span>
+                </div>
+              </div>
+              
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <input type="checkbox" id="sysCleanupAuditEnabled">
+                  <label for="sysCleanupAuditEnabled" style="font-size: 0.85rem;">Logs de Auditoría (Admin)</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.8rem; color: var(--text-3);">Conservar por</span>
+                  <input type="number" id="sysRetAudit" min="1" style="width: 70px; padding: 4px 8px;">
+                  <span style="font-size: 0.8rem; color: var(--text-3);">días</span>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <input type="checkbox" id="sysCleanupSyncEnabled">
+                  <label for="sysCleanupSyncEnabled" style="font-size: 0.85rem;">Logs Técnicos (Biométrico)</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.8rem; color: var(--text-3);">Conservar por</span>
+                  <input type="number" id="sysRetSync" min="1" style="width: 70px; padding: 4px 8px;">
+                  <span style="font-size: 0.8rem; color: var(--text-3);">días</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; border-top: 1px solid var(--border); padding-top: 16px;">
+              <button class="btn btn-secondary" id="btnSaveCleanup" style="flex: 1; padding: 12px; font-weight: bold;">
+                Guardar Config. de Limpieza
+              </button>
+              <button class="btn" id="btnManualCleanup" style="flex: 1; padding: 12px; font-weight: bold; background: rgba(255,59,48,0.1); color: var(--danger); border: 1px solid rgba(255,59,48,0.3);">
+                Ejecutar Limpieza Manual Ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('btnSaveCleanup')?.addEventListener('click', () => this.saveCleanupSettings());
+      document.getElementById('btnManualCleanup')?.addEventListener('click', () => this.runManualCleanup());
+      await this.loadCleanupSettings();
     } else if (tab === 'branding') {
       contentEl.innerHTML = `
         <div class="section-header" style="margin-top: 10px;">
@@ -798,6 +973,10 @@ const DevicePage = {
       document.getElementById('sysSmtpUsername').value = data.smtp_username || '';
       document.getElementById('sysSmtpPassword').value = data.smtp_password ? '••••••••' : '';
       document.getElementById('sysEmailAlertsRecipients').value = data.email_alerts_recipients || '';
+      
+      document.getElementById('sysAlertDeviceOffline').checked = data.alert_device_offline ?? true;
+      document.getElementById('sysAlertEmployeeLateness').checked = data.alert_employee_lateness ?? true;
+      document.getElementById('sysAlertAdminDailyReport').checked = data.alert_admin_daily_report ?? true;
     } catch (e) {
       console.error(e);
       Toast.show('Error al cargar la configuración de correo', 'error');
@@ -812,6 +991,9 @@ const DevicePage = {
     const password = document.getElementById('sysSmtpPassword').value;
     const useTls = document.getElementById('sysSmtpUseTls').checked;
     const recipients = document.getElementById('sysEmailAlertsRecipients').value.trim();
+    const alertDeviceOffline = document.getElementById('sysAlertDeviceOffline').checked;
+    const alertEmployeeLateness = document.getElementById('sysAlertEmployeeLateness').checked;
+    const alertAdminDailyReport = document.getElementById('sysAlertAdminDailyReport').checked;
 
     try {
       if (!this.settings.work_days) {
@@ -827,7 +1009,10 @@ const DevicePage = {
         smtp_password: password,
         smtp_use_tls: useTls,
         email_notifications_enabled: enabled,
-        email_alerts_recipients: recipients
+        email_alerts_recipients: recipients,
+        alert_device_offline: alertDeviceOffline,
+        alert_employee_lateness: alertEmployeeLateness,
+        alert_admin_daily_report: alertAdminDailyReport
       });
 
       Toast.show('Configuración de correo guardada correctamente', 'success');
@@ -839,6 +1024,9 @@ const DevicePage = {
       this.settings.smtp_use_tls = useTls;
       this.settings.email_notifications_enabled = enabled;
       this.settings.email_alerts_recipients = recipients;
+      this.settings.alert_device_offline = alertDeviceOffline;
+      this.settings.alert_employee_lateness = alertEmployeeLateness;
+      this.settings.alert_admin_daily_report = alertAdminDailyReport;
     } catch (e) {
       console.error(e);
       Toast.show(e.message, 'error');
@@ -937,6 +1125,170 @@ const DevicePage = {
     );
   },
   
+  async loadCleanupSettings() {
+    try {
+      const data = await API.get('/api/settings');
+      this.settings = data;
+      
+      document.getElementById('sysCleanupEnabled').checked = data.cleanup_enabled ?? false;
+      document.getElementById('sysCleanupTime').value = data.cleanup_time || '02:00';
+      
+      document.getElementById('sysCleanupAttendanceEnabled').checked = data.cleanup_attendance_enabled ?? true;
+      document.getElementById('sysRetAttendance').value = data.retention_attendance_days || 1825;
+      
+      document.getElementById('sysCleanupAuditEnabled').checked = data.cleanup_audit_enabled ?? true;
+      document.getElementById('sysRetAudit').value = data.retention_audit_logs_days || 365;
+      
+      document.getElementById('sysCleanupSyncEnabled').checked = data.cleanup_sync_enabled ?? true;
+      document.getElementById('sysRetSync').value = data.retention_sync_logs_days || 30;
+      
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al cargar la configuración de limpieza', 'error');
+    }
+  },
+
+  async saveCleanupSettings() {
+    const enabled = document.getElementById('sysCleanupEnabled').checked;
+    const time = document.getElementById('sysCleanupTime').value || '02:00';
+    
+    const attEnabled = document.getElementById('sysCleanupAttendanceEnabled').checked;
+    const attDays = parseInt(document.getElementById('sysRetAttendance').value) || 1825;
+    
+    const auditEnabled = document.getElementById('sysCleanupAuditEnabled').checked;
+    const auditDays = parseInt(document.getElementById('sysRetAudit').value) || 365;
+    
+    const syncEnabled = document.getElementById('sysCleanupSyncEnabled').checked;
+    const syncDays = parseInt(document.getElementById('sysRetSync').value) || 30;
+
+    try {
+      if (!this.settings.work_days) {
+        this.settings = await API.get('/api/settings');
+      }
+
+      await API.put('/api/settings', {
+        ...this.settings,
+        cleanup_enabled: enabled,
+        cleanup_time: time,
+        cleanup_attendance_enabled: attEnabled,
+        retention_attendance_days: attDays,
+        cleanup_audit_enabled: auditEnabled,
+        retention_audit_logs_days: auditDays,
+        cleanup_sync_enabled: syncEnabled,
+        retention_sync_logs_days: syncDays
+      });
+
+      Toast.show('Configuración de mantenimiento guardada correctamente', 'success');
+      
+      this.settings.cleanup_enabled = enabled;
+      this.settings.cleanup_time = time;
+      this.settings.cleanup_attendance_enabled = attEnabled;
+      this.settings.retention_attendance_days = attDays;
+      this.settings.cleanup_audit_enabled = auditEnabled;
+      this.settings.retention_audit_logs_days = auditDays;
+      this.settings.cleanup_sync_enabled = syncEnabled;
+      this.settings.retention_sync_logs_days = syncDays;
+      
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message, 'error');
+    }
+  },
+
+  async runManualCleanup() {
+    Modal.confirm(
+      '⚠️ Ejecutar Limpieza Manual',
+      '¿Estás seguro? Estás a punto de borrar definitivamente todos los registros y logs anteriores a las fechas configuradas. Esta acción NO se puede deshacer y los registros desaparecerán de los reportes.',
+      async () => {
+        const btn = document.getElementById('btnManualCleanup');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;border-width:2px;margin-right:6px"></span> Limpiando...';
+        }
+        
+        try {
+          const response = await API.post('/api/settings/manual-cleanup', {});
+          const msg = `Limpieza finalizada.\\nAsistencias borradas: ${response.stats.attendance}\\nLogs de sincronización: ${response.stats.sync_logs}\\nLogs de auditoría: ${response.stats.audit_logs}`;
+          Toast.show('¡Mantenimiento exitoso!', 'success');
+          alert(msg); // Usar alert nativo para mostrar el detalle claramente
+        } catch (e) {
+          console.error(e);
+          Toast.show(e.message || 'Error al ejecutar la limpieza', 'error');
+        } finally {
+          if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = 'Ejecutar Limpieza Manual Ahora';
+          }
+        }
+      },
+      'danger'
+    );
+  },
+  
+  async remoteOpenDoor() {
+    Toast.show('Enviando comando de apertura...', 'info');
+    try {
+      const res = await API.post('/api/device/open-door');
+      Toast.show(res.message || 'Puerta abierta', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message || 'Error abriendo puerta', 'error');
+    }
+  },
+
+  async remoteSyncTime() {
+    Toast.show('Sincronizando hora...', 'info');
+    try {
+      const res = await API.post('/api/device/sync-time');
+      Toast.show(res.message || 'Hora sincronizada', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message || 'Error sincronizando hora', 'error');
+    }
+  },
+
+  async remoteReboot() {
+    Modal.confirm(
+      '⚠️ Reiniciar Dispositivo',
+      '¿Estás seguro de que deseas enviar la orden de reinicio? El biométrico se apagará y tardará 1-2 minutos en volver a conectar.',
+      async () => {
+        Toast.show('Reiniciando dispositivo...', 'info');
+        try {
+          const res = await API.post('/api/device/reboot');
+          Toast.show(res.message || 'Dispositivo reiniciando', 'success');
+        } catch (e) {
+          console.error(e);
+          Toast.show(e.message || 'Error reiniciando dispositivo', 'error');
+        }
+      },
+      'danger'
+    );
+  },
+
+  async setVerifyMode() {
+    const mode = document.getElementById('secVerifyMode').value;
+    Toast.show('Aplicando modo de verificación...', 'info');
+    try {
+      const res = await API.post('/api/device/security/verify-mode', { mode });
+      Toast.show(res.message || 'Modo aplicado correctamente', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message || 'Error aplicando modo', 'error');
+    }
+  },
+
+  async setVolume() {
+    const volume = parseInt(document.getElementById('secVolumeRange').value, 10);
+    Toast.show('Ajustando volumen...', 'info');
+    try {
+      const res = await API.post('/api/device/security/volume', { volume });
+      Toast.show(res.message || 'Volumen ajustado correctamente', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message || 'Error ajustando volumen', 'error');
+    }
+  },
+
   destroy() {
     if (this.pollInterval) clearInterval(this.pollInterval);
   }

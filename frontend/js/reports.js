@@ -125,7 +125,8 @@ const ReportsPage = {
       <!-- ── PESTAÑA 1: ANALÍTICAS Y FILTROS ── -->
       <div id="repTabContentAnalytics" style="${isRecords ? 'display: none;' : ''}">
         <!-- ── TARJETA 1: FILTROS DE CONSULTA (ANALÍTICAS) ── -->
-        <div class="card" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
+        <div class="double-bezel-outer" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
+          <div class="double-bezel-inner" style="overflow: visible; border: none; box-shadow: none; padding: 24px;">
           <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
             <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
             Filtros de Búsqueda (Analíticas)
@@ -226,6 +227,7 @@ const ReportsPage = {
               <div class="chart-container" style="height:250px;"><canvas id="anLineChart"></canvas></div>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- ── TABLA COMPARATIVA DE ANALÍTICAS ── -->
@@ -235,7 +237,8 @@ const ReportsPage = {
       <!-- ── PESTAÑA 2: REGISTROS DETALLADOS ── -->
       <div id="repTabContentRecords" style="${isRecords ? '' : 'display: none;'}">
         <!-- ── UNIFICACIÓN: FILTROS Y TABLA EN UN SOLO CUADRO ── -->
-        <div class="card" style="overflow: visible; z-index: 10;">
+        <div class="double-bezel-outer" style="overflow: visible; z-index: 10;">
+          <div class="double-bezel-inner" style="overflow: visible; border: none; box-shadow: none; padding: 24px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
             <div>
               <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px;">
@@ -337,6 +340,7 @@ const ReportsPage = {
           </div>
           
           <div class="pagination" id="repPagination" style="margin-top:16px;"></div>
+          </div>
         </div>
       </div>
     `;
@@ -607,7 +611,8 @@ const ReportsPage = {
     };
 
     container.innerHTML = `
-      <div class="card">
+      <div class="double-bezel-outer">
+        <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
         <div class="card-header">
           <div>
             <div class="card-title" style="font-size: 1.1rem; color: var(--accent);">
@@ -637,6 +642,7 @@ const ReportsPage = {
               </tr>
             </tbody>
           </table>
+        </div>
         </div>
       </div>
     `;
@@ -770,10 +776,16 @@ const ReportsPage = {
       const compTable = document.getElementById('repAnalyticsTableContainer');
 
       if (filterVal === '') {
-        if (dashboard) dashboard.style.display = 'none';
+        // Mostrar ambos para la vista general
+        if (dashboard) dashboard.style.display = 'block';
         if (compTable) compTable.style.display = 'block';
-        await this.loadComparativeAnalytics();
+        // Ejecutar ambos en paralelo para mayor rapidez
+        await Promise.all([
+          this.loadAnalytics(),
+          this.loadComparativeAnalytics()
+        ]);
       } else {
+        // Mostrar solo el dashboard para el empleado específico
         if (dashboard) dashboard.style.display = 'block';
         if (compTable) compTable.style.display = 'none';
         await this.loadAnalytics();
@@ -850,7 +862,7 @@ const ReportsPage = {
       }
       if (!this.loadedTabs.analytics) {
         this.loadedTabs.analytics = true;
-        this.loadAnalytics();
+        this.onFilterChange('an'); // Usar onFilterChange para cargar todo correctamente
       }
     } else {
       if (isRecordsActive) return;

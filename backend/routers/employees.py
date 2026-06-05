@@ -163,6 +163,11 @@ def get_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(get_curre
 def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     if db.query(Employee).filter(Employee.employee_code == data.employee_code).first():
         raise HTTPException(status_code=400, detail="El código de empleado ya existe")
+        
+    if data.qr_enabled and not data.card_number:
+        import random
+        data.card_number = str(random.randint(10000000, 99999999))
+
     emp = Employee(**data.model_dump())
     db.add(emp)
     db.commit()
@@ -284,6 +289,14 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
     
     fields = data.model_dump(exclude_unset=True)
+    
+    if "qr_enabled" in fields:
+        if fields["qr_enabled"] and not emp.card_number and not fields.get("card_number"):
+            import random
+            fields["card_number"] = str(random.randint(10000000, 99999999))
+        elif not fields["qr_enabled"]:
+            fields["card_number"] = None
+
     if "schedule_id" in fields:
         from datetime import date
         from backend.models import EmployeeDailySchedule

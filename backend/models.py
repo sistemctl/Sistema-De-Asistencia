@@ -95,7 +95,8 @@ class Employee(Base):
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True)
     photo_path = Column(String(500), nullable=True)       # Ruta relativa a uploads/faces/
-    card_number = Column(String(50), nullable=True)       # Número de tarjeta M1
+    card_number = Column(String(50), nullable=True)       # Número de tarjeta M1 o código QR virtual
+    qr_enabled = Column(Boolean, default=False)           # Si tiene habilitado el acceso por QR
     is_active = Column(Boolean, default=True)
     synced_to_device = Column(Boolean, default=False)     # ¿Está registrado en el dispositivo?
     work_start_time = Column(String(5), default="07:00")  # HH:MM
@@ -180,6 +181,19 @@ class SystemConfig(Base):
     logo_path = Column(String(500), nullable=True)
     primary_color = Column(String(30), default="#1e3a5f")
     accent_color = Column(String(30), default="#00e676")
+    
+    # Datos de retención y limpieza (Mantenimiento)
+    cleanup_enabled = Column(Boolean, default=False)
+    cleanup_time = Column(String(10), default="02:00")
+    
+    retention_attendance_days = Column(Integer, default=1825)
+    retention_audit_logs_days = Column(Integer, default=365)
+    retention_sync_logs_days = Column(Integer, default=30)
+    
+    cleanup_attendance_enabled = Column(Boolean, default=True)
+    cleanup_audit_enabled = Column(Boolean, default=True)
+    cleanup_sync_enabled = Column(Boolean, default=True)
+    
     bg_base_color = Column(String(30), default="#f8fafc")
     bg_surface_color = Column(String(30), default="#ffffff")
     work_days = Column(String(100), default="1,2,3,4,5") # Lunes a Viernes (1=Lunes, 7=Domingo)
@@ -220,6 +234,11 @@ class SystemConfig(Base):
     smtp_use_tls = Column(Boolean, default=True)
     email_notifications_enabled = Column(Boolean, default=False)
     email_alerts_recipients = Column(String(500), nullable=True)
+    
+    # Notificaciones Específicas
+    alert_device_offline = Column(Boolean, default=True)
+    alert_employee_lateness = Column(Boolean, default=True)
+    alert_admin_daily_report = Column(Boolean, default=True)
 
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

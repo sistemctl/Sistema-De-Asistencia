@@ -41,8 +41,9 @@ const DashboardPage = {
       </div>
 
       <!-- KPIs -->
-      <div class="grid-5" id="kpiGrid" style="margin-bottom:24px">
-        ${[1,2,3,4,5].map(() => `<div class="kpi-card"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-kpi"></div></div>`).join('')}
+      <div class="bento-kpi-grid" id="kpiGrid" style="margin-bottom:24px">
+        ${[1,2,3].map(() => `<div class="double-bezel-outer bento-col-2"><div class="double-bezel-inner kpi-card"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-kpi"></div></div></div>`).join('')}
+        ${[4,5].map(() => `<div class="double-bezel-outer bento-col-3"><div class="double-bezel-inner kpi-card"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-kpi"></div></div></div>`).join('')}
       </div>
 
       <!-- Charts + Estado del día -->
@@ -263,20 +264,22 @@ const DashboardPage = {
       };
 
       document.getElementById('kpiGrid').innerHTML = `
-        ${this.kpiCard(icons.emp,'Total empleados', d.total_employees, 'registrados activos','--accent','total')}
-        ${this.kpiCard(icons.present,'Presentes', d.today_present, `${d.attendance_rate}% asistencia`,'--accent-3','present')}
-        ${this.kpiCard(icons.absent,'Ausentes', d.today_absent, 'sin registro de entrada','--danger','absent')}
-        ${this.kpiCard(icons.late,'Tardanzas', d.today_late, 'llegaron después de la hora','--warning','late')}
-        ${this.kpiCard(icons.leaves,'Vacaciones / Permiso', d.today_leaves, 'inasistencias justificadas','--accent-2','leaves')}`;
+        ${this.kpiCard(icons.emp,'Total empleados', d.total_employees, 'registrados activos','--accent','total','bento-col-2')}
+        ${this.kpiCard(icons.present,'Presentes', d.today_present, `${d.attendance_rate}% asistencia`,'--accent-3','present','bento-col-2')}
+        ${this.kpiCard(icons.absent,'Ausentes', d.today_absent, 'sin registro de entrada','--danger','absent','bento-col-2')}
+        ${this.kpiCard(icons.late,'Tardanzas', d.today_late, 'llegaron después de la hora','--warning','late','bento-col-3')}
+        ${this.kpiCard(icons.leaves,'Vacaciones / Permiso', d.today_leaves, 'inasistencias justificadas','--accent-2','leaves','bento-col-3')}`;
     } catch(e) { Toast.show('Error cargando KPIs', 'error'); }
   },
 
-  kpiCard(icon, label, value, sub, color, type) {
-    return `<div class="kpi-card" style="--accent-color:var(${color}); cursor:pointer" onclick="DashboardPage.showKPIDetails('${type}')">
-      <div class="kpi-icon">${icon}</div>
-      <div class="kpi-value">${value ?? '-'}</div>
-      <div class="kpi-label">${label}</div>
-      <div class="kpi-sub">${sub}</div>
+  kpiCard(icon, label, value, sub, color, type, bentoClass) {
+    return `<div class="double-bezel-outer ${bentoClass}">
+      <div class="double-bezel-inner kpi-card" style="--accent-color:var(${color}); cursor:pointer; height:100%" onclick="DashboardPage.showKPIDetails('${type}')">
+        <div class="kpi-icon">${icon}</div>
+        <div class="kpi-value">${value ?? '-'}</div>
+        <div class="kpi-label">${label}</div>
+        <div class="kpi-sub">${sub}</div>
+      </div>
     </div>`;
   },
 

@@ -209,6 +209,7 @@ class EmployeeCreate(BaseModel):
     department_id: Optional[int] = None
     schedule_id: Optional[int] = None
     card_number: Optional[str] = None
+    qr_enabled: bool = False
     work_start_time: str = "07:00"
     work_end_time: str = "18:00"
 
@@ -228,6 +229,7 @@ class EmployeeUpdate(BaseModel):
     department_id: Optional[int] = None
     schedule_id: Optional[int] = None
     card_number: Optional[str] = None
+    qr_enabled: Optional[bool] = None
     work_start_time: Optional[str] = None
     work_end_time: Optional[str] = None
     is_active: Optional[bool] = None
@@ -249,6 +251,7 @@ class EmployeeOut(BaseModel):
     schedule: Optional[ScheduleOut]
     photo_path: Optional[str]
     card_number: Optional[str]
+    qr_enabled: bool
     is_active: bool
     synced_to_device: bool
     work_start_time: str

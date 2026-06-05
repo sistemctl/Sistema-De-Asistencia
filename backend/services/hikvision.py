@@ -280,6 +280,72 @@ class HikvisionClient:
         r.raise_for_status()
         return r.json()
 
+    # ── Control Remoto ────────────────────────────────────────────────────────
+    
+    def reboot_device(self) -> dict:
+        r = requests.put(
+            f"{self.base_url}/System/reboot",
+            auth=HTTPDigestAuth(self.username, self.password),
+            timeout=self.timeout,
+        )
+        r.raise_for_status()
+        try:
+            return r.json()
+        except:
+            return {"status": "success", "message": "Reboot command sent"}
+
+    def open_door(self, door_no: int = 1) -> dict:
+        payload = {
+            "RemoteControlDoor": {
+                "cmd": "open"
+            }
+        }
+        r = requests.put(
+            f"{self.base_url}/AccessControl/RemoteControl/door/{door_no}?format=json",
+            auth=HTTPDigestAuth(self.username, self.password),
+            json=payload,
+            timeout=self.timeout,
+        )
+        r.raise_for_status()
+        return r.json()
+        
+    def sync_time(self) -> dict:
+        """Sincroniza la hora del dispositivo con la del servidor."""
+        now = datetime.now()
+        # Formato ISO8601 exigido por ISAPI: YYYY-MM-DDThh:mm:ss+ZZ:ZZ
+        time_str = now.isoformat(timespec='seconds')
+        payload = {
+            "Time": {
+                "localTime": time_str,
+                "timeZone": "CST-5" # Ejemplo, dependerá del timezone real si se quiere afinar
+            }
+        }
+        try:
+            # Primero intentar JSON
+            r = requests.put(
+                f"{self.base_url}/System/time?format=json",
+                auth=HTTPDigestAuth(self.username, self.password),
+                json=payload,
+                timeout=self.timeout,
+            )
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 400:
+                # Fallback XML si el dispositivo no soporta JSON en este endpoint
+                xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Time>
+    <localTime>{time_str}</localTime>
+</Time>"""
+                r = requests.put(
+                    f"{self.base_url}/System/time",
+                    auth=HTTPDigestAuth(self.username, self.password),
+                    data=xml_payload,
+                    timeout=self.timeout,
+                )
+                r.raise_for_status()
+                return {"status": "success", "message": "Time synced via XML"}
+            raise e
 
 # ── Modo MOCK / Simulación ────────────────────────────────────────────────────
 

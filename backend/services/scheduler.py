@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.models import AttendanceRecord, DeviceConfig, Employee, SyncLog
 from backend.services.hikvision import HikvisionClient, generate_mock_events
+from backend.services.email import notify_attendance_alert, notify_employee_lateness, notify_daily_report
+from backend.services.attendance_processor import process_daily_attendance_bulk
 from backend.config import SYNC_MAX_EVENTS, TIMEZONE
 from backend.utils import get_local_now, to_local_datetime
 
@@ -34,8 +36,98 @@ def start_scheduler():
         replace_existing=True,
         next_run_time=get_local_now().replace(tzinfo=None),  # Ejecutar inmediatamente al iniciar
     )
+    
+    # Agregar tarea diaria para ausencias a las 11:00 AM
+    _scheduler.add_job(
+        check_daily_absences,
+        trigger="cron",
+        hour=11,
+        minute=0,
+        id="check_daily_absences",
+        replace_existing=True,
+    )
+    
+    # Agregar tarea de reporte diario a administradores a las 18:00
+    _scheduler.add_job(
+        send_daily_report,
+        trigger="cron",
+        hour=18,
+        minute=0,
+        id="send_daily_report",
+        replace_existing=True,
+    )
+    
+    # Agregar tarea de mantenimiento (limpieza) que verifica la hora configurada
+    _scheduler.add_job(
+        run_daily_cleanup,
+        trigger="cron",
+        minute=0, # Se ejecuta cada hora para revisar si coincide con cleanup_time
+        id="run_daily_cleanup",
+        replace_existing=True,
+    )
+    
     _scheduler.start()
-    logger.info(f"✅ Scheduler iniciado — sincronización cada {interval} minutos")
+    logger.info(f"✅ Scheduler iniciado — sincronización cada {interval} minutos y revisión de ausencias a las 11:00, reporte a las 18:00")
+
+
+def check_daily_absences():
+    """Verifica ausencias diarias a las 11 AM y notifica al administrador."""
+    logger.info("🔍 Ejecutando revisión diaria de ausencias...")
+    db = SessionLocal()
+    try:
+        today = get_local_now().replace(tzinfo=None).date()
+        summaries = process_daily_attendance_bulk(db, target_date=today)
+        
+        for summary in summaries:
+            if not summary.get("is_present") and not summary.get("is_off"):
+                # No llegó y no es su día libre ni feriado
+                emp_name = summary.get("employee_name", "Desconocido")
+                details = f"El empleado no ha registrado entrada el día de hoy ({today.isoformat()})."
+                notify_attendance_alert(db, emp_name, str(today), "Ausencia Detectada", details)
+                logger.info(f"⚠️ Alerta de ausencia enviada para {emp_name}")
+    except Exception as e:
+        logger.error(f"❌ Error al revisar ausencias diarias: {e}")
+    finally:
+        db.close()
+
+
+def send_daily_report():
+    """Genera y envía el reporte diario consolidado a administradores a las 18:00."""
+    logger.info("📊 Ejecutando generación de reporte diario...")
+    db = SessionLocal()
+    try:
+        today = get_local_now().replace(tzinfo=None).date()
+        summaries = process_daily_attendance_bulk(db, target_date=today)
+        
+        notify_daily_report(db, str(today), summaries)
+        logger.info("✅ Reporte diario enviado exitosamente.")
+    except Exception as e:
+        logger.error(f"❌ Error al generar reporte diario: {e}")
+    finally:
+        db.close()
+
+
+def run_daily_cleanup():
+    """Revisa si es la hora configurada para limpiar la base de datos y ejecuta."""
+    db = SessionLocal()
+    try:
+        from backend.models import SystemConfig
+        config = db.query(SystemConfig).first()
+        if not config or not config.cleanup_enabled or not config.cleanup_time:
+            return
+            
+        c_hour = int(config.cleanup_time.split(":")[0])
+        now_hour = get_local_now().hour
+        
+        if c_hour == now_hour:
+            logger.info("🧹 Es la hora configurada. Ejecutando limpieza automática de datos...")
+            from backend.services.maintenance import cleanup_old_data
+            cleanup_old_data(db, config)
+            
+    except Exception as e:
+        logger.error(f"❌ Error en tarea de limpieza: {e}")
+    finally:
+        db.close()
 
 
 def stop_scheduler():
@@ -112,7 +204,19 @@ def sync_job():
             return
 
         client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+        was_online_previously = cfg.is_online
         is_online = client.check_online()
+
+        if was_online_previously and not is_online:
+            # Transición de online a offline
+            notify_attendance_alert(
+                db, 
+                "SISTEMA", 
+                str(get_local_now().replace(tzinfo=None)), 
+                "DISPOSITIVO FUERA DE LÍNEA", 
+                f"El biométrico en la IP {cfg.ip_address} ha dejado de responder a la sincronización en red local."
+            )
+            logger.warning("⚠️ El dispositivo pasó a estado OFFLINE. Alerta enviada.")
 
         # Actualizar estado online en BD
         cfg.is_online = is_online
@@ -380,6 +484,17 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
         )
         db.add(record)
         new_count += 1
+        
+        # Disparar alerta si es tardanza del día actual
+        today_date = get_local_now().replace(tzinfo=None).date()
+        if is_late and event_type == "entry" and event_time.date() == today_date and employee:
+            if 'min_diff_mins' in locals() and min_diff_mins != float('inf'):
+                diff_formatted = round(min_diff_mins, 1)
+            else:
+                diff_formatted = 0
+            
+            # Enviar recomendación al correo del empleado (si lo tiene registrado)
+            notify_employee_lateness(db, employee.full_name, employee.email, str(event_time.strftime('%H:%M:%S')), float(diff_formatted))
 
     db.commit()
     return new_count

@@ -46,6 +46,17 @@ class SettingsUpdateSchema(BaseModel):
     smtp_use_tls: Optional[bool] = True
     email_notifications_enabled: Optional[bool] = False
     email_alerts_recipients: Optional[str] = None
+    alert_device_offline: Optional[bool] = True
+    alert_employee_lateness: Optional[bool] = True
+    alert_admin_daily_report: Optional[bool] = True
+    cleanup_enabled: Optional[bool] = False
+    cleanup_time: Optional[str] = "02:00"
+    retention_attendance_days: Optional[int] = 1825
+    retention_audit_logs_days: Optional[int] = 365
+    retention_sync_logs_days: Optional[int] = 30
+    cleanup_attendance_enabled: Optional[bool] = True
+    cleanup_audit_enabled: Optional[bool] = True
+    cleanup_sync_enabled: Optional[bool] = True
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
@@ -85,7 +96,18 @@ def get_settings(db: Session = Depends(get_db)):
             "smtp_password": "",
             "smtp_use_tls": True,
             "email_notifications_enabled": False,
-            "email_alerts_recipients": ""
+            "email_alerts_recipients": "",
+            "alert_device_offline": True,
+            "alert_employee_lateness": True,
+            "alert_admin_daily_report": True,
+            "cleanup_enabled": False,
+            "cleanup_time": "02:00",
+            "retention_attendance_days": 1825,
+            "retention_audit_logs_days": 365,
+            "retention_sync_logs_days": 30,
+            "cleanup_attendance_enabled": True,
+            "cleanup_audit_enabled": True,
+            "cleanup_sync_enabled": True
         }
     return {
         "system_name": config.system_name,
@@ -121,7 +143,18 @@ def get_settings(db: Session = Depends(get_db)):
         "smtp_password": config.smtp_password,
         "smtp_use_tls": config.smtp_use_tls,
         "email_notifications_enabled": config.email_notifications_enabled,
-        "email_alerts_recipients": config.email_alerts_recipients
+        "email_alerts_recipients": config.email_alerts_recipients,
+        "alert_device_offline": config.alert_device_offline,
+        "alert_employee_lateness": config.alert_employee_lateness,
+        "alert_admin_daily_report": config.alert_admin_daily_report,
+        "cleanup_enabled": config.cleanup_enabled,
+        "cleanup_time": config.cleanup_time,
+        "retention_attendance_days": config.retention_attendance_days,
+        "retention_audit_logs_days": config.retention_audit_logs_days,
+        "retention_sync_logs_days": config.retention_sync_logs_days,
+        "cleanup_attendance_enabled": config.cleanup_attendance_enabled,
+        "cleanup_audit_enabled": config.cleanup_audit_enabled,
+        "cleanup_sync_enabled": config.cleanup_sync_enabled
     }
 
 @router.put("")
@@ -172,6 +205,19 @@ def update_settings(
     config.email_notifications_enabled = data.email_notifications_enabled
     config.email_alerts_recipients = data.email_alerts_recipients
     
+    config.alert_device_offline = data.alert_device_offline
+    config.alert_employee_lateness = data.alert_employee_lateness
+    config.alert_admin_daily_report = data.alert_admin_daily_report
+    
+    config.cleanup_enabled = data.cleanup_enabled
+    config.cleanup_time = data.cleanup_time
+    config.retention_attendance_days = data.retention_attendance_days
+    config.retention_audit_logs_days = data.retention_audit_logs_days
+    config.retention_sync_logs_days = data.retention_sync_logs_days
+    config.cleanup_attendance_enabled = data.cleanup_attendance_enabled
+    config.cleanup_audit_enabled = data.cleanup_audit_enabled
+    config.cleanup_sync_enabled = data.cleanup_sync_enabled
+    
     db.commit()
     db.refresh(config)
 
@@ -179,6 +225,24 @@ def update_settings(
     log_action(db, current_user.id, "UPDATE", "SystemConfig", str(config.id), "Configuración general del sistema actualizada")
 
     return {"status": "success", "message": "Configuración actualizada correctamente."}
+
+@router.post("/manual-cleanup")
+def manual_cleanup(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("perm_manage_settings"))
+):
+    from backend.services.maintenance import cleanup_old_data
+    config = db.query(SystemConfig).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuración no encontrada.")
+    
+    try:
+        deleted_stats = cleanup_old_data(db, config)
+        from backend.services.audit import log_action
+        log_action(db, current_user.id, "DELETE", "System", "Cleanup", f"Limpieza manual ejecutada. Eliminados: {deleted_stats}")
+        return {"status": "success", "message": "Limpieza manual ejecutada correctamente.", "stats": deleted_stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/test-email")
 def test_email(

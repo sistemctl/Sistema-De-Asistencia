@@ -53,7 +53,8 @@ const AttendancePage = {
             Filtrar
           </button>
         </div>
-        <div class="card">
+        <div class="double-bezel-outer">
+          <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
           <div class="table-wrap">
             <table>
               <thead><tr>
@@ -77,8 +78,10 @@ const AttendancePage = {
               </tbody>
             </table>
           </div>
+          </div>
           <div class="pagination" id="attPag"></div>
-        </div>`;
+        </div>
+      </div>`;
 
       const today = new Date().toISOString().split('T')[0];
       const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
@@ -111,7 +114,8 @@ const AttendancePage = {
 
     } else if (tab === 'recent') {
       content.innerHTML = `
-        <div class="card">
+        <div class="double-bezel-outer">
+          <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
           <div class="card-header">
             <div>
               <div class="card-title">
@@ -132,7 +136,9 @@ const AttendancePage = {
                 <div style="flex:1"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-text w-75"></div></div>
               </div>`).join('')}
           </div>
-        </div>`;
+          </div>
+        </div>
+      </div>`;
 
       await this.loadRecent();
     }
