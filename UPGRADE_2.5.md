@@ -57,4 +57,42 @@ Reinicia el servicio para asegurarte de que FastAPI sirva los nuevos archivos es
   sudo systemctl restart asistencia.service
   ```
 
+---
+
+## 🚨 Solución de Problemas Frecuentes en Producción (Troubleshooting)
+
+Si al actualizar experimentas problemas, aquí tienes los pasos para resolver los más comunes:
+
+### 1. "La interfaz se ve desordenada o faltan estilos" (Problema de Caché CSS)
+**Causa:** El navegador de los usuarios está usando el archivo `styles.css` antiguo y no ha descargado la nueva arquitectura modular (`main.css`).
+**Solución:**
+- Si usas **Nginx** como proxy inverso, asegúrate de purgar la caché y recargar Nginx:
+  ```bash
+  sudo systemctl reload nginx
+  ```
+- Obliga a los usuarios a realizar un *Hard Refresh* en sus navegadores: Presionar **Ctrl + F5** (Windows/Linux) o **Cmd + Shift + R** (Mac).
+- Alternativamente, puedes forzar la limpieza desde el servidor agregando un parámetro de versión temporal a la carga de estilos (aunque la versión actual ya incluye hashes y estructuras nuevas).
+
+### 2. "Error de git: Your local changes to the following files would be overwritten by merge"
+**Causa:** Tienes cambios locales en el servidor de producción (como modificaciones manuales en archivos `.js` o `.css`) que entran en conflicto con la nueva versión.
+**Solución:** Restablece tu entorno de producción para que coincida exactamente con GitHub descartando los cambios locales (⚠️ *Nota: esto borrará las ediciones manuales en el código*):
+```bash
+git fetch origin
+git reset --hard origin/2.5
+git clean -fd
+```
+
+### 3. "Error 500 Interno del Servidor" o la aplicación no inicia
+**Causa:** Podría faltar instalar una dependencia nueva o el servicio se quedó colgado.
+**Solución:**
+- Verifica los logs del sistema para ver el error exacto:
+  ```bash
+  sudo journalctl -u asistencia.service -f -n 50
+  ```
+- Asegúrate de haber activado el entorno virtual y reinstalado los requerimientos:
+  ```bash
+  source venv/bin/activate
+  pip install -r requirements.txt
+  ```
+
 ¡La actualización a la versión 2.5 estará completada y la interfaz lucirá su nuevo diseño modularizado y libre de errores!
