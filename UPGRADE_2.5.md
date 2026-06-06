@@ -42,7 +42,26 @@ pip install -r requirements.txt
 
 ---
 
-### Paso 3: Limpieza de Caché del Cliente (Frontend) **[MUY IMPORTANTE]**
+### Paso 3: Aplicar Migraciones de Base de Datos **[CRÍTICO]**
+Si vienes de versiones antiguas (1.x o 2.1), es OBLIGATORIO correr los scripts de migración para actualizar la estructura de la base de datos sin perder información. Si no haces esto, verás errores "500" o los empleados no cargarán.
+
+```bash
+# Estando dentro del entorno virtual, ejecuta TODOS estos comandos uno por uno:
+python migrations/migration_user_permissions.py
+python migrations/migration_additional_permissions.py
+python migrations/migration_holidays.py
+python migrations/migration_leaves.py
+python migrations/migration_positions.py
+python migrations/migration_schedules.py
+python migrations/migration_split_shifts.py
+python migrations/migration_attendance_rules.py
+python scripts/migration_audit.py
+python scripts/migration_smtp.py
+```
+
+---
+
+### Paso 4: Limpieza de Caché del Cliente (Frontend) **[MUY IMPORTANTE]**
 Dado que la arquitectura de archivos CSS ha cambiado drásticamente (archivos eliminados y nuevos archivos agregados), es indispensable realizar una recarga profunda en el navegador de los usuarios finales:
 1. Pide a todos los administradores/usuarios que presionen **Ctrl + F5** (o **Cmd + Shift + R** en Mac) al entrar al sistema.
 2. Esto forzará al navegador a descargar la nueva estructura de `main.css` y descartar la caché obsoleta.
