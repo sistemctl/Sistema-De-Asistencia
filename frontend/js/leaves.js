@@ -3,6 +3,8 @@
 const LeavesPage = {
   leaves: [],
   employees: [],
+  page: 1,
+  limit: 50,
 
   async render() {
     const container = document.getElementById('pageContent');
@@ -90,6 +92,7 @@ const LeavesPage = {
             </tbody>
           </table>
         </div>
+        <div class="pagination" id="leavesPagination"></div>
       </div>
     `;
 
@@ -191,8 +194,14 @@ const LeavesPage = {
         const diffTime = Math.abs(end - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
+        const editButton = `
+          <button class="btn btn-icon btn-sm btn-edit" onclick="LeavesPage.openForm(${l.id})" title="Editar Novedad">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+        `;
+
         const deleteButton = `
-          <button class="btn btn-icon btn-sm btn-danger" onclick="LeavesPage.deleteLeave(${l.id}, '${empName}', '${info.text}')" title="Eliminar Novedad">
+          <button class="btn btn-icon btn-sm btn-delete" onclick="LeavesPage.deleteLeave(${l.id}, '${empName.replace(/'/g, "\\'")}', '${info.text}')" title="Eliminar Novedad">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>
         `;
@@ -223,25 +232,58 @@ const LeavesPage = {
             <td style="color: var(--text-2); font-size: 0.82rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${l.description || ''}">
               ${l.description || '<span style="color: var(--text-4); font-style: italic;">Sin observaciones</span>'}
             </td>
-            ${canEdit ? `<td style="text-align: center;">${deleteButton}</td>` : ''}
+            ${canEdit ? `<td style="text-align: center;">
+              <div style="display:flex;gap:6px;justify-content:center;">
+                ${editButton}
+                ${deleteButton}
+              </div>
+            </td>` : ''}
           </tr>
         `;
-      }).join('');
+      }).slice((this.page - 1) * this.limit, this.page * this.limit).join('');
+
+      // Render pagination UI
+      const count = leaves.length;
+      const pages = Math.ceil(count / this.limit) || 1;
+      const start = (this.page - 1) * this.limit + 1;
+      const pagEl = document.getElementById('leavesPagination');
+      if (pagEl) {
+        if (count === 0) {
+          pagEl.innerHTML = '';
+        } else {
+          const totalText = `Mostrando ${start} a ${Math.min(start + this.limit - 1, count)} de ${count} novedades`;
+          pagEl.innerHTML = `
+            <span class="pagination-info">${totalText}</span>
+            <div class="pagination-btns">
+              <button class="page-btn" ${this.page === 1 ? 'disabled' : ''} onclick="LeavesPage.goPage(${this.page - 1})">← Anterior</button>
+              <span style="align-self:center; font-size:.82rem; font-weight:600; color:var(--text-2); padding: 0 4px;">Página ${this.page} de ${pages}</span>
+              <button class="page-btn" ${this.page >= pages ? 'disabled' : ''} onclick="LeavesPage.goPage(${this.page + 1})">Siguiente →</button>
+            </div>
+          `;
+        }
+      }
 
     } catch (e) {
       Toast.show('Error al cargar la lista de novedades', 'error');
     }
   },
 
-  openForm() {
+  goPage(p) {
+    this.page = p;
+    this.loadTable();
+  },
+
+  openForm(leaveId = null) {
+    const leave = leaveId ? this.leaves.find(l => l.id === leaveId) : null;
     const employeeOptions = this.employees
-      .map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`)
+      .map(e => `<option value="${e.id}" ${leave && leave.employee_id === e.id ? 'selected' : ''}>${e.first_name} ${e.last_name} (${e.employee_code})</option>`)
       .join('');
 
-    Modal.open('Registrar Novedad de Personal', `
+    Modal.open(leaveId ? 'Editar Novedad' : 'Registrar Novedad de Personal', `
+      <input type="hidden" id="leaveId" value="${leaveId || ''}">
       <div class="field">
         <label style="font-weight: 600; font-size: 0.82rem;">Seleccionar Empleado</label>
-        <select id="leaveEmpId" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);">
+        <select id="leaveEmpId" ${leaveId ? 'disabled' : ''} style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);">
           <option value="">Selecciona un empleado...</option>
           ${employeeOptions}
         </select>
@@ -249,45 +291,48 @@ const LeavesPage = {
       <div class="field">
         <label style="font-weight: 600; font-size: 0.82rem;">Tipo de Novedad</label>
         <select id="leaveType" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);">
-          <option value="vacation">Vacaciones</option>
-          <option value="medical">Incapacidad Médica</option>
-          <option value="paid_leave">Licencia Remunerada</option>
-          <option value="unpaid_leave">Licencia No Remunerada</option>
-          <option value="suspension">Suspensión</option>
+          <option value="vacation" ${leave && leave.leave_type === 'vacation' ? 'selected' : ''}>Vacaciones</option>
+          <option value="medical" ${leave && leave.leave_type === 'medical' ? 'selected' : ''}>Incapacidad Médica</option>
+          <option value="paid_leave" ${leave && leave.leave_type === 'paid_leave' ? 'selected' : ''}>Licencia Remunerada</option>
+          <option value="unpaid_leave" ${leave && leave.leave_type === 'unpaid_leave' ? 'selected' : ''}>Licencia No Remunerada</option>
+          <option value="suspension" ${leave && leave.leave_type === 'suspension' ? 'selected' : ''}>Suspensión</option>
         </select>
       </div>
       <div style="display: flex; gap: 16px;">
         <div class="field" style="flex: 1;">
           <label style="font-weight: 600; font-size: 0.82rem;">Fecha de Inicio</label>
-          <input id="leaveStart" type="date" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);" />
+          <input id="leaveStart" type="date" value="${leave ? leave.start_date : ''}" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);" />
         </div>
         <div class="field" style="flex: 1;">
           <label style="font-weight: 600; font-size: 0.82rem;">Fecha de Fin (Inclusive)</label>
-          <input id="leaveEnd" type="date" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);" />
+          <input id="leaveEnd" type="date" value="${leave ? leave.end_date : ''}" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);" />
         </div>
       </div>
       <div class="field">
         <label style="font-weight: 600; font-size: 0.82rem;">Descripción / Justificación</label>
-        <textarea id="leaveDesc" rows="3" placeholder="Observaciones adicionales, detalles médicos, etc..." style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1); font-family: inherit; resize: vertical;"></textarea>
+        <textarea id="leaveDesc" rows="3" placeholder="Observaciones adicionales, detalles médicos, etc..." style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1); font-family: inherit; resize: vertical;">${leave && leave.description ? leave.description : ''}</textarea>
       </div>
     `,
     `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
      <button class="btn btn-primary" onclick="LeavesPage.saveLeave()">Guardar</button>`);
 
-    // Establecer fechas iniciales a hoy
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('leaveStart').value = todayStr;
-    document.getElementById('leaveEnd').value = todayStr;
+    if (!leaveId) {
+      // Establecer fechas iniciales a hoy
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('leaveStart').value = todayStr;
+      document.getElementById('leaveEnd').value = todayStr;
+    }
   },
 
   async saveLeave() {
+    const leaveId = document.getElementById('leaveId').value;
     const employee_id = document.getElementById('leaveEmpId').value;
     const leave_type = document.getElementById('leaveType').value;
     const start_date = document.getElementById('leaveStart').value;
     const end_date = document.getElementById('leaveEnd').value;
     const description = document.getElementById('leaveDesc').value.trim();
 
-    if (!employee_id) { Toast.show('Debe seleccionar un empleado', 'warning'); return; }
+    if (!employee_id && !leaveId) { Toast.show('Debe seleccionar un empleado', 'warning'); return; }
     if (!start_date) { Toast.show('Debe ingresar la fecha de inicio', 'warning'); return; }
     if (!end_date) { Toast.show('Debe ingresar la fecha de fin', 'warning'); return; }
 
@@ -297,18 +342,28 @@ const LeavesPage = {
     }
 
     try {
-      await API.post('/api/leaves', {
-        employee_id: parseInt(employee_id),
-        leave_type,
-        start_date,
-        end_date,
-        description: description || null
-      });
-      Toast.show('Novedad registrada con éxito', 'success');
+      if (leaveId) {
+        await API.put(`/api/leaves/${leaveId}`, {
+          leave_type,
+          start_date,
+          end_date,
+          description: description || null
+        });
+        Toast.show('Novedad actualizada con éxito', 'success');
+      } else {
+        await API.post('/api/leaves', {
+          employee_id: parseInt(employee_id),
+          leave_type,
+          start_date,
+          end_date,
+          description: description || null
+        });
+        Toast.show('Novedad registrada con éxito', 'success');
+      }
       Modal.close();
       this.loadTable();
     } catch (e) {
-      Toast.show(e.message || 'Error al registrar novedad', 'error');
+      Toast.show(e.message || 'Error al guardar novedad', 'error');
     }
   },
 

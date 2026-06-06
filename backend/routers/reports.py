@@ -82,6 +82,32 @@ def get_attendance_report(
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
+    elif export == "csv":
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+        headers = ["Empleado", "Código", "Fecha", "Tipo Horario", "Entrada 1", "Salida 1", "Entrada 2", "Salida 2", "Presente", "Tardanza", "Horas Trabajadas"]
+        writer.writerow(headers)
+        for r in results:
+            writer.writerow([
+                r.get("employee_name", "-"),
+                r.get("employee_code", "-"),
+                r.get("date", "-"),
+                r.get("schedule_type", "-"),
+                r["punches"].get("entry_1") or "-",
+                r["punches"].get("exit_1") or "-",
+                r["punches"].get("entry_2") or "-",
+                r["punches"].get("exit_2") or "-",
+                "Sí" if r.get("is_present") else "No",
+                "Sí" if r.get("is_late") else "No",
+                r.get("hours_worked_str", "-")
+            ])
+        filename = f"reporte_asistencia_{granularity}_{date.today().isoformat()}.csv"
+        return StreamingResponse(
+            io.BytesIO(output.getvalue().encode("utf-8-sig")),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
 
     total = len(results)
     start_idx = (page - 1) * page_size
@@ -131,13 +157,26 @@ def get_attendance_report_async(
         schedule_id=schedule_id
     )
 
+    # Cleanup expired tasks (older than 10 minutes)
+    now_time = datetime.now()
+    expired_ids = [
+        tid for tid, t in list(report_tasks.items()) 
+        if (now_time - t.get("created_at", now_time)).total_seconds() > 600
+    ]
+    for tid in expired_ids:
+        try:
+            del report_tasks[tid]
+        except KeyError:
+            pass
+
     task_id = str(uuid.uuid4())
     report_tasks[task_id] = {
         "status": "processing",
         "progress": 0,
         "content": None,
         "filename": f"reporte_asistencia_{granularity}_{date.today().isoformat()}.pdf",
-        "error": None
+        "error": None,
+        "created_at": now_time
     }
 
     cols_list = columns.split(",") if columns else None
@@ -311,15 +350,16 @@ def get_analytics(
 ):
     from backend.utils import get_local_now
     from datetime import datetime, timedelta
-    from backend.models import Employee, AttendanceRecord
+    from backend.models import Employee
 
     if not date_from:
         date_from = (get_local_now() - timedelta(days=30)).date()
     if not date_to:
         date_to = get_local_now().date()
 
-    df = datetime.combine(date_from, datetime.min.time())
-    dt = datetime.combine(date_to, datetime.max.time())
+    delta_days = (date_to - date_from).days + 1
+    prev_date_from = date_from - timedelta(days=delta_days)
+    prev_date_to = date_from - timedelta(days=1)
 
     employee_query = db.query(Employee).filter(Employee.is_active == True)
     if search:
@@ -337,16 +377,23 @@ def get_analytics(
     
     employees = employee_query.all()
     total_employees = len(employees)
-    employee_ids = [e.id for e in employees]
 
-    if not employee_ids:
-        # Si no coincide con ningún empleado, retornar resultados vacíos.
+    if not total_employees:
         return {
             "kpis": {
                 "punctuality_rate": "100%",
+                "punctuality_rate_trend": 0.0,
                 "total_lates": 0,
+                "total_lates_trend": 0,
                 "avg_entry_time": "--:--",
-                "critical_day": "Ninguno"
+                "avg_entry_time_trend": 0,
+                "critical_day": "Ninguno",
+                "absence_rate": "0%",
+                "absence_rate_trend": 0.0,
+                "hours_worked": "0h",
+                "hours_worked_trend": 0.0,
+                "early_exits": 0,
+                "early_exits_trend": 0
             },
             "distribution": {
                 "ontime": 0,
@@ -361,114 +408,369 @@ def get_analytics(
             }
         }
 
-    records = db.query(AttendanceRecord).filter(
-        AttendanceRecord.event_time >= df,
-        AttendanceRecord.event_time <= dt,
-        AttendanceRecord.employee_id.in_(employee_ids)
-    ).all()
+    current_results = process_attendance_report(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
 
-    entries = [r for r in records if r.event_type == "entry"]
+    previous_results = process_attendance_report(
+        db,
+        date_from=prev_date_from,
+        date_to=prev_date_to,
+        search=search,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
 
-    total_entries = len(entries)
-    late_entries = sum(1 for r in entries if r.is_late)
-    ontime_entries = total_entries - late_entries
-
-    punctuality_rate = round((ontime_entries / total_entries * 100) if total_entries else 100, 1)
-
-    avg_entry_time_str = "--:--"
-    if entries:
-        total_seconds = sum((r.event_time.hour * 3600 + r.event_time.minute * 60 + r.event_time.second) for r in entries)
-        avg_seconds = total_seconds // len(entries)
-        avg_hour = avg_seconds // 3600
-        avg_min = (avg_seconds % 3600) // 60
-        avg_entry_time_str = f"{avg_hour:02d}:{avg_min:02d}"
-
-    day_names = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-    late_by_weekday = {i: 0 for i in range(7)}
-    for r in entries:
-        if r.is_late:
-            late_by_weekday[r.event_time.weekday()] += 1
-
-    critical_day_idx = max(late_by_weekday, key=late_by_weekday.get)
-    critical_day = day_names[critical_day_idx] if late_by_weekday[critical_day_idx] > 0 else "Ninguno"
-
-    present_by_date = {}
-    for r in entries:
-        d_str = r.event_time.date().isoformat()
-        if d_str not in present_by_date:
-            present_by_date[d_str] = set()
-        present_by_date[d_str].add(r.employee_id)
-
-    from backend.models import SystemConfig
-    sys_config = db.query(SystemConfig).first()
-    default_work_days = [int(x) for x in sys_config.work_days.split(",")] if sys_config and sys_config.work_days else [1, 2, 3, 4, 5]
-
-    # Pre-parse workdays for each employee
-    emp_work_days = {}
-    for emp in employees:
-        if emp.schedule and emp.schedule.work_days:
-            try:
-                emp_work_days[emp.id] = [int(x) for x in emp.schedule.work_days.split(",")]
-            except Exception:
-                emp_work_days[emp.id] = default_work_days
-        else:
-            emp_work_days[emp.id] = default_work_days
-
-    total_absent = 0
-    current_day = date_from
-    while current_day <= date_to:
-        d_str = current_day.isoformat()
-        present_set = present_by_date.get(d_str, set())
-        weekday = current_day.weekday() + 1
+    def compute_kpi_metrics(results):
+        if not results:
+            return {
+                "punctuality_rate": 100.0,
+                "total_lates": 0,
+                "avg_entry_time": "--:--",
+                "avg_entry_seconds": 0,
+                "critical_day": "Ninguno",
+                "absence_rate": 0.0,
+                "total_absents": 0,
+                "total_hours_worked": 0.0,
+                "total_early_exits": 0
+            }
         
-        for emp in employees:
-            if emp.id not in present_set:
-                if weekday in emp_work_days[emp.id]:
-                    total_absent += 1
-        current_day += timedelta(days=1)
+        present_sums = [r for r in results if r["is_present"]]
+        total_present = len(present_sums)
+        late_count = sum(1 for r in present_sums if r["is_late"])
+        ontime_count = total_present - late_count
+        
+        punctuality_rate = round((ontime_count / total_present * 100) if total_present else 100.0, 1)
+        
+        avg_entry_time_str = "--:--"
+        avg_seconds = 0
+        entry_times = []
+        for r in present_sums:
+            e1 = r["punches"].get("entry_1")
+            if e1:
+                try:
+                    dt_val = datetime.fromisoformat(e1)
+                    entry_times.append(dt_val.hour * 3600 + dt_val.minute * 60 + dt_val.second)
+                except Exception:
+                    pass
+        if entry_times:
+            avg_seconds = sum(entry_times) // len(entry_times)
+            avg_hour = avg_seconds // 3600
+            avg_min = (avg_seconds % 3600) // 60
+            avg_entry_time_str = f"{avg_hour:02d}:{avg_min:02d}"
 
+        day_names = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        late_by_weekday = {i: 0 for i in range(7)}
+        for r in present_sums:
+            if r["is_late"]:
+                try:
+                    dt_val = date.fromisoformat(r["date"])
+                    late_by_weekday[dt_val.weekday()] += 1
+                except Exception:
+                    pass
+        critical_day_idx = max(late_by_weekday, key=late_by_weekday.get)
+        critical_day = day_names[critical_day_idx] if late_by_weekday[critical_day_idx] > 0 else "Ninguno"
 
-    entries_by_day = {}
-    late_by_day = {}
+        absent_count = sum(1 for r in results if not r["is_present"] and not r["is_off"] and not r["leave_type"])
+        total_expected = sum(1 for r in results if not r["is_off"])
+        absence_rate = round((absent_count / total_expected * 100) if total_expected else 0.0, 1)
+        
+        total_hours = sum(r["hours_worked"] for r in results if r["hours_worked"] is not None)
+        early_exits = sum(1 for r in results if r.get("is_early_exit"))
+        
+        return {
+            "punctuality_rate": punctuality_rate,
+            "total_lates": late_count,
+            "avg_entry_time": avg_entry_time_str,
+            "avg_entry_seconds": avg_seconds,
+            "critical_day": critical_day,
+            "absence_rate": absence_rate,
+            "total_absents": absent_count,
+            "total_hours_worked": round(total_hours, 1),
+            "total_early_exits": early_exits
+        }
+
+    curr = compute_kpi_metrics(current_results)
+    prev = compute_kpi_metrics(previous_results)
+
+    punctuality_rate_trend = round(curr["punctuality_rate"] - prev["punctuality_rate"], 1)
+    total_lates_trend = curr["total_lates"] - prev["total_lates"]
+    absence_rate_trend = round(curr["absence_rate"] - prev["absence_rate"], 1)
+    hours_worked_trend = round(curr["total_hours_worked"] - prev["total_hours_worked"], 1)
+    early_exits_trend = curr["total_early_exits"] - prev["total_early_exits"]
+    avg_entry_time_trend = curr["avg_entry_seconds"] - prev["avg_entry_seconds"]
+
+    ontime_entries = sum(1 for r in current_results if r["is_present"] and not r["is_late"])
+    late_entries = sum(1 for r in current_results if r["is_present"] and r["is_late"])
+    absent_entries = curr["total_absents"]
+    leave_entries = sum(1 for r in current_results if r["leave_type"] is not None)
+
+    from collections import defaultdict
+    entries_by_day = defaultdict(int)
+    late_by_day = defaultdict(int)
+    
     current_day = date_from
     labels = []
     while current_day <= date_to:
         label = current_day.strftime("%d/%m")
         labels.append(label)
-        entries_by_day[label] = 0
-        late_by_day[label] = 0
         current_day += timedelta(days=1)
+        
+    for r in current_results:
+        try:
+            d_val = date.fromisoformat(r["date"])
+            label = d_val.strftime("%d/%m")
+            if r["is_present"]:
+                entries_by_day[label] += 1
+                if r["is_late"]:
+                    late_by_day[label] += 1
+        except Exception:
+            pass
 
-    for r in entries:
-        label = r.event_time.strftime("%d/%m")
-        if label in entries_by_day:
-            entries_by_day[label] += 1
-            if r.is_late:
-                late_by_day[label] += 1
-
-    trend_labels = labels
     trend_present = [entries_by_day[l] - late_by_day[l] for l in labels]
     trend_late = [late_by_day[l] for l in labels]
 
     return {
         "kpis": {
-            "punctuality_rate": f"{punctuality_rate}%",
-            "total_lates": late_entries,
-            "avg_entry_time": avg_entry_time_str,
-            "critical_day": critical_day
+            "punctuality_rate": f"{curr['punctuality_rate']}%",
+            "punctuality_rate_trend": punctuality_rate_trend,
+            "total_lates": curr["total_lates"],
+            "total_lates_trend": total_lates_trend,
+            "avg_entry_time": curr["avg_entry_time"],
+            "avg_entry_time_trend": avg_entry_time_trend,
+            "critical_day": curr["critical_day"],
+            "absence_rate": f"{curr['absence_rate']}%",
+            "absence_rate_trend": absence_rate_trend,
+            "hours_worked": f"{curr['total_hours_worked']}h",
+            "hours_worked_trend": hours_worked_trend,
+            "early_exits": curr["total_early_exits"],
+            "early_exits_trend": early_exits_trend
         },
         "distribution": {
             "ontime": ontime_entries,
             "late": late_entries,
-            "absent": total_absent,
-            "leaves": 3
+            "absent": absent_entries,
+            "leaves": leave_entries
         },
         "trend": {
-            "labels": trend_labels,
+            "labels": labels,
             "present": trend_present,
             "late": trend_late
         }
     }
+
+
+@router.get("/analytics/batch")
+def get_analytics_batch(
+    entity_type: str = Query("general"),  # 'general', 'departments', 'positions', 'schedules'
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    search: Optional[str] = Query(None),
+    department_id: Optional[int] = Query(None),
+    position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    from backend.utils import get_local_now
+    from datetime import datetime, timedelta
+    from backend.models import Employee, Department, Position, Schedule
+
+    if not date_from:
+        date_from = (get_local_now() - timedelta(days=30)).date()
+    if not date_to:
+        date_to = get_local_now().date()
+
+    # Run process_attendance_report for the full filtered set of employees
+    raw_summaries = process_attendance_report(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+        department_id=department_id,
+        position_id=position_id,
+        schedule_id=schedule_id
+    )
+
+    def compute_metrics(results):
+        if not results:
+            return {
+                "punctuality": "100.0%",
+                "lates": 0,
+                "avg_entry": "--:--",
+                "critical": "Ninguno"
+            }
+        present_sums = [r for r in results if r["is_present"]]
+        total_present = len(present_sums)
+        late_count = sum(1 for r in present_sums if r["is_late"])
+        ontime_count = total_present - late_count
+        punctuality_rate = round((ontime_count / total_present * 100) if total_present else 100.0, 1)
+        
+        avg_entry_time_str = "--:--"
+        entry_times = []
+        for r in present_sums:
+            e1 = r["punches"].get("entry_1")
+            if e1:
+                try:
+                    dt_val = datetime.fromisoformat(e1)
+                    entry_times.append(dt_val.hour * 3600 + dt_val.minute * 60 + dt_val.second)
+                except Exception:
+                    pass
+        if entry_times:
+            avg_seconds = sum(entry_times) // len(entry_times)
+            avg_hour = avg_seconds // 3600
+            avg_min = (avg_seconds % 3600) // 60
+            avg_entry_time_str = f"{avg_hour:02d}:{avg_min:02d}"
+
+        day_names = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        late_by_weekday = {i: 0 for i in range(7)}
+        for r in present_sums:
+            if r["is_late"]:
+                try:
+                    dt_val = date.fromisoformat(r["date"])
+                    late_by_weekday[dt_val.weekday()] += 1
+                except Exception:
+                    pass
+        critical_day_idx = max(late_by_weekday, key=late_by_weekday.get)
+        critical_day = day_names[critical_day_idx] if late_by_weekday[critical_day_idx] > 0 else "Ninguno"
+        
+        return {
+            "punctuality": f"{punctuality_rate}%",
+            "lates": late_count,
+            "avg_entry": avg_entry_time_str,
+            "critical": critical_day
+        }
+
+    # Group daily summaries by employee_id
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for s in raw_summaries:
+        grouped[s["employee_id"]].append(s)
+
+    output = []
+    
+    if entity_type == "general":
+        # Return per-employee analytics
+        employee_query = db.query(Employee).filter(Employee.is_active == True)
+        if search:
+            employee_query = employee_query.filter(
+                (Employee.first_name.ilike(f"%{search}%")) |
+                (Employee.last_name.ilike(f"%{search}%")) |
+                (Employee.employee_code.ilike(f"%{search}%"))
+            )
+        if department_id:
+            employee_query = employee_query.filter(Employee.department_id == department_id)
+        if position_id:
+            employee_query = employee_query.filter(Employee.position_id == position_id)
+        if schedule_id:
+            employee_query = employee_query.filter(Employee.schedule_id == schedule_id)
+            
+        employees = employee_query.all()
+        for emp in employees:
+            emp_summaries = grouped[emp.id]
+            metrics = compute_metrics(emp_summaries)
+            output.append({
+                "id": emp.id,
+                "name": emp.full_name,
+                "code": emp.employee_code,
+                "punctuality": metrics["punctuality"],
+                "lates": metrics["lates"],
+                "avg_entry": metrics["avg_entry"],
+                "critical": metrics["critical"]
+            })
+
+    elif entity_type == "departments":
+        dept_query = db.query(Department)
+        if department_id:
+            dept_query = dept_query.filter(Department.id == department_id)
+        departments = dept_query.all()
+        
+        emp_depts = db.query(Employee.id, Employee.department_id).filter(Employee.is_active == True).all()
+        dept_to_emps = defaultdict(list)
+        for emp_id, d_id in emp_depts:
+            if d_id:
+                dept_to_emps[d_id].append(emp_id)
+                
+        for dept in departments:
+            dept_emp_ids = dept_to_emps[dept.id]
+            dept_summaries = []
+            for eid in dept_emp_ids:
+                dept_summaries.extend(grouped[eid])
+            metrics = compute_metrics(dept_summaries)
+            output.append({
+                "id": dept.id,
+                "name": dept.name,
+                "code": None,
+                "punctuality": metrics["punctuality"],
+                "lates": metrics["lates"],
+                "avg_entry": metrics["avg_entry"],
+                "critical": metrics["critical"]
+            })
+
+    elif entity_type == "positions":
+        pos_query = db.query(Position)
+        if position_id:
+            pos_query = pos_query.filter(Position.id == position_id)
+        positions = pos_query.all()
+        
+        emp_pos = db.query(Employee.id, Employee.position_id).filter(Employee.is_active == True).all()
+        pos_to_emps = defaultdict(list)
+        for emp_id, p_id in emp_pos:
+            if p_id:
+                pos_to_emps[p_id].append(emp_id)
+                
+        for pos in positions:
+            pos_emp_ids = pos_to_emps[pos.id]
+            pos_summaries = []
+            for eid in pos_emp_ids:
+                pos_summaries.extend(grouped[eid])
+            metrics = compute_metrics(pos_summaries)
+            output.append({
+                "id": pos.id,
+                "name": pos.name,
+                "code": None,
+                "punctuality": metrics["punctuality"],
+                "lates": metrics["lates"],
+                "avg_entry": metrics["avg_entry"],
+                "critical": metrics["critical"]
+            })
+
+    elif entity_type == "schedules":
+        sched_query = db.query(Schedule)
+        if schedule_id:
+            sched_query = sched_query.filter(Schedule.id == schedule_id)
+        schedules = sched_query.all()
+        
+        emp_scheds = db.query(Employee.id, Employee.schedule_id).filter(Employee.is_active == True).all()
+        sched_to_emps = defaultdict(list)
+        for emp_id, s_id in emp_scheds:
+            if s_id:
+                sched_to_emps[s_id].append(emp_id)
+                
+        for sched in schedules:
+            sched_emp_ids = sched_to_emps[sched.id]
+            sched_summaries = []
+            for eid in sched_emp_ids:
+                sched_summaries.extend(grouped[eid])
+            metrics = compute_metrics(sched_summaries)
+            output.append({
+                "id": sched.id,
+                "name": sched.name,
+                "code": None,
+                "punctuality": metrics["punctuality"],
+                "lates": metrics["lates"],
+                "avg_entry": metrics["avg_entry"],
+                "critical": metrics["critical"]
+            })
+
+    return output
 
 
 @router.get("/analytics/details")

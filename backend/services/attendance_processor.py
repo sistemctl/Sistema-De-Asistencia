@@ -15,8 +15,48 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
     """
     Calculates the valid punches for an employee on a specific date, based on their schedule and system rules.
     """
-    # Filter records for the target date
-    day_records = [r for r in records if r.event_time.date() == target_date]
+    # Determine if there is a daily override, otherwise fallback to static schedule
+    is_off = False
+    if daily_schedule is not None:
+        if daily_schedule.is_off:
+            schedule = None
+            is_off = True
+        else:
+            schedule = daily_schedule.schedule
+    else:
+        schedule = employee.schedule
+        if schedule:
+            try:
+                work_days = [int(w) for w in schedule.work_days.split(",") if w.strip()]
+                is_off = (target_date.weekday() + 1) not in work_days
+            except Exception:
+                is_off = False
+        else:
+            is_off = True
+
+    if is_holiday:
+        is_off = True
+
+    if active_leave is not None:
+        is_off = True
+
+    # Filter records, checking if it is a night shift crossing midnight
+    is_night_shift = False
+    if schedule and schedule.shift_type == "continuous":
+        work_start = parse_time(schedule.work_start_time)
+        work_end = parse_time(schedule.work_end_time)
+        if work_start and work_end and work_start > work_end:
+            is_night_shift = True
+
+    if is_night_shift:
+        target_start = datetime.combine(target_date, work_start)
+        target_end = datetime.combine(target_date + timedelta(days=1), work_end)
+        window_start = target_start - timedelta(hours=4)
+        window_end = target_end + timedelta(hours=4)
+        day_records = [r for r in records if window_start <= r.event_time <= window_end]
+    else:
+        day_records = [r for r in records if r.event_time.date() == target_date]
+
     # Sort chronologically
     day_records.sort(key=lambda r: r.event_time)
 
@@ -43,34 +83,9 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         "hours_worked_str": "-",      # formatted, e.g. "8 h 30 min"
         "is_holiday": is_holiday,
         "leave_type": active_leave.leave_type if active_leave else None,
+        "is_early_exit": False,
+        "is_off": is_off
     }
-
-    # Determine if there is a daily override, otherwise fallback to static schedule
-    is_off = False
-    if daily_schedule is not None:
-        if daily_schedule.is_off:
-            schedule = None
-            is_off = True
-        else:
-            schedule = daily_schedule.schedule
-    else:
-        schedule = employee.schedule
-        if schedule:
-            try:
-                work_days = [int(w) for w in schedule.work_days.split(",") if w.strip()]
-                is_off = (target_date.weekday() + 1) not in work_days
-            except Exception:
-                is_off = False
-        else:
-            is_off = True
-
-    if is_holiday:
-        is_off = True
-
-    if active_leave is not None:
-        is_off = True
-
-    summary["is_off"] = is_off
 
 
     if not schedule:
@@ -125,7 +140,10 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             return summary
 
         target_start = datetime.combine(target_date, work_start)
-        target_end = datetime.combine(target_date, work_end)
+        if work_start > work_end:
+            target_end = datetime.combine(target_date + timedelta(days=1), work_end)
+        else:
+            target_end = datetime.combine(target_date, work_end)
         mid_point = target_start + (target_end - target_start) / 2
 
         entries = [r for r in day_records if r.event_time <= mid_point]
@@ -159,6 +177,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             # Check early checkout
             diff_minutes = (target_end - best_exit.event_time).total_seconds() / 60.0
             if diff_minutes > 0: # Left early
+                summary["is_early_exit"] = True
                 if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
                     summary["is_present"] = False
         else:
@@ -243,6 +262,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             
             diff_minutes = (t_end - best.event_time).total_seconds() / 60.0
             if diff_minutes > 0: # Left early
+                summary["is_early_exit"] = True
                 if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
                     summary["is_present"] = False
         else:
@@ -296,7 +316,7 @@ def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
     employees = db.query(Employee).filter(Employee.is_active == True).all()
     
     start_dt = datetime.combine(target_date, datetime.min.time())
-    end_dt = datetime.combine(target_date, datetime.max.time())
+    end_dt = datetime.combine(target_date + timedelta(days=1), datetime.max.time())
     
     records = db.query(AttendanceRecord).filter(
         AttendanceRecord.event_time >= start_dt,
@@ -400,7 +420,7 @@ def process_attendance_report(
     days = [date_from + timedelta(days=i) for i in range(delta.days + 1)]
 
     start_dt = datetime.combine(date_from, datetime.min.time())
-    end_dt = datetime.combine(date_to, datetime.max.time())
+    end_dt = datetime.combine(date_to + timedelta(days=1), datetime.max.time())
 
     # 3. Fetch all attendance records for this period in a single query
     records = db.query(AttendanceRecord).filter(

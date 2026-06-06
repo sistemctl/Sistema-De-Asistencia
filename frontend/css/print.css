@@ -1,0 +1,66 @@
+/* ── Print Stylesheet ── */
+
+@media print {
+  /* Hide UI elements from screen */
+  body > *:not(#modalOverlay),
+  .mesh-glows,
+  .toast-container,
+  .sidebar,
+  .main,
+  #modalTitle,
+  #modalClose,
+  #modalFooter,
+  button {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .modal-overlay {
+    background: white !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+  }
+
+  .modal {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    transform: none !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+
+  #modalBody {
+    padding: 0 !important;
+  }
+
+  #printBadgeContainer {
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar instrucciones del modal */
+  #modalBody > div > p {
+    display: none !important;
+  }
+}

@@ -11,7 +11,11 @@ const AuditPage = {
                 <h2>Auditoría del Sistema</h2>
                 <p class="subtitle">Historial de acciones y cambios realizados por administradores.</p>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" style="display:flex; gap:10px;">
+                <button class="btn btn-outline" id="btnExportAudit">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Exportar CSV
+                </button>
                 <button class="btn btn-outline" id="btnRefreshAudit">
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                     Actualizar
@@ -21,40 +25,48 @@ const AuditPage = {
         ` : `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; margin-top: 10px;">
             <div style="font-weight: 700; font-size: 1.05rem; color: var(--accent);">Historial de Cambios y Seguridad</div>
-            <button class="btn btn-outline btn-sm" id="btnRefreshAudit">
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                Actualizar
-            </button>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-outline btn-sm" id="btnExportAudit">
+                    <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Exportar
+                </button>
+                <button class="btn btn-outline btn-sm" id="btnRefreshAudit">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    Actualizar
+                </button>
+            </div>
         </div>
         `}
 
-        <div class="corp-card" style="margin-bottom: 24px;">
+        <div class="card" style="margin-bottom: 24px; padding: 16px 20px;">
             <div class="filters-row" style="display:flex; gap:16px; align-items:flex-end;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>Filtrar por Acción</label>
-                    <select id="filterAuditAction" class="form-control">
+                <div class="field" style="margin-bottom: 0;">
+                    <label style="margin-bottom: 6px; font-weight: 600; font-size: 0.8rem; color: var(--text-2);">Filtrar por Acción</label>
+                    <select id="filterAuditAction" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1); font-size: 0.85rem; width: 200px;">
                         <option value="">Todas</option>
                         <option value="CREATE">Creaciones (CREATE)</option>
                         <option value="UPDATE">Actualizaciones (UPDATE)</option>
                         <option value="DELETE">Eliminaciones (DELETE)</option>
                     </select>
                 </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>Módulo</label>
-                    <select id="filterAuditEntity" class="form-control">
+                <div class="field" style="margin-bottom: 0;">
+                    <label style="margin-bottom: 6px; font-weight: 600; font-size: 0.8rem; color: var(--text-2);">Módulo</label>
+                    <select id="filterAuditEntity" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1); font-size: 0.85rem; width: 200px;">
                         <option value="">Todos</option>
                         <option value="Employee">Empleados</option>
                         <option value="SystemConfig">Configuración</option>
                         <option value="Schedule">Horarios</option>
+                        <option value="Department">Departamentos</option>
+                        <option value="Position">Cargos</option>
                     </select>
                 </div>
-                <button class="btn btn-primary" id="btnApplyAuditFilters">Filtrar</button>
+                <button class="btn btn-primary" id="btnApplyAuditFilters" style="height:38px;">Filtrar</button>
             </div>
         </div>
 
-        <div class="corp-card table-card">
-            <div class="table-responsive">
-                <table class="corp-table">
+        <div class="card" style="padding:0; overflow:hidden;">
+            <div class="table-wrap">
+                <table>
                     <thead>
                         <tr>
                             <th>Fecha y Hora</th>
@@ -71,11 +83,11 @@ const AuditPage = {
             </div>
             
             <!-- Paginación -->
-            <div class="pagination-container" id="auditPagination" style="padding: 16px; border-top: 1px solid var(--corp-outline); display: flex; justify-content: space-between; align-items: center;">
+            <div class="pagination" id="auditPagination" style="padding: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: none;">
                 <span class="pagination-info" id="auditPageInfo">Mostrando 0 - 0 de 0</span>
-                <div class="pagination-controls" style="display: flex; gap: 8px;">
-                    <button class="btn btn-outline" id="btnAuditPrev" disabled>Anterior</button>
-                    <button class="btn btn-outline" id="btnAuditNext" disabled>Siguiente</button>
+                <div class="pagination-btns" style="display: flex; gap: 8px;">
+                    <button class="page-btn" id="btnAuditPrev" disabled>Anterior</button>
+                    <button class="page-btn" id="btnAuditNext" disabled>Siguiente</button>
                 </div>
             </div>
         </div>
@@ -169,6 +181,17 @@ const AuditPage = {
     document.getElementById("btnRefreshAudit").addEventListener("click", () => loadAuditLogs(currentPage));
     document.getElementById("btnApplyAuditFilters").addEventListener("click", () => loadAuditLogs(1));
     
+    document.getElementById("btnExportAudit").addEventListener("click", () => {
+        const action = document.getElementById("filterAuditAction").value;
+        const entity = document.getElementById("filterAuditEntity").value;
+        let url = `/api/audit/export?`;
+        const params = [];
+        if (action) params.push(`action=${action}`);
+        if (entity) params.push(`entity=${entity}`);
+        
+        window.open(url + params.join('&'), '_blank');
+    });
+
     document.getElementById("btnAuditPrev").addEventListener("click", () => {
         if (currentPage > 1) loadAuditLogs(currentPage - 1);
     });

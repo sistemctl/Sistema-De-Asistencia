@@ -20,14 +20,26 @@ DB_HOST     = os.getenv("DB_HOST", "localhost")
 DB_PORT     = os.getenv("DB_PORT", "5432")
 DB_NAME     = os.getenv("DB_NAME", "asistencia")
 DB_USER     = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Colombia26*+")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+if not DB_PASSWORD:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("⚠️ DB_PASSWORD no configurada en .env — la conexión a PostgreSQL puede fallar.")
 
 DATABASE_URL = (
     f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 # ── Seguridad / JWT ───────────────────────────────────────────────────────────
-SECRET_KEY = os.getenv("SECRET_KEY", "hikvision-asistencia-secret-key-2026-cambiar-en-produccion")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    import secrets as _secrets
+    SECRET_KEY = _secrets.token_hex(32)
+    import warnings as _warnings
+    _warnings.warn(
+        "⚠️ SECRET_KEY no configurada en .env — usando clave temporal. "
+        "Configure SECRET_KEY en producción.",
+        stacklevel=2,
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8  # Jornada laboral
 
@@ -47,7 +59,9 @@ SYNC_INTERVAL_MINUTES = 5    # Cada cuántos minutos sincronizar
 SYNC_MAX_EVENTS       = 1000 # Máximo de eventos por sincronización
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-CORS_ORIGINS = ["*"]  # En producción, restringir a la IP del servidor
+# En producción, configure CORS_ORIGINS en .env como lista separada por comas
+# Ejemplo: CORS_ORIGINS=https://mi-dominio.com,https://admin.mi-dominio.com
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 
 # ── Aplicación ────────────────────────────────────────────────────────────────
 APP_NAME    = "Sistema de Asistencia — Hikvision DS-K1T323MBWX"

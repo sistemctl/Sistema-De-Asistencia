@@ -1,0 +1,14 @@
+/* ════════════════════════════════════════════════════════════════
+   Sistema de Asistencia — Entrypoint CSS
+   ════════════════════════════════════════════════════════════════ */
+
+@import url('tokens.css');
+@import url('layout.css');
+@import url('components.css');
+@import url('dashboard.css');
+@import url('reports.css');
+@import url('vendors.css');
+@import url('animations.css');
+@import url('utilities.css');
+@import url('print.css');
+@import url('dark_mode.css');

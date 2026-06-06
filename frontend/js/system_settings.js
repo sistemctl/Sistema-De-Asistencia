@@ -10,44 +10,6 @@ const SystemSettingsPage = {
       </div>
       
       <style>
-        /* Custom Switch Styling */
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 38px;
-          height: 20px;
-        }
-        .switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background-color: var(--border, #475569);
-          transition: .2s;
-          border-radius: 20px;
-        }
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 14px;
-          width: 14px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          transition: .2s;
-          border-radius: 50%;
-        }
-        input:checked + .slider {
-          background-color: var(--accent, #00e676);
-        }
-        input:checked + .slider:before {
-          transform: translateX(18px);
-        }
-        
         /* Tables for rules */
         .rules-table th, .rules-table td {
           padding: 10px 8px;
@@ -93,7 +55,7 @@ const SystemSettingsPage = {
             <!-- Switches Generales de Marcación -->
             <div style="display: flex; gap: 30px; margin-bottom: 24px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <label class="switch">
+                <label class="toggle-switch">
                   <input type="checkbox" id="sysRequireCheckin">
                   <span class="slider"></span>
                 </label>
@@ -104,7 +66,7 @@ const SystemSettingsPage = {
               </div>
               
               <div style="display: flex; align-items: center; gap: 12px;">
-                <label class="switch">
+                <label class="toggle-switch">
                   <input type="checkbox" id="sysRequireCheckout">
                   <span class="slider"></span>
                 </label>
@@ -135,7 +97,7 @@ const SystemSettingsPage = {
                     </div>
                   </td>
                   <td style="text-align: center;">
-                    <label class="switch">
+                    <label class="toggle-switch">
                       <input type="checkbox" id="sysMarkLateEnable">
                       <span class="slider"></span>
                     </label>
@@ -150,7 +112,7 @@ const SystemSettingsPage = {
                     </div>
                   </td>
                   <td style="text-align: center;">
-                    <label class="switch">
+                    <label class="toggle-switch">
                       <input type="checkbox" id="sysMarkAbsentIfLateEnable">
                       <span class="slider"></span>
                     </label>
@@ -165,7 +127,7 @@ const SystemSettingsPage = {
                     </div>
                   </td>
                   <td style="text-align: center;">
-                    <label class="switch">
+                    <label class="toggle-switch">
                       <input type="checkbox" id="sysMarkEarlyDepartureEnable">
                       <span class="slider"></span>
                     </label>
@@ -180,7 +142,7 @@ const SystemSettingsPage = {
                     </div>
                   </td>
                   <td style="text-align: center;">
-                    <label class="switch">
+                    <label class="toggle-switch">
                       <input type="checkbox" id="sysMarkAbsentIfEarlyCheckoutEnable">
                       <span class="slider"></span>
                     </label>
@@ -196,7 +158,7 @@ const SystemSettingsPage = {
                     </select>
                   </td>
                   <td style="text-align: center;">
-                    <label class="switch">
+                    <label class="toggle-switch">
                       <input type="checkbox" id="sysNoCheckinEnable">
                       <span class="slider"></span>
                     </label>
@@ -212,7 +174,7 @@ const SystemSettingsPage = {
                     </select>
                   </td>
                   <td style="text-align: center;">
-                    <label class="switch">
+                    <label class="toggle-switch">
                       <input type="checkbox" id="sysNoCheckoutEnable">
                       <span class="slider"></span>
                     </label>

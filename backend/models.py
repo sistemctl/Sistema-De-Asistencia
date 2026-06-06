@@ -46,6 +46,7 @@ class Department(Base):
     name = Column(String(100), unique=True, nullable=False)
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     employees = relationship("Employee", back_populates="department")
 
@@ -58,6 +59,7 @@ class Position(Base):
     name = Column(String(100), unique=True, nullable=False)
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     employees = relationship("Employee", back_populates="position")
 
@@ -75,6 +77,7 @@ class Schedule(Base):
     lunch_end_time = Column(String(5), nullable=True)     # HH:MM
     work_days = Column(String(100), default="1,2,3,4,5", nullable=False) # Lunes a Viernes (1=Lunes, 7=Domingo)
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     employees = relationship("Employee", back_populates="schedule")
 
@@ -90,7 +93,6 @@ class Employee(Base):
     last_name = Column(String(100), nullable=False)
     email = Column(String(150), nullable=True)
     phone = Column(String(30), nullable=True)
-    position_legacy = Column(String(100), nullable=True)
     position_id = Column(Integer, ForeignKey("positions.id"), nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True)
@@ -198,6 +200,11 @@ class SystemConfig(Base):
     bg_surface_color = Column(String(30), default="#ffffff")
     work_days = Column(String(100), default="1,2,3,4,5") # Lunes a Viernes (1=Lunes, 7=Domingo)
     time_format = Column(String(10), default="24h") # 12h / 24h
+    
+    # ── QR Settings ──
+    qr_badge_show_blood_type = Column(Boolean, default=True)
+    qr_badge_show_department = Column(Boolean, default=True)
+    mobile_qr_portal_enabled = Column(Boolean, default=False)
     entry_tolerance_minutes = Column(Integer, default=10)
     exit_tolerance_minutes = Column(Integer, default=10)
     require_checkin = Column(Boolean, default=True)
@@ -270,6 +277,8 @@ class Holiday(Base):
     name = Column(String(150), nullable=False)
     is_active = Column(Boolean, default=True)  # True = es festivo/descanso, False = la empresa labora con normalidad
     is_custom = Column(Boolean, default=False) # True = agregado manualmente por el administrador
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class EmployeeLeave(Base):

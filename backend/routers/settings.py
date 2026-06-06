@@ -57,9 +57,87 @@ class SettingsUpdateSchema(BaseModel):
     cleanup_attendance_enabled: Optional[bool] = True
     cleanup_audit_enabled: Optional[bool] = True
     cleanup_sync_enabled: Optional[bool] = True
+    qr_badge_show_blood_type: Optional[bool] = True
+    qr_badge_show_department: Optional[bool] = True
+    mobile_qr_portal_enabled: Optional[bool] = False
+
+
+class SettingsPatchSchema(BaseModel):
+    system_name: Optional[str] = None
+    company_name: Optional[str] = None
+    primary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+    bg_base_color: Optional[str] = None
+    bg_surface_color: Optional[str] = None
+    work_days: Optional[str] = None
+    time_format: Optional[str] = None
+    entry_tolerance_minutes: Optional[int] = None
+    exit_tolerance_minutes: Optional[int] = None
+    require_checkin: Optional[bool] = None
+    require_checkout: Optional[bool] = None
+    mark_late_enable: Optional[bool] = None
+    mark_late_limit_minutes: Optional[int] = None
+    mark_absent_if_late_enable: Optional[bool] = None
+    mark_absent_if_late_limit_minutes: Optional[int] = None
+    mark_early_departure_enable: Optional[bool] = None
+    mark_early_departure_limit_minutes: Optional[int] = None
+    mark_absent_if_early_checkout_enable: Optional[bool] = None
+    mark_absent_if_early_checkout_limit_minutes: Optional[int] = None
+    no_checkin_enable: Optional[bool] = None
+    no_checkin_status: Optional[str] = None
+    no_checkout_enable: Optional[bool] = None
+    no_checkout_status: Optional[str] = None
+    flexible_shift_start: Optional[str] = None
+    flexible_shift_end: Optional[str] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_use_tls: Optional[bool] = None
+    email_notifications_enabled: Optional[bool] = None
+    email_alerts_recipients: Optional[str] = None
+    alert_device_offline: Optional[bool] = None
+    alert_employee_lateness: Optional[bool] = None
+    alert_admin_daily_report: Optional[bool] = None
+    cleanup_enabled: Optional[bool] = None
+    cleanup_time: Optional[str] = None
+    retention_attendance_days: Optional[int] = None
+    retention_audit_logs_days: Optional[int] = None
+    retention_sync_logs_days: Optional[int] = None
+    cleanup_attendance_enabled: Optional[bool] = None
+    cleanup_audit_enabled: Optional[bool] = None
+    cleanup_sync_enabled: Optional[bool] = None
+    qr_badge_show_blood_type: Optional[bool] = None
+    qr_badge_show_department: Optional[bool] = None
+    mobile_qr_portal_enabled: Optional[bool] = None
+
+
+@router.get("/public")
+def get_public_settings(db: Session = Depends(get_db)):
+    """Devuelve solo los campos de branding seguros (sin autenticación, para la página de login)."""
+    config = db.query(SystemConfig).first()
+    if not config:
+        return {
+            "system_name": "Control de Asistencia",
+            "company_name": "Hikvision DS-K1T323MBWX",
+            "logo_path": None,
+            "primary_color": "#1e3a5f",
+            "accent_color": "#00e676",
+            "bg_base_color": "#f8fafc",
+            "bg_surface_color": "#ffffff",
+        }
+    return {
+        "system_name": config.system_name,
+        "company_name": config.company_name,
+        "logo_path": config.logo_path,
+        "primary_color": config.primary_color,
+        "accent_color": config.accent_color,
+        "bg_base_color": config.bg_base_color or "#f8fafc",
+        "bg_surface_color": config.bg_surface_color or "#ffffff",
+    }
 
 @router.get("")
-def get_settings(db: Session = Depends(get_db)):
+def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
     config = db.query(SystemConfig).first()
     if not config:
         return {
@@ -107,7 +185,10 @@ def get_settings(db: Session = Depends(get_db)):
             "retention_sync_logs_days": 30,
             "cleanup_attendance_enabled": True,
             "cleanup_audit_enabled": True,
-            "cleanup_sync_enabled": True
+            "cleanup_sync_enabled": True,
+            "qr_badge_show_blood_type": True,
+            "qr_badge_show_department": True,
+            "mobile_qr_portal_enabled": False
         }
     return {
         "system_name": config.system_name,
@@ -154,7 +235,10 @@ def get_settings(db: Session = Depends(get_db)):
         "retention_sync_logs_days": config.retention_sync_logs_days,
         "cleanup_attendance_enabled": config.cleanup_attendance_enabled,
         "cleanup_audit_enabled": config.cleanup_audit_enabled,
-        "cleanup_sync_enabled": config.cleanup_sync_enabled
+        "cleanup_sync_enabled": config.cleanup_sync_enabled,
+        "qr_badge_show_blood_type": config.qr_badge_show_blood_type,
+        "qr_badge_show_department": config.qr_badge_show_department,
+        "mobile_qr_portal_enabled": config.mobile_qr_portal_enabled
     }
 
 @router.put("")
@@ -217,12 +301,45 @@ def update_settings(
     config.cleanup_attendance_enabled = data.cleanup_attendance_enabled
     config.cleanup_audit_enabled = data.cleanup_audit_enabled
     config.cleanup_sync_enabled = data.cleanup_sync_enabled
+    config.qr_badge_show_blood_type = data.qr_badge_show_blood_type
+    config.qr_badge_show_department = data.qr_badge_show_department
+    config.mobile_qr_portal_enabled = data.mobile_qr_portal_enabled
     
     db.commit()
     db.refresh(config)
 
     from backend.services.audit import log_action
     log_action(db, current_user.id, "UPDATE", "SystemConfig", str(config.id), "Configuración general del sistema actualizada")
+
+    return {"status": "success", "message": "Configuración actualizada correctamente."}
+
+
+@router.patch("")
+def patch_settings(
+    data: SettingsPatchSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("perm_manage_settings"))
+):
+    config = db.query(SystemConfig).first()
+    if not config:
+        config = SystemConfig()
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+
+    update_dict = data.model_dump(exclude_unset=True)
+    for field, value in update_dict.items():
+        if field == "smtp_password":
+            if value and value != '••••••••' and value.strip() != '':
+                config.smtp_password = value
+        else:
+            setattr(config, field, value)
+            
+    db.commit()
+    db.refresh(config)
+
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "SystemConfig", str(config.id), "Configuración parcial del sistema actualizada")
 
     return {"status": "success", "message": "Configuración actualizada correctamente."}
 

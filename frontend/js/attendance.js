@@ -42,16 +42,24 @@ const AttendancePage = {
 
     if (tab === 'records') {
       content.innerHTML = `
-        <div class="section-actions" style="margin-bottom:20px; flex-wrap:wrap; display:flex; gap:10px; align-items:center;">
-          <input type="text" id="fSearch" placeholder="Buscar empleado o código" style="width:250px;" />
-          <input type="text" id="fDateRange" placeholder="Rango de fechas" style="width:260px;" />
-          <select id="fType">
-            <option value="">Todos</option><option value="entry">Entradas</option><option value="exit">Salidas</option>
-          </select>
-          <button class="btn btn-primary" id="btnFilter">
-            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-            Filtrar
-          </button>
+        <div class="section-actions" style="margin-bottom:20px; flex-wrap:wrap; display:flex; gap:10px; align-items:center; justify-content: space-between; width: 100%;">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <input type="text" id="fSearch" class="form-control" placeholder="Buscar empleado o código" style="width:250px;" />
+            <input type="text" id="fDateRange" class="form-control" placeholder="Rango de fechas" style="width:260px;" />
+            <select id="fType" class="form-control" style="width:120px;">
+              <option value="">Todos</option><option value="entry">Entradas</option><option value="exit">Salidas</option>
+            </select>
+            <button class="btn btn-primary" id="btnFilter">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+              Filtrar
+            </button>
+          </div>
+          ${Auth.canManageEmployees() ? `
+            <button class="btn btn-outline" onclick="AttendancePage.openManualPunchModal()">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              Reg. Marcación Manual
+            </button>
+          ` : ''}
         </div>
         <div class="double-bezel-outer">
           <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
@@ -259,7 +267,7 @@ const AttendancePage = {
           </div>
           <div class="event-time">${this.timeAgo(e.event_time)}</div>
         </div>`).join('');
-    } catch(e) {}
+    } catch(e) { console.warn(e); }
   },
 
   timeAgo(iso) {
@@ -410,6 +418,74 @@ const AttendancePage = {
       this.loadTable();
     } catch (e) {
       Toast.show(e.message || 'Error al eliminar justificación', 'error');
+    }
+  },
+
+  async openManualPunchModal() {
+    try {
+      const employees = await API.get('/api/employees') || [];
+      const employeeOptions = employees
+        .map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`)
+        .join('');
+
+      const now = new Date();
+      // format to YYYY-MM-DDTHH:MM
+      const localISO = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+      const html = `
+        <div style="display:flex; flex-direction:column; gap:16px; padding: 4px 0;">
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Colaborador</label>
+            <select id="manPunchEmpId" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);">
+              <option value="">Selecciona un empleado...</option>
+              ${employeeOptions}
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Tipo de Marcación</label>
+            <select id="manPunchType" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);">
+              <option value="entry">Entrada (Check-In)</option>
+              <option value="exit">Salida (Check-Out)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Fecha y Hora</label>
+            <input type="datetime-local" id="manPunchTime" value="${localISO}" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);" />
+          </div>
+        </div>
+      `;
+
+      const footer = `
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
+        <button class="btn btn-primary" onclick="AttendancePage.submitManualPunch()">Registrar Marcación</button>
+      `;
+
+      Modal.open("Registrar Marcación Manual", html, footer);
+    } catch (err) {
+      Toast.show("Error al obtener lista de empleados", "error");
+    }
+  },
+
+  async submitManualPunch() {
+    const employeeId = document.getElementById('manPunchEmpId').value;
+    const type = document.getElementById('manPunchType').value;
+    const timeVal = document.getElementById('manPunchTime').value;
+
+    if (!employeeId) { Toast.show("Debe seleccionar un colaborador", "warning"); return; }
+    if (!timeVal) { Toast.show("Debe ingresar la fecha y hora", "warning"); return; }
+
+    try {
+      await API.post('/api/attendance/manual', {
+        employee_id: parseInt(employeeId),
+        event_time: new Date(timeVal).toISOString(),
+        event_type: type
+      });
+
+      Toast.show("Marcación manual registrada correctamente", "success");
+      Modal.close();
+      this.loadTable();
+    } catch (err) {
+      Toast.show(err.message || "Error al guardar la marcación manual", "error");
     }
   }
 };

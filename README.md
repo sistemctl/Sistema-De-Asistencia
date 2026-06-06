@@ -1,6 +1,12 @@
-# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v2.2.0**
+# 📋 Sistema de Control de Asistencia — Hikvision DS‑K1T323MBWX **v2.5.0**
 
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS** en Glassmorphism Premium.
+
+### 🌟 Novedades de la Versión 2.5.0
+* **Modularización CSS y Temas:** Nueva arquitectura modular de CSS (`main.css`, `tokens.css`, `components.css`, etc.), proporcionando un diseño más robusto y cohesivo.
+* **Modo Oscuro Integrado:** Soporte nativo para modo oscuro con una paleta de colores premium (colores oscuros profundos y detalles violeta/índigo) aplicando variables CSS.
+* **Corrección de Configuración SMTP:** Resolución de problemas de visualización en la pestaña de Configuración de Correo en dispositivos y ajustes, solucionando superposición del `toggle-switch`.
+* **Mejora de Íconos:** Renovación visual de iconos utilizando FontAwesome integrado de forma óptima para mejor estética global y legibilidad.
 
 ### 🌟 Novedades de la Versión 2.2.0
 * **Justificación Individual de Faltas/Retardos:** Funcionalidad para justificar directamente inasistencias o retrasos desde la tabla de asistencia. Los estados se reflejan como "Justificado" en los reportes (Excel y PDF).

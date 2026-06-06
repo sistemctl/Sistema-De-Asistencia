@@ -1,4 +1,8 @@
 """Router de empleados: CRUD + foto + sincronización con dispositivo."""
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 import shutil
 from typing import Optional
@@ -46,6 +50,28 @@ def create_department(data: DepartmentCreate, db: Session = Depends(get_db), cur
     return dept
 
 
+@router.put("/departments/{dept_id}", response_model=DepartmentOut)
+def update_department(dept_id: int, data: DepartmentCreate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Departamento no encontrado")
+    
+    # Check duplicate name if name changed
+    if data.name != dept.name:
+        if db.query(Department).filter(Department.name == data.name).first():
+            raise HTTPException(status_code=400, detail="El departamento ya existe")
+            
+    old_name = dept.name
+    dept.name = data.name
+    dept.description = data.description
+    db.commit()
+    db.refresh(dept)
+    
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "Department", str(dept.id), f"Actualizado departamento {old_name} -> {dept.name}")
+    return dept
+
+
 @router.delete("/departments/{dept_id}", status_code=204)
 def delete_department(dept_id: int, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     dept = db.query(Department).filter(Department.id == dept_id).first()
@@ -81,6 +107,28 @@ def create_position(data: PositionCreate, db: Session = Depends(get_db), current
     return pos
 
 
+@router.put("/positions/{pos_id}", response_model=PositionOut)
+def update_position(pos_id: int, data: PositionCreate, db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    pos = db.query(Position).filter(Position.id == pos_id).first()
+    if not pos:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+        
+    # Check duplicate name if name changed
+    if data.name != pos.name:
+        if db.query(Position).filter(Position.name == data.name).first():
+            raise HTTPException(status_code=400, detail="El cargo ya existe")
+            
+    old_name = pos.name
+    pos.name = data.name
+    pos.description = data.description
+    db.commit()
+    db.refresh(pos)
+    
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "Position", str(pos.id), f"Actualizado cargo {old_name} -> {pos.name}")
+    return pos
+
+
 @router.delete("/positions/{pos_id}", status_code=204)
 def delete_position(pos_id: int, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     pos = db.query(Position).filter(Position.id == pos_id).first()
@@ -107,7 +155,12 @@ def list_employees(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    q = db.query(Employee)
+    from sqlalchemy.orm import joinedload
+    q = db.query(Employee).options(
+        joinedload(Employee.department),
+        joinedload(Employee.position),
+        joinedload(Employee.schedule)
+    )
     if search:
         like = f"%{search}%"
         q = q.filter(
@@ -192,10 +245,60 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current
                 db.commit()
                 db.refresh(emp)
     except Exception as e:
-        print(f"Error en auto-sincronizacion de nuevo empleado al dispositivo: {e}")
+        logger.error(f"Error en auto-sincronizacion de nuevo empleado al dispositivo: {e}")
 
     return emp
 
+
+import random
+
+@router.post("/bulk-qr-generate")
+def bulk_qr_generate(db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    employees = db.query(Employee).filter(
+        (Employee.qr_enabled == False) | (Employee.card_number == None) | (Employee.card_number == "")
+    ).all()
+    
+    count = 0
+    for emp in employees:
+        emp.qr_enabled = True
+        emp.card_number = str(random.randint(1000000000, 9999999999))
+        count += 1
+        
+    db.commit()
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "Employee", "Bulk", f"Generados QRs masivamente para {count} empleados")
+    return {"status": "success", "message": f"Se han generado y habilitado QRs para {count} empleados.", "generated_count": count}
+
+@router.post("/{emp_id}/regenerate-qr")
+def regenerate_qr(emp_id: int, db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+        
+    old_card = emp.card_number
+    emp.qr_enabled = True
+    emp.card_number = str(random.randint(1000000000, 9999999999))
+    db.commit()
+    db.refresh(emp)
+    
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "UPDATE", "Employee", str(emp.id), f"QR regenerado. Anterior: {old_card}, Nuevo: {emp.card_number}")
+    
+    # Sincronizar automáticamente con el dispositivo si está online
+    try:
+        from backend.models import DeviceConfig
+        from backend.services.hikvision import HikvisionClient
+        cfg = db.query(DeviceConfig).first()
+        if cfg:
+            client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+            if client.check_online() and emp.device_user_id:
+                client.create_user(emp.device_user_id, emp.full_name, emp.card_number)
+                emp.synced_to_device = True
+                db.commit()
+    except Exception as e:
+        logger.error(f"Error en sincronizacion de regeneración de QR: {e}")
+        
+    return {"status": "success", "message": "Código QR regenerado exitosamente", "new_card_number": emp.card_number}
 
 from pydantic import BaseModel
 from typing import List
@@ -330,7 +433,7 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
                 db.commit()
                 db.refresh(emp)
     except Exception as e:
-        print(f"Error en auto-sincronizacion al actualizar empleado: {e}")
+        logger.error(f"Error en auto-sincronizacion al actualizar empleado: {e}")
 
     return emp
 
@@ -347,9 +450,9 @@ def delete_employee(emp_id: int, db: Session = Depends(get_db), current_user=Dep
             path = UPLOADS_DIR.parent / emp.photo_path
             if path.exists():
                 path.unlink()
-                print(f"Foto de perfil eliminada localmente: {path}")
+                logger.info(f"Foto de perfil eliminada localmente: {path}")
         except Exception as e:
-            print(f"Error al eliminar la foto de perfil del empleado {emp.employee_code}: {e}")
+            logger.error(f"Error al eliminar la foto de perfil del empleado {emp.employee_code}: {e}")
 
     # 2. Sincronizar la eliminación con el dispositivo biométrico si está online
     try:
@@ -363,9 +466,9 @@ def delete_employee(emp_id: int, db: Session = Depends(get_db), current_user=Dep
                 device_uid = emp.device_user_id or emp.employee_code
                 if device_uid:
                     client.delete_user(device_uid)
-                    print(f"Empleado {emp.first_name} {emp.last_name} ({device_uid}) eliminado del dispositivo biométrico.")
+                    logger.info(f"Empleado {emp.first_name} {emp.last_name} ({device_uid}) eliminado del dispositivo biométrico.")
     except Exception as e:
-        print(f"Error en la eliminación automática del empleado {emp.employee_code} del dispositivo: {e}")
+        logger.error(f"Error en la eliminación automática del empleado {emp.employee_code} del dispositivo: {e}")
 
     # 3. Eliminar de la base de datos
     emp_code = emp.employee_code
@@ -437,24 +540,24 @@ async def upload_photo(
                         emp.device_user_id = device_uid
                         emp.synced_to_device = True
                         db.commit()
-                        print(f"Empleado {emp.employee_code} pre-registrado en el biométrico para subir foto.")
+                        logger.info(f"Empleado {emp.employee_code} pre-registrado en el biométrico para subir foto.")
                     except Exception as create_err:
-                        print(f"Error al registrar empleado en biométrico durante subida de foto: {create_err}")
+                        logger.error(f"Error al registrar empleado en biométrico durante subida de foto: {create_err}")
                 
                 with open(dest, "rb") as image_file:
                     photo_bytes = image_file.read()
                 client.upload_face_photo(device_uid, photo_bytes)
-                print(f"Foto de {emp.employee_code} auto-sincronizada con éxito al biométrico.")
+                logger.info(f"Foto de {emp.employee_code} auto-sincronizada con éxito al biométrico.")
     except Exception as e:
         error_msg = f"Fallo al sincronizar con el biométrico: {str(e)}"
-        print(error_msg)
+        logger.error(error_msg)
         raise HTTPException(status_code=400, detail=error_msg)
 
     return {"photo_path": emp.photo_path}
 
 
 @router.get("/{emp_id}/photo")
-def get_photo(emp_id: int, db: Session = Depends(get_db)):
+def get_photo(emp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp or not emp.photo_path:
         raise HTTPException(status_code=404, detail="Sin foto")
@@ -527,7 +630,7 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
                         search_id = search_data.get("searchID")
                     break  # Éxito
                 except Exception as e:
-                    print(f"Error importando página (intento {attempt+1}): {e}")
+                    logger.error(f"Error importando página (intento {attempt+1}): {e}")
                     time.sleep(1)
             
             if users_page is None:
@@ -610,7 +713,7 @@ def import_employees_from_device(db: Session = Depends(get_db), _=Depends(requir
                         emp.photo_path = f"faces/{filename}"
                         photos_imported += 1
                 except Exception as img_err:
-                    print(f"Error al descargar foto para {device_uid} durante importación: {img_err}")
+                    logger.error(f"Error al descargar foto para {device_uid} durante importación: {img_err}")
                 
         db.commit()
         return {
@@ -670,7 +773,7 @@ def bulk_sync_employees(
             emp_details.append(f"{emp.employee_code} ({emp.full_name})")
         except Exception as e:
             failed += 1
-            print(f"Error al sincronizar empleado {emp.employee_code} en lote: {e}")
+            logger.error(f"Error al sincronizar empleado {emp.employee_code} en lote: {e}")
 
     db.commit()
 
@@ -715,7 +818,7 @@ def bulk_delete_employees(
                 if path.exists():
                     path.unlink()
             except Exception as e:
-                print(f"Error al eliminar foto local en lote para {emp.employee_code}: {e}")
+                logger.error(f"Error al eliminar foto local en lote para {emp.employee_code}: {e}")
 
         if device_online and client:
             try:
@@ -723,7 +826,7 @@ def bulk_delete_employees(
                 if device_uid:
                     client.delete_user(device_uid)
             except Exception as e:
-                print(f"Error al eliminar de biométrico en lote para {emp.employee_code}: {e}")
+                logger.error(f"Error al eliminar de biométrico en lote para {emp.employee_code}: {e}")
 
         db.delete(emp)
         deleted_count += 1

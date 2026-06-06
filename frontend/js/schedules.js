@@ -874,6 +874,26 @@ const SchedulesPage = {
     
     if (!body.name) { Toast.show('Por favor, ingresa el nombre del horario', 'warning'); return; }
     if (!body.work_days) { Toast.show('Por favor, selecciona al menos un día laboral', 'warning'); return; }
+
+    if (body.work_start_time >= body.work_end_time) {
+      Toast.show('La hora de inicio de jornada debe ser anterior a la hora de fin de jornada', 'warning');
+      return;
+    }
+
+    if (shiftType === 'split') {
+      if (!body.lunch_start_time || !body.lunch_end_time) {
+        Toast.show('Debe definir las horas de inicio y fin de almuerzo', 'warning');
+        return;
+      }
+      if (body.lunch_start_time >= body.lunch_end_time) {
+        Toast.show('La hora de inicio de almuerzo debe ser anterior a la hora de fin de almuerzo', 'warning');
+        return;
+      }
+      if (body.lunch_start_time < body.work_start_time || body.lunch_end_time > body.work_end_time) {
+        Toast.show('El horario de almuerzo debe estar dentro del horario laboral', 'warning');
+        return;
+      }
+    }
     
     try {
       if (id) await API.put(`/api/schedules/${id}`, body);

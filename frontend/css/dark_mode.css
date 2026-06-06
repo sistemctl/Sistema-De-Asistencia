@@ -1,0 +1,109 @@
+/* ── Dark Mode Theme ── */
+
+:root.dark-theme {
+  --bg-base:     #0b0f17;
+  --bg-raised:   #121824;
+  --surface-1:   #121824;
+  --surface-2:   #182030;
+  --surface-3:   #1f293d;
+  
+  --border:      rgba(255, 255, 255, 0.07);
+  --border-light:rgba(255, 255, 255, 0.15);
+  --border-glow: rgba(255, 255, 255, 0.02);
+  
+  --accent:      #3b82f6;
+  --accent-rgb:  59, 130, 246;
+  --accent-2:    #94a3b8;
+  --accent-2-rgb: 148, 163, 184;
+  --accent-3:    #0d9488;
+  
+  --text-1:      #f8fafc;
+  --text-2:      #cbd5e1;
+  --text-3:      #94a3b8;
+  
+  /* ── Corporate System Tokens ── */
+  --corp-surface: #121824;
+  --corp-surface-lowest: #0b0f17;
+  --corp-surface-low: #182030;
+  --corp-surface-high: #1f293d;
+  --corp-on-surface: #f8fafc;
+  --corp-on-surface-var: #cbd5e1;
+  --corp-primary: #ffffff;
+  --corp-on-primary: #0b0f17;
+  --corp-secondary: #f43f5e;
+  --corp-outline: #334155;
+}
+
+/* Specific elements adjustments for dark theme */
+.dark-theme input,
+.dark-theme select,
+.dark-theme textarea {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-1);
+}
+
+.dark-theme select option {
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+
+.dark-theme .flatpickr-calendar {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text-1) !important;
+}
+
+.dark-theme .flatpickr-day {
+  color: var(--text-2) !important;
+}
+
+.dark-theme .flatpickr-day:hover {
+  background: var(--surface-3) !important;
+  color: var(--text-1) !important;
+}
+
+.dark-theme .flatpickr-months .flatpickr-month {
+  color: var(--text-1) !important;
+  fill: var(--text-1) !important;
+}
+
+.dark-theme .flatpickr-weekday {
+  color: var(--text-3) !important;
+}
+
+.dark-theme .flatpickr-day.today {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.dark-theme .flatpickr-day.selected {
+  color: #ffffff !important;
+}
+
+/* Adjust topbar clocks */
+.dark-theme .topbar-clock {
+  background: var(--surface-2);
+}
+
+/* Adjust user chips */
+.dark-theme .user-chip {
+  background: var(--surface-2);
+}
+
+/* Adjust segmented controls */
+.dark-theme .segmented-control {
+  background: var(--surface-2);
+}
+.dark-theme .segmented-btn.active {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+/* Adjust shadow styles for dark environment */
+.dark-theme .card,
+.dark-theme .sidebar,
+.dark-theme .main,
+.dark-theme .kpi-card {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}

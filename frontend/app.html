@@ -8,9 +8,48 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css?v=28" />
+  <link rel="stylesheet" href="/static/main.css?v=30" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.top = '10px';
+      errDiv.style.left = '10px';
+      errDiv.style.right = '10px';
+      errDiv.style.backgroundColor = '#fee2e2';
+      errDiv.style.border = '2px solid #ef4444';
+      errDiv.style.color = '#991b1b';
+      errDiv.style.padding = '16px';
+      errDiv.style.borderRadius = '8px';
+      errDiv.style.zIndex = '999999';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.fontSize = '12px';
+      errDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+      errDiv.innerHTML = '<strong>[ERROR GLOBAL]</strong> ' + message + '<br><small>Archivo: ' + source + ' | Línea: ' + lineno + ':' + colno + '</small>';
+      document.body.appendChild(errDiv);
+      return false;
+    };
+    window.onunhandledrejection = function(event) {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.top = '10px';
+      errDiv.style.left = '10px';
+      errDiv.style.right = '10px';
+      errDiv.style.backgroundColor = '#ffedd5';
+      errDiv.style.border = '2px solid #f97316';
+      errDiv.style.color = '#c2410c';
+      errDiv.style.padding = '16px';
+      errDiv.style.borderRadius = '8px';
+      errDiv.style.zIndex = '999999';
+      errDiv.style.fontFamily = 'monospace';
+      errDiv.style.fontSize = '12px';
+      errDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+      errDiv.innerHTML = '<strong>[PROMESA RECHAZADA]</strong> ' + (event.reason ? (event.reason.message || event.reason) : 'Error desconocido') + '<br><small>' + (event.reason && event.reason.stack ? event.reason.stack : '') + '</small>';
+      document.body.appendChild(errDiv);
+    };
+  </script>
 </head>
 <body>
 
@@ -25,7 +64,7 @@
 
 <div class="app-shell">
   <!-- ── SIDEBAR ── -->
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Menú principal">
     <div class="sidebar-brand">
       <div class="sidebar-brand-icon" id="sidebarLogoContainer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="sidebarLogoSvg">
@@ -45,11 +84,11 @@
 
     <div class="nav-section">
       <div class="nav-label">Principal</div>
-      <div class="nav-item active" data-page="dashboard" id="nav-dashboard">
+      <div class="nav-item active" data-page="dashboard" id="nav-dashboard" role="button" tabindex="0" aria-label="Dashboard">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
         Dashboard
       </div>
-      <div class="nav-item" data-page="attendance" id="nav-attendance">
+      <div class="nav-item" data-page="attendance" id="nav-attendance" role="button" tabindex="0" aria-label="Asistencia">
         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Asistencia
       </div>
@@ -57,33 +96,33 @@
 
     <div class="nav-section">
       <div class="nav-label">Gestión</div>
-      <div class="nav-item" data-page="employees" id="nav-employees">
+      <div class="nav-item" data-page="employees" id="nav-employees" role="button" tabindex="0" aria-label="Empleados">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         Empleados
       </div>
-      <div class="nav-item" data-page="reports/analytics" id="nav-reports">
+      <div class="nav-item" data-page="reports/analytics" id="nav-reports" role="button" tabindex="0" aria-label="Reportes">
         <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         Reportes
       </div>
-      <div class="nav-item" data-page="leaves" id="nav-leaves">
+      <div class="nav-item" data-page="leaves" id="nav-leaves" role="button" tabindex="0" aria-label="Novedades">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
         Novedades
       </div>
-      <div class="nav-item" data-page="users" id="nav-users" style="display:none">
+      <div class="nav-item" data-page="users" id="nav-users" style="display:none" role="button" tabindex="0" aria-label="Usuarios">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="nav-icon-svg" style="width:16px;height:16px"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
         Usuarios
       </div>
 
       <div class="nav-label">Parámetros</div>
-      <div class="nav-item" data-page="parameters" id="nav-parameters">
+      <div class="nav-item" data-page="parameters" id="nav-parameters" role="button" tabindex="0" aria-label="Configuración General">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
         Configuración General
       </div>
-      <div class="nav-item" data-page="device" id="nav-device">
+      <div class="nav-item" data-page="device" id="nav-device" role="button" tabindex="0" aria-label="Dispositivo">
         <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line><line x1="20" y1="6" x2="20" y2="6"></line><line x1="20" y1="18" x2="20" y2="18"></line></svg>
         Dispositivo
       </div>
-      <div class="nav-item" data-page="system" id="nav-system">
+      <div class="nav-item" data-page="system" id="nav-system" role="button" tabindex="0" aria-label="Configuración del Sistema">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="nav-icon-svg" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         Configuración del Sistema
       </div>
@@ -97,7 +136,7 @@
           <strong id="userName">Admin</strong>
           <span id="userRole">Administrador</span>
         </div>
-        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión">
           <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
@@ -116,6 +155,7 @@
         <span class="topbar-subtitle" id="topbarSubtitle">Resumen general</span>
       </div>
       <div class="topbar-right">
+        <button class="btn-icon" id="themeToggleBtn" title="Cambiar tema" aria-label="Cambiar tema" style="width: 38px; height: 38px; border-radius: 50%;"></button>
         <div class="device-badge" id="deviceBadge">
           <span class="status-dot"></span>
           <span id="deviceBadgeText">Dispositivo</span>
@@ -134,14 +174,14 @@
 </div>
 
 <!-- ── TOAST CONTAINER ── -->
-<div class="toast-container" id="toastContainer"></div>
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
 <!-- ── MODAL GENÉRICO ── -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalBox">
     <div class="modal-header">
       <span class="modal-title" id="modalTitle">Modal</span>
-      <button class="modal-close" id="modalClose">✕</button>
+      <button class="modal-close" id="modalClose" aria-label="Cerrar modal">✕</button>
     </div>
     <div id="modalBody"></div>
     <div class="modal-footer" id="modalFooter"></div>
@@ -151,6 +191,7 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<script src="/js/icons.js?v=1"></script>
 <script src="/js/auth.js?v=9"></script>
 <script src="/js/dashboard.js?v=19"></script>
 <script src="/js/employees.js?v=34"></script>
@@ -160,7 +201,11 @@
 <script src="/js/parameters.js?v=5"></script>
 <script src="/js/system_settings.js?v=4"></script>
 <script src="/js/attendance.js?v=11"></script>
-<script src="/js/reports.js?v=23"></script>
+<script src="/js/reports_analytics.js?v=1"></script>
+<script src="/js/reports_table.js?v=1"></script>
+<script src="/js/reports_export.js?v=1"></script>
+<script src="/js/reports.js?v=24"></script>
+<script src="/js/system_config.js?v=2"></script>
 <script src="/js/device.js?v=10"></script>
 <script src="/js/users.js?v=12"></script>
 <script src="/js/holidays.js?v=1"></script>

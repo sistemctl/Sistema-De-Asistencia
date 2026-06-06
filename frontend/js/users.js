@@ -380,8 +380,21 @@ const UsersPage = {
         // Creación
         const username = document.getElementById('uUsername').value.trim();
         const password = document.getElementById('uPassword').value;
-        if (!username) { Toast.show('Ingrese un nombre de usuario', 'warning'); return; }
-        if (!password || password.length < 4) { Toast.show('La contraseña debe tener al menos 4 caracteres', 'warning'); return; }
+        if (!username) { 
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('Ingrese un nombre de usuario', 'warning'); 
+          return; 
+        }
+        if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('El nombre de usuario debe ser alfanumérico (letras, números o guion bajo) y tener entre 3 y 20 caracteres', 'warning');
+          return;
+        }
+        if (!password || password.length < 4) { 
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La contraseña debe tener al menos 4 caracteres', 'warning'); 
+          return; 
+        }
 
         await API.post('/api/auth/users', {
           username: username,

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
 from backend.models import AttendanceRecord, DeviceConfig, Employee, SyncLog
-from backend.services.hikvision import HikvisionClient, generate_mock_events
+from backend.services.hikvision import HikvisionClient
 from backend.services.email import notify_attendance_alert, notify_employee_lateness, notify_daily_report
 from backend.services.attendance_processor import process_daily_attendance_bulk
 from backend.config import SYNC_MAX_EVENTS, TIMEZONE
@@ -21,6 +21,8 @@ from backend.utils import get_local_now, to_local_datetime
 logger = logging.getLogger(__name__)
 
 _scheduler = BackgroundScheduler(timezone=TIMEZONE)
+import threading
+_sync_lock = threading.Lock()
 
 
 def start_scheduler():
@@ -191,6 +193,10 @@ def _sync_pending_employees_to_device(db: Session, client: HikvisionClient):
 
 def sync_job():
     """Tarea principal de sincronización. Se ejecuta periódicamente."""
+    if not _sync_lock.acquire(blocking=False):
+        logger.info("Sincronización ya en curso. Omitiendo ejecución periódica.")
+        return
+
     db = SessionLocal()
     log = SyncLog(started_at=get_local_now().replace(tzinfo=None), status="running")
     db.add(log)
@@ -254,6 +260,7 @@ def sync_job():
         logger.error(f"❌ Error en sync: {e}")
     finally:
         db.close()
+        _sync_lock.release()
 
 
 def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
@@ -263,10 +270,15 @@ def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
     from requests.auth import HTTPDigestAuth
     import uuid
     
+    if not _sync_lock.acquire(blocking=False):
+        logger.warning("Sincronización ya en curso. Omitiendo ejecución de sync histórico.")
+        return
+
     db = SessionLocal()
     cfg = db.query(DeviceConfig).first()
     if not cfg:
         db.close()
+        _sync_lock.release()
         return
 
     log = SyncLog(started_at=get_local_now().replace(tzinfo=None), status="running")
@@ -355,7 +367,7 @@ def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
             try:
                 dt = datetime.fromisoformat(last_event_time_str.replace("Z", "+00:00"))
                 current_start = dt.replace(tzinfo=None) + timedelta(seconds=1)
-            except:
+            except Exception:
                 current_start += timedelta(days=1)
                 
         cfg.total_events_synced += total_inserted
@@ -368,32 +380,61 @@ def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
         logger.error(f"❌ Error en sync histórico: {e}")
     finally:
         db.close()
+        _sync_lock.release()
 
 
 def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
     """Procesa la lista de eventos y los inserta en BD. Retorna cantidad de nuevos."""
-    new_count = 0
+    from sqlalchemy.orm import joinedload
+    
+    # 1. Pre-filter raw_events and get event_ids & device_uids
+    event_ids = []
+    device_uids = set()
+    valid_events = []
+    
     for event in raw_events:
         event_id = event.get("eventId") or event.get("serialNo") or None
         if not event_id:
             continue
+        event_ids.append(str(event_id))
+        
+        device_uid = event.get("employeeNoString") or event.get("employeeNo")
+        if device_uid:
+            device_uids.add(str(device_uid))
+        valid_events.append((event_id, device_uid, event))
 
-        # Evitar duplicados
-        existing = db.query(AttendanceRecord).filter(
-            AttendanceRecord.device_event_id == str(event_id)
-        ).first()
-        if existing:
+    if not valid_events:
+        return 0
+
+    # 2. Batch check existing events in database
+    existing_ids = set()
+    if event_ids:
+        for i in range(0, len(event_ids), 500):
+            chunk = event_ids[i:i+500]
+            rows = db.query(AttendanceRecord.device_event_id).filter(
+                AttendanceRecord.device_event_id.in_(chunk)
+            ).all()
+            for r in rows:
+                existing_ids.add(r[0])
+
+    # 3. Batch query employees to match device_uids
+    employee_map = {}
+    if device_uids:
+        uids_list = list(device_uids)
+        for i in range(0, len(uids_list), 500):
+            chunk = uids_list[i:i+500]
+            emps = db.query(Employee).options(joinedload(Employee.schedule)).filter(
+                Employee.device_user_id.in_(chunk)
+            ).all()
+            for emp in emps:
+                employee_map[emp.device_user_id] = emp
+
+    new_count = 0
+    for event_id, device_uid, event in valid_events:
+        if str(event_id) in existing_ids:
             continue
 
-        # Resolver empleado
-        device_uid = event.get("employeeNoString") or event.get("employeeNo")
-        employee = None
-        if device_uid:
-            employee = db.query(Employee).filter(
-                Employee.device_user_id == str(device_uid)
-            ).first()
-
-        # Ignorar evento si la persona no está en la base de datos de empleados
+        employee = employee_map.get(str(device_uid))
         if not employee:
             continue
 
@@ -410,70 +451,65 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
         # Determinar tipo de evento (entrada/salida) y tardanza según el tipo de jornada
         is_late = False
         event_type = "entry"
-        if employee:
-            try:
-                # 1. Definir los checkpoints (horas objetivo y su tipo 'entry' o 'exit')
-                checkpoints = []
-                
-                if employee.schedule_id and employee.schedule:
-                    sched = employee.schedule
-                    if sched.shift_type == "split":
-                        # Jornada partida (4 checkpoints)
-                        checkpoints = [
-                            {"time": sched.work_start_time, "type": "entry"},
-                            {"time": sched.lunch_start_time, "type": "exit"},
-                            {"time": sched.lunch_end_time, "type": "entry"},
-                            {"time": sched.work_end_time, "type": "exit"}
-                        ]
-                    else:
-                        # Jornada continua (2 checkpoints)
-                        checkpoints = [
-                            {"time": sched.work_start_time, "type": "entry"},
-                            {"time": sched.work_end_time, "type": "exit"}
-                        ]
-                else:
-                    # Horario personalizado (2 checkpoints)
+        try:
+            # 1. Definir los checkpoints (horas objetivo y su tipo 'entry' o 'exit')
+            checkpoints = []
+            
+            if employee.schedule_id and employee.schedule:
+                sched = employee.schedule
+                if sched.shift_type == "split":
+                    # Jornada partida (4 checkpoints)
                     checkpoints = [
-                        {"time": employee.work_start_time, "type": "entry"},
-                        {"time": employee.work_end_time, "type": "exit"}
+                        {"time": sched.work_start_time, "type": "entry"},
+                        {"time": sched.lunch_start_time, "type": "exit"},
+                        {"time": sched.lunch_end_time, "type": "entry"},
+                        {"time": sched.work_end_time, "type": "exit"}
                     ]
-                
-                # 2. Encontrar el checkpoint más cercano al event_time de forma dinámica
-                closest_checkpoint = None
-                min_diff_mins = float('inf')
-                
-                for cp in checkpoints:
-                    if cp["time"]:
-                        h, m = map(int, cp["time"].split(":"))
-                        target = event_time.replace(hour=h, minute=m, second=0)
-                        diff = (event_time - target).total_seconds() / 60.0
-                        if abs(diff) < abs(min_diff_mins):
-                            min_diff_mins = diff
-                            closest_checkpoint = cp
-                
-                if closest_checkpoint:
-                    event_type = closest_checkpoint["type"]
-                    # 3. Calcular si es tardanza o salida temprana
-                    if event_type == "entry":
-                        is_late = min_diff_mins > cfg.entry_tolerance_minutes
-                    else:
-                        # Salida temprana (negativo significa que salió antes de la hora)
-                        is_late = min_diff_mins < -cfg.exit_tolerance_minutes
                 else:
-                    # Fallback si no hay checkpoints
-                    hour = event_time.hour
-                    event_type = "entry" if 5 <= hour < 13 else "exit"
-            except Exception:
-                # Fallback general
+                    # Jornada continua (2 checkpoints)
+                    checkpoints = [
+                        {"time": sched.work_start_time, "type": "entry"},
+                        {"time": sched.work_end_time, "type": "exit"}
+                    ]
+            else:
+                # Horario personalizado (2 checkpoints)
+                checkpoints = [
+                    {"time": employee.work_start_time, "type": "entry"},
+                    {"time": employee.work_end_time, "type": "exit"}
+                ]
+            
+            # 2. Encontrar el checkpoint más cercano al event_time de forma dinámica
+            closest_checkpoint = None
+            min_diff_mins = float('inf')
+            
+            for cp in checkpoints:
+                if cp["time"]:
+                    h, m = map(int, cp["time"].split(":"))
+                    target = event_time.replace(hour=h, minute=m, second=0)
+                    diff = (event_time - target).total_seconds() / 60.0
+                    if abs(diff) < abs(min_diff_mins):
+                        min_diff_mins = diff
+                        closest_checkpoint = cp
+            
+            if closest_checkpoint:
+                event_type = closest_checkpoint["type"]
+                # 3. Calcular si es tardanza o salida temprana
+                if event_type == "entry":
+                    is_late = min_diff_mins > cfg.entry_tolerance_minutes
+                else:
+                    # Salida temprana (negativo significa que salió antes de la hora)
+                    is_late = min_diff_mins < -cfg.exit_tolerance_minutes
+            else:
+                # Fallback si no hay checkpoints
                 hour = event_time.hour
                 event_type = "entry" if 5 <= hour < 13 else "exit"
-        else:
-            # Fallback para eventos sin empleado asociado
+        except Exception:
+            # Fallback general
             hour = event_time.hour
             event_type = "entry" if 5 <= hour < 13 else "exit"
 
         record = AttendanceRecord(
-            employee_id=employee.id if employee else None,
+            employee_id=employee.id,
             device_event_id=str(event_id),
             device_user_id=str(device_uid) if device_uid else None,
             event_time=event_time,
@@ -487,7 +523,7 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
         
         # Disparar alerta si es tardanza del día actual
         today_date = get_local_now().replace(tzinfo=None).date()
-        if is_late and event_type == "entry" and event_time.date() == today_date and employee:
+        if is_late and event_type == "entry" and event_time.date() == today_date:
             if 'min_diff_mins' in locals() and min_diff_mins != float('inf'):
                 diff_formatted = round(min_diff_mins, 1)
             else:

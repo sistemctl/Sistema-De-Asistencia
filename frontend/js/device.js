@@ -8,54 +8,24 @@ const DevicePage = {
   async render(tab = 'device_status') {
     this.currentTab = tab;
 
-    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings' || tab === 'maintenance') {
-      document.getElementById('pageContent').innerHTML = `
-        <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
-          <button class="tab-btn active" data-tab="branding" onclick="DevicePage.switchTab('branding')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Personalización de Marca
-          </button>
-          <button class="tab-btn" data-tab="email_settings" onclick="DevicePage.switchTab('email_settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Configuración de Correo
-          </button>
-          <button class="tab-btn" data-tab="backup_settings" onclick="DevicePage.switchTab('backup_settings')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Copias de Seguridad
-          </button>
-          <button class="tab-btn" data-tab="maintenance" onclick="DevicePage.switchTab('maintenance')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Mantenimiento de Datos
-          </button>
-          <button class="tab-btn" data-tab="audit" onclick="DevicePage.switchTab('audit')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Historial de Auditoría
-          </button>
-        </div>
-        <style>
-          .tab-btn.active { color: var(--accent) !important; }
-          .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
-          .tab-btn.active::after { transform: scaleX(1); }
-          .tab-btn:hover { color: var(--text-1) !important; }
-        </style>
-        <div id="deviceTabContent">
-        </div>
-      `;
-    } else {
-      document.getElementById('pageContent').innerHTML = `
-        <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
-          <button class="tab-btn active" data-tab="device_status" onclick="DevicePage.switchTab('device_status')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Biométrico / Conexión
-          </button>
-          <button class="tab-btn" data-tab="sync_history" onclick="DevicePage.switchTab('sync_history')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
-            Historial de Sincronización
-          </button>
-        </div>
-        <style>
-          .tab-btn.active { color: var(--accent) !important; }
-          .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
-          .tab-btn.active::after { transform: scaleX(1); }
-          .tab-btn:hover { color: var(--text-1) !important; }
-        </style>
-        <div id="deviceTabContent">
-        </div>
-      `;
-    }
+    document.getElementById('pageContent').innerHTML = `
+      <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); display: flex; gap: 24px;">
+        <button class="tab-btn active" data-tab="device_status" onclick="DevicePage.switchTab('device_status')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+          Biométrico / Conexión
+        </button>
+        <button class="tab-btn" data-tab="sync_history" onclick="DevicePage.switchTab('sync_history')" style="background: none; border: none; color: var(--text-2); padding: 12px 0; font-weight: 600; font-size: 0.95rem; cursor: pointer; position: relative; transition: color 0.2s;">
+          Historial de Sincronización
+        </button>
+      </div>
+      <style>
+        .tab-btn.active { color: var(--accent) !important; }
+        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.2s ease; }
+        .tab-btn.active::after { transform: scaleX(1); }
+        .tab-btn:hover { color: var(--text-1) !important; }
+      </style>
+      <div id="deviceTabContent">
+      </div>
+    `;
 
     await this.switchTab(tab);
   },
@@ -64,18 +34,10 @@ const DevicePage = {
     this.currentTab = tab;
     
     // Sincronizar hash de la SPA según la pestaña activa
-    if (tab === 'branding' || tab === 'audit' || tab === 'email_settings' || tab === 'backup_settings' || tab === 'maintenance') {
-      const targetHash = `#system/${tab}`;
-      if (window.location.hash !== targetHash) {
-        window.location.hash = `system/${tab}`;
-        return;
-      }
-    } else {
-      const targetHash = tab === 'device_status' ? '#device' : `#device/${tab}`;
-      if (window.location.hash !== '#device' && window.location.hash !== targetHash) {
-        window.location.hash = tab === 'device_status' ? 'device' : `device/${tab}`;
-        return;
-      }
+    const targetHash = tab === 'device_status' ? '#device' : `#device/${tab}`;
+    if (window.location.hash !== '#device' && window.location.hash !== targetHash) {
+      window.location.hash = tab === 'device_status' ? 'device' : `device/${tab}`;
+      return;
     }
     
     // Cleanup any running poll interval from history tab if we switch
@@ -226,7 +188,7 @@ const DevicePage = {
             </div>
             
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
-              <label class="switch">
+              <label class="toggle-switch">
                 <input type="checkbox" id="sysEmailNotificationsEnabled">
                 <span class="slider"></span>
               </label>
@@ -240,7 +202,7 @@ const DevicePage = {
               <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; color: var(--text-1);">Tipos de Alertas a Enviar</div>
               
               <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <label class="switch">
+                <label class="toggle-switch">
                   <input type="checkbox" id="sysAlertDeviceOffline">
                   <span class="slider"></span>
                 </label>
@@ -251,7 +213,7 @@ const DevicePage = {
               </div>
 
               <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <label class="switch">
+                <label class="toggle-switch">
                   <input type="checkbox" id="sysAlertEmployeeLateness">
                   <span class="slider"></span>
                 </label>
@@ -262,7 +224,7 @@ const DevicePage = {
               </div>
 
               <div style="display: flex; align-items: center; gap: 12px;">
-                <label class="switch">
+                <label class="toggle-switch">
                   <input type="checkbox" id="sysAlertAdminDailyReport">
                   <span class="slider"></span>
                 </label>
@@ -284,7 +246,7 @@ const DevicePage = {
                 <input id="sysSmtpPort" type="number" placeholder="Ej. 587" style="width: 100%; box-sizing: border-box;" />
               </div>
               <div class="field" style="display: flex; align-items: center; gap: 12px; margin-top: 20px;">
-                <label class="switch">
+                <label class="toggle-switch">
                   <input type="checkbox" id="sysSmtpUseTls">
                   <span class="slider"></span>
                 </label>
@@ -405,7 +367,7 @@ const DevicePage = {
             </p>
             
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
-              <label class="switch">
+              <label class="toggle-switch">
                 <input type="checkbox" id="sysCleanupEnabled">
                 <span class="slider"></span>
               </label>
@@ -662,7 +624,7 @@ const DevicePage = {
         <div class="field"><label>Usuario dispositivo</label><input id="cfgUser" value="${c.username}" /></div>
         <div class="field"><label>Contraseña dispositivo</label><input id="cfgPass" type="password" placeholder="••••••••" /></div>
         <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="DevicePage.saveConfig()">Guardar configuración</button>`;
-    } catch(e) {}
+    } catch(e) { console.warn(e); }
   },
 
   async saveConfig() {
@@ -717,7 +679,7 @@ const DevicePage = {
         this.pollInterval = null;
         this.loadStatus();
       }
-    } catch(e) {}
+    } catch(e) { console.warn(e); }
   },
   
   toggleProgress(show) {
@@ -803,428 +765,6 @@ const DevicePage = {
     };
   },
 
-  async loadBranding() {
-    try {
-      const data = await API.get('/api/settings');
-      this.settings = data;
-
-      document.getElementById('sysSystemName').value = data.system_name || '';
-      document.getElementById('sysCompanyName').value = data.company_name || '';
-      document.getElementById('sysPrimaryColor').value = data.primary_color || '#1e3a5f';
-      document.getElementById('sysPrimaryColorHex').textContent = (data.primary_color || '#1e3a5f').toUpperCase();
-      document.getElementById('sysAccentColor').value = data.accent_color || '#00e676';
-      document.getElementById('sysAccentColorHex').textContent = (data.accent_color || '#00e676').toUpperCase();
-
-      document.getElementById('sysBgBaseColor').value = data.bg_base_color || '#f8fafc';
-      document.getElementById('sysBgBaseColorHex').textContent = (data.bg_base_color || '#f8fafc').toUpperCase();
-      document.getElementById('sysBgSurfaceColor').value = data.bg_surface_color || '#ffffff';
-      document.getElementById('sysBgSurfaceColorHex').textContent = (data.bg_surface_color || '#ffffff').toUpperCase();
-
-      const svgDef = document.getElementById('sysLogoSvgDefault');
-      const imgPrev = document.getElementById('sysLogoImgPreview');
-      const prevContainer = document.getElementById('sysLogoPreviewContainer');
-      if (data.logo_path) {
-        svgDef.style.display = 'none';
-        imgPrev.src = data.logo_path;
-        imgPrev.style.display = 'block';
-        if (prevContainer) {
-          prevContainer.style.background = 'none';
-          prevContainer.style.border = 'none';
-          prevContainer.style.width = '64px';
-          prevContainer.style.height = '64px';
-          prevContainer.style.borderRadius = '50%';
-          prevContainer.style.overflow = 'hidden';
-          imgPrev.style.width = '100%';
-          imgPrev.style.height = '100%';
-          imgPrev.style.objectFit = 'cover';
-          imgPrev.style.maxWidth = '';
-        }
-      } else {
-        svgDef.style.display = 'block';
-        imgPrev.style.display = 'none';
-        if (prevContainer) {
-          prevContainer.style.background = '';
-          prevContainer.style.width = '';
-          prevContainer.style.height = '';
-          prevContainer.style.border = '';
-          prevContainer.style.borderRadius = '';
-          prevContainer.style.overflow = '';
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      Toast.show('Error al cargar la personalización de marca', 'error');
-    }
-  },
-
-  async handleLogoUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    Toast.show('Subiendo logotipo...', 'info');
-
-    try {
-      const data = await API.postForm('/api/settings/logo', formData);
-      Toast.show('Logotipo actualizado con éxito', 'success');
-      
-      const svgDef = document.getElementById('sysLogoSvgDefault');
-      const imgPrev = document.getElementById('sysLogoImgPreview');
-      const prevContainer = document.getElementById('sysLogoPreviewContainer');
-      svgDef.style.display = 'none';
-      imgPrev.src = data.logo_path;
-      imgPrev.style.display = 'block';
-      if (prevContainer) {
-        prevContainer.style.background = 'none';
-        prevContainer.style.border = 'none';
-        prevContainer.style.width = '64px';
-        prevContainer.style.height = '64px';
-        prevContainer.style.borderRadius = '50%';
-        prevContainer.style.overflow = 'hidden';
-        imgPrev.style.width = '100%';
-        imgPrev.style.height = '100%';
-        imgPrev.style.objectFit = 'cover';
-        imgPrev.style.maxWidth = '';
-      }
-
-      if (window.loadSystemBranding) {
-        await window.loadSystemBranding();
-      }
-    } catch (e) {
-      console.error(e);
-      Toast.show(e.message, 'error');
-    }
-  },
-
-  async saveBranding() {
-    const systemName = document.getElementById('sysSystemName').value.trim();
-    const companyName = document.getElementById('sysCompanyName').value.trim();
-    const primaryColor = document.getElementById('sysPrimaryColor').value;
-    const accentColor = document.getElementById('sysAccentColor').value;
-    const bgBaseColor = document.getElementById('sysBgBaseColor').value;
-    const bgSurfaceColor = document.getElementById('sysBgSurfaceColor').value;
-
-    if (!systemName) {
-      Toast.show('Por favor, ingresa el nombre del sistema', 'warning');
-      return;
-    }
-    if (!companyName) {
-      Toast.show('Por favor, ingresa el nombre de la empresa', 'warning');
-      return;
-    }
-
-    try {
-      if (!this.settings.work_days) {
-        const currentData = await API.get('/api/settings');
-        this.settings = currentData;
-      }
-
-      await API.put('/api/settings', {
-        system_name: systemName,
-        company_name: companyName,
-        primary_color: primaryColor,
-        accent_color: accentColor,
-        bg_base_color: bgBaseColor,
-        bg_surface_color: bgSurfaceColor,
-        work_days: this.settings.work_days || '1,2,3,4,5',
-        time_format: this.settings.time_format || '24h',
-        entry_tolerance_minutes: this.settings.entry_tolerance_minutes ?? 10,
-        exit_tolerance_minutes: this.settings.exit_tolerance_minutes ?? 10,
-        require_checkin: this.settings.require_checkin ?? true,
-        require_checkout: this.settings.require_checkout ?? true,
-        mark_late_enable: this.settings.mark_late_enable ?? true,
-        mark_late_limit_minutes: this.settings.mark_late_limit_minutes ?? 0,
-        mark_absent_if_late_enable: this.settings.mark_absent_if_late_enable ?? false,
-        mark_absent_if_late_limit_minutes: this.settings.mark_absent_if_late_limit_minutes ?? 60,
-        mark_early_departure_enable: this.settings.mark_early_departure_enable ?? true,
-        mark_early_departure_limit_minutes: this.settings.mark_early_departure_limit_minutes ?? 0,
-        mark_absent_if_early_checkout_enable: this.settings.mark_absent_if_early_checkout_enable ?? false,
-        mark_absent_if_early_checkout_limit_minutes: this.settings.mark_absent_if_early_checkout_limit_minutes ?? 60,
-        no_checkin_enable: this.settings.no_checkin_enable ?? true,
-        no_checkin_status: this.settings.no_checkin_status || 'Absent',
-        no_checkout_enable: this.settings.no_checkout_enable ?? true,
-        no_checkout_status: this.settings.no_checkout_status || 'Absent',
-        flexible_shift_start: this.settings.flexible_shift_start || '09:00:00',
-        flexible_shift_end: this.settings.flexible_shift_end || '18:00:00'
-      });
-
-      Toast.show('Personalización de marca y colores guardada correctamente', 'success');
-
-      if (window.loadSystemBranding) {
-        await window.loadSystemBranding();
-      }
-    } catch (e) {
-      console.error(e);
-      Toast.show(e.message, 'error');
-    }
-  },
-
-  async loadEmailSettings() {
-    try {
-      const data = await API.get('/api/settings');
-      this.settings = data;
-
-      document.getElementById('sysEmailNotificationsEnabled').checked = data.email_notifications_enabled ?? false;
-      document.getElementById('sysSmtpHost').value = data.smtp_host || 'smtp.gmail.com';
-      document.getElementById('sysSmtpPort').value = data.smtp_port ?? 587;
-      document.getElementById('sysSmtpUseTls').checked = data.smtp_use_tls ?? true;
-      document.getElementById('sysSmtpUsername').value = data.smtp_username || '';
-      document.getElementById('sysSmtpPassword').value = data.smtp_password ? '••••••••' : '';
-      document.getElementById('sysEmailAlertsRecipients').value = data.email_alerts_recipients || '';
-      
-      document.getElementById('sysAlertDeviceOffline').checked = data.alert_device_offline ?? true;
-      document.getElementById('sysAlertEmployeeLateness').checked = data.alert_employee_lateness ?? true;
-      document.getElementById('sysAlertAdminDailyReport').checked = data.alert_admin_daily_report ?? true;
-    } catch (e) {
-      console.error(e);
-      Toast.show('Error al cargar la configuración de correo', 'error');
-    }
-  },
-
-  async saveEmailSettings() {
-    const enabled = document.getElementById('sysEmailNotificationsEnabled').checked;
-    const host = document.getElementById('sysSmtpHost').value.trim();
-    const port = parseInt(document.getElementById('sysSmtpPort').value) || 587;
-    const username = document.getElementById('sysSmtpUsername').value.trim();
-    const password = document.getElementById('sysSmtpPassword').value;
-    const useTls = document.getElementById('sysSmtpUseTls').checked;
-    const recipients = document.getElementById('sysEmailAlertsRecipients').value.trim();
-    const alertDeviceOffline = document.getElementById('sysAlertDeviceOffline').checked;
-    const alertEmployeeLateness = document.getElementById('sysAlertEmployeeLateness').checked;
-    const alertAdminDailyReport = document.getElementById('sysAlertAdminDailyReport').checked;
-
-    try {
-      if (!this.settings.work_days) {
-        const currentData = await API.get('/api/settings');
-        this.settings = currentData;
-      }
-
-      await API.put('/api/settings', {
-        ...this.settings,
-        smtp_host: host,
-        smtp_port: port,
-        smtp_username: username,
-        smtp_password: password,
-        smtp_use_tls: useTls,
-        email_notifications_enabled: enabled,
-        email_alerts_recipients: recipients,
-        alert_device_offline: alertDeviceOffline,
-        alert_employee_lateness: alertEmployeeLateness,
-        alert_admin_daily_report: alertAdminDailyReport
-      });
-
-      Toast.show('Configuración de correo guardada correctamente', 'success');
-      
-      this.settings.smtp_host = host;
-      this.settings.smtp_port = port;
-      this.settings.smtp_username = username;
-      if (password && password !== '••••••••') this.settings.smtp_password = password;
-      this.settings.smtp_use_tls = useTls;
-      this.settings.email_notifications_enabled = enabled;
-      this.settings.email_alerts_recipients = recipients;
-      this.settings.alert_device_offline = alertDeviceOffline;
-      this.settings.alert_employee_lateness = alertEmployeeLateness;
-      this.settings.alert_admin_daily_report = alertAdminDailyReport;
-    } catch (e) {
-      console.error(e);
-      Toast.show(e.message, 'error');
-    }
-  },
-
-  async testEmail() {
-    const recipient = prompt("Introduce el correo de destino para la prueba:");
-    if (!recipient) return;
-
-    Toast.show('Enviando correo de prueba...', 'info');
-    try {
-      const response = await API.post('/api/settings/test-email', { recipient: recipient });
-      Toast.show(response.message || '¡Correo de prueba enviado con éxito!', 'success');
-    } catch (e) {
-      console.error(e);
-      Toast.show('Error al enviar correo de prueba: ' + e.message, 'error');
-    }
-  },
-
-  async exportBackup() {
-    const btn = document.getElementById('btnExportBackup');
-    const progress = document.getElementById('exportProgress');
-    if (btn) btn.disabled = true;
-    if (progress) progress.style.display = 'block';
-    
-    Toast.show('Generando copia de seguridad...', 'info');
-    try {
-      const token = API.token();
-      const response = await fetch('/api/backup/export', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error('Error al generar la copia de seguridad.');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `backup_${new Date().toISOString().slice(0,10)}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      Toast.show('Copia de seguridad descargada.', 'success');
-    } catch (e) {
-      console.error(e);
-      Toast.show(e.message, 'error');
-    } finally {
-      if (btn) btn.disabled = false;
-      if (progress) progress.style.display = 'none';
-    }
-  },
-
-  async restoreBackup() {
-    const fileInput = document.getElementById('restoreFileInput');
-    const file = fileInput.files[0];
-    if (!file) {
-      Toast.show('Selecciona un archivo de copia de seguridad (.zip, .sql o .backup).', 'warning');
-      return;
-    }
-
-    Modal.confirm(
-      '¿Restaurar Base de Datos e Imágenes?',
-      '¿Estás seguro de restaurar? Todos los datos actuales del sistema y las fotos de los empleados serán sobrescritos por el respaldo. El servidor podría reiniciarse.',
-      async () => {
-        const btn = document.getElementById('btnRestoreBackup');
-        const progress = document.getElementById('restoreProgress');
-        if (btn) btn.disabled = true;
-        if (progress) progress.style.display = 'block';
-
-        Toast.show('Restaurando base de datos, por favor espera...', 'info');
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-          const token = API.token();
-          const response = await fetch('/api/backup/restore', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            body: formData
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.detail || 'Fallo al restaurar.');
-          Toast.show('Base de datos restaurada correctamente. Recargando la aplicación...', 'success');
-          setTimeout(() => window.location.reload(), 2000);
-        } catch (e) {
-          console.error(e);
-          Toast.show(e.message || 'Error al restaurar base de datos.', 'error');
-          if (btn) btn.disabled = false;
-          if (progress) progress.style.display = 'none';
-        }
-      },
-      'danger'
-    );
-  },
-  
-  async loadCleanupSettings() {
-    try {
-      const data = await API.get('/api/settings');
-      this.settings = data;
-      
-      document.getElementById('sysCleanupEnabled').checked = data.cleanup_enabled ?? false;
-      document.getElementById('sysCleanupTime').value = data.cleanup_time || '02:00';
-      
-      document.getElementById('sysCleanupAttendanceEnabled').checked = data.cleanup_attendance_enabled ?? true;
-      document.getElementById('sysRetAttendance').value = data.retention_attendance_days || 1825;
-      
-      document.getElementById('sysCleanupAuditEnabled').checked = data.cleanup_audit_enabled ?? true;
-      document.getElementById('sysRetAudit').value = data.retention_audit_logs_days || 365;
-      
-      document.getElementById('sysCleanupSyncEnabled').checked = data.cleanup_sync_enabled ?? true;
-      document.getElementById('sysRetSync').value = data.retention_sync_logs_days || 30;
-      
-    } catch(e) {
-      console.error(e);
-      Toast.show('Error al cargar la configuración de limpieza', 'error');
-    }
-  },
-
-  async saveCleanupSettings() {
-    const enabled = document.getElementById('sysCleanupEnabled').checked;
-    const time = document.getElementById('sysCleanupTime').value || '02:00';
-    
-    const attEnabled = document.getElementById('sysCleanupAttendanceEnabled').checked;
-    const attDays = parseInt(document.getElementById('sysRetAttendance').value) || 1825;
-    
-    const auditEnabled = document.getElementById('sysCleanupAuditEnabled').checked;
-    const auditDays = parseInt(document.getElementById('sysRetAudit').value) || 365;
-    
-    const syncEnabled = document.getElementById('sysCleanupSyncEnabled').checked;
-    const syncDays = parseInt(document.getElementById('sysRetSync').value) || 30;
-
-    try {
-      if (!this.settings.work_days) {
-        this.settings = await API.get('/api/settings');
-      }
-
-      await API.put('/api/settings', {
-        ...this.settings,
-        cleanup_enabled: enabled,
-        cleanup_time: time,
-        cleanup_attendance_enabled: attEnabled,
-        retention_attendance_days: attDays,
-        cleanup_audit_enabled: auditEnabled,
-        retention_audit_logs_days: auditDays,
-        cleanup_sync_enabled: syncEnabled,
-        retention_sync_logs_days: syncDays
-      });
-
-      Toast.show('Configuración de mantenimiento guardada correctamente', 'success');
-      
-      this.settings.cleanup_enabled = enabled;
-      this.settings.cleanup_time = time;
-      this.settings.cleanup_attendance_enabled = attEnabled;
-      this.settings.retention_attendance_days = attDays;
-      this.settings.cleanup_audit_enabled = auditEnabled;
-      this.settings.retention_audit_logs_days = auditDays;
-      this.settings.cleanup_sync_enabled = syncEnabled;
-      this.settings.retention_sync_logs_days = syncDays;
-      
-    } catch (e) {
-      console.error(e);
-      Toast.show(e.message, 'error');
-    }
-  },
-
-  async runManualCleanup() {
-    Modal.confirm(
-      '⚠️ Ejecutar Limpieza Manual',
-      '¿Estás seguro? Estás a punto de borrar definitivamente todos los registros y logs anteriores a las fechas configuradas. Esta acción NO se puede deshacer y los registros desaparecerán de los reportes.',
-      async () => {
-        const btn = document.getElementById('btnManualCleanup');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;border-width:2px;margin-right:6px"></span> Limpiando...';
-        }
-        
-        try {
-          const response = await API.post('/api/settings/manual-cleanup', {});
-          const msg = `Limpieza finalizada.\\nAsistencias borradas: ${response.stats.attendance}\\nLogs de sincronización: ${response.stats.sync_logs}\\nLogs de auditoría: ${response.stats.audit_logs}`;
-          Toast.show('¡Mantenimiento exitoso!', 'success');
-          alert(msg); // Usar alert nativo para mostrar el detalle claramente
-        } catch (e) {
-          console.error(e);
-          Toast.show(e.message || 'Error al ejecutar la limpieza', 'error');
-        } finally {
-          if (btn) {
-              btn.disabled = false;
-              btn.innerHTML = 'Ejecutar Limpieza Manual Ahora';
-          }
-        }
-      },
-      'danger'
-    );
-  },
-  
   async remoteOpenDoor() {
     Toast.show('Enviando comando de apertura...', 'info');
     try {

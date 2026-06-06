@@ -1,0 +1,160 @@
+/* ── Third-Party Vendors Overrides (Flatpickr) ── */
+
+/* Increased specificity using 'body' to remove !important */
+body .flatpickr-calendar {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text-1);
+  padding: 8px;
+  width: 310px;
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body .flatpickr-months {
+  margin-bottom: 8px;
+}
+body .flatpickr-months .flatpickr-month {
+  color: var(--text-1);
+  fill: var(--text-1);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+body .flatpickr-current-month .numInputWrapper span.arrowUp::after {
+  border-bottom-color: var(--text-1);
+}
+body .flatpickr-current-month .numInputWrapper span.arrowDown::after {
+  border-top-color: var(--text-1);
+}
+body .flatpickr-months .flatpickr-prev-month,
+body .flatpickr-months .flatpickr-next-month {
+  color: var(--text-2);
+  fill: var(--text-2);
+  padding: 6px;
+}
+body .flatpickr-months .flatpickr-prev-month:hover,
+body .flatpickr-months .flatpickr-next-month:hover {
+  color: var(--accent);
+  fill: var(--accent);
+}
+body .flatpickr-months .flatpickr-prev-month svg,
+body .flatpickr-months .flatpickr-next-month svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Días de la semana */
+body span.flatpickr-weekday {
+  color: var(--text-3);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+/* Celdas de días */
+body .flatpickr-day {
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: 0.88rem;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 38px;
+  height: 38px;
+  line-height: 36px;
+  margin: 2px;
+}
+
+body .flatpickr-day.prevMonthDay,
+body .flatpickr-day.nextMonthDay {
+  color: #cbd5e1;
+}
+body .flatpickr-day.prevMonthDay:hover,
+body .flatpickr-day.nextMonthDay:hover {
+  background: transparent;
+  color: var(--text-3);
+}
+
+body .flatpickr-day:hover,
+body .flatpickr-day:focus {
+  background: var(--surface-3);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-1);
+  transform: translateY(-1px);
+}
+
+body .flatpickr-day.today {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+  font-weight: 700;
+}
+body .flatpickr-day.today:hover {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--text-1);
+}
+
+body .flatpickr-day.selected,
+body .flatpickr-day.startRange,
+body .flatpickr-day.endRange,
+body .flatpickr-day.selected.inRange,
+body .flatpickr-day.startRange.inRange,
+body .flatpickr-day.endRange.inRange,
+body .flatpickr-day.selected:focus,
+body .flatpickr-day.startRange:focus,
+body .flatpickr-day.endRange:focus,
+body .flatpickr-day.selected:hover,
+body .flatpickr-day.startRange:hover,
+body .flatpickr-day.endRange:hover,
+body .flatpickr-day.selected.prevMonthDay,
+body .flatpickr-day.startRange.prevMonthDay,
+body .flatpickr-day.endRange.prevMonthDay,
+body .flatpickr-day.selected.nextMonthDay,
+body .flatpickr-day.startRange.nextMonthDay,
+body .flatpickr-day.endRange.nextMonthDay {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
+}
+
+body .flatpickr-day.inRange,
+body .flatpickr-day.inRange.prevMonthDay,
+body .flatpickr-day.inRange.nextMonthDay,
+body .flatpickr-day.inRange.today,
+body .flatpickr-day.inRange:hover,
+body .flatpickr-day.inRange:focus {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: transparent;
+  color: var(--text-1);
+  box-shadow: -5px 0 0 rgba(var(--accent-rgb), 0.12), 5px 0 0 rgba(var(--accent-rgb), 0.12);
+}
+
+body .flatpickr-day.flatpickr-disabled,
+body .flatpickr-day.flatpickr-disabled:hover {
+  color: #e2e8f0;
+  background: transparent;
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+body .flatpickr-calendar.arrowUp:after {
+  border-bottom-color: rgba(10, 16, 36, 0.88);
+}
+body .flatpickr-calendar.arrowUp:before {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+body .flatpickr-calendar.arrowDown:after {
+  border-top-color: rgba(10, 16, 36, 0.88);
+}
+body .flatpickr-calendar.arrowDown:before {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+body .section-actions input.flatpickr-input {
+  min-width: 240px;
+  flex-shrink: 0;
+}

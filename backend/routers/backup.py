@@ -113,7 +113,7 @@ def export_backup(
         for f in [backup_sql, backup_zip]:
             if os.path.exists(f):
                 try: os.remove(f)
-                except: pass
+                except Exception: pass
         raise HTTPException(status_code=500, detail=f"Error al generar backup: {str(e)}")
 
 @router.post("/restore")

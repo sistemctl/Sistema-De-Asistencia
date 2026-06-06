@@ -2,19 +2,28 @@
 
 const API = {
   token: () => localStorage.getItem('token'),
+  _cache: {},
 
   headers() {
     return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token()}` };
   },
 
-  async get(path) {
+  async get(path, cache = false) {
+    if (cache && this._cache[path]) {
+      return this._cache[path];
+    }
     const r = await fetch(path, { headers: this.headers() });
     if (r.status === 401) { Auth.logout(); return null; }
     if (!r.ok) throw new Error((await r.json()).detail || 'Error');
-    return r.json();
+    const data = await r.json();
+    if (cache) {
+      this._cache[path] = data;
+    }
+    return data;
   },
 
   async post(path, body) {
+    this._cache = {}; // Invalidate cache on modification
     const r = await fetch(path, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) });
     if (r.status === 401) { Auth.logout(); return null; }
     if (!r.ok) throw new Error((await r.json()).detail || 'Error');
@@ -22,6 +31,7 @@ const API = {
   },
 
   async put(path, body) {
+    this._cache = {}; // Invalidate cache on modification
     const r = await fetch(path, { method: 'PUT', headers: this.headers(), body: JSON.stringify(body) });
     if (r.status === 401) { Auth.logout(); return null; }
     if (!r.ok) throw new Error((await r.json()).detail || 'Error');
@@ -29,6 +39,7 @@ const API = {
   },
 
   async delete(path) {
+    this._cache = {}; // Invalidate cache on modification
     const r = await fetch(path, { method: 'DELETE', headers: this.headers() });
     if (r.status === 401) { Auth.logout(); return null; }
     if (!r.ok) throw new Error((await r.json()).detail || 'Error');
@@ -36,6 +47,7 @@ const API = {
   },
 
   async postForm(path, formData) {
+    this._cache = {}; // Invalidate cache on modification
     const r = await fetch(path, { method: 'POST', headers: { 'Authorization': `Bearer ${this.token()}` }, body: formData });
     if (r.status === 401) { Auth.logout(); return null; }
     if (!r.ok) throw new Error((await r.json()).detail || 'Error');

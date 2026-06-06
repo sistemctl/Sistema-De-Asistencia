@@ -400,7 +400,7 @@ const DashboardPage = {
             </div>
           </div>`;
       }).join('');
-    } catch(e) {}
+    } catch(e) { console.warn(e); }
   },
 
   async loadWeekly() {
@@ -456,7 +456,7 @@ const DashboardPage = {
           },
         },
       });
-    } catch(e) {}
+    } catch(e) { console.warn(e); }
   },
 
   timeAgo(iso) {

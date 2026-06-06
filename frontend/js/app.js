@@ -10,7 +10,7 @@ const PAGES = {
   parameters: { module: ParametersPage, title: 'Parámetros',  sub: 'Configuración de departamentos, cargos y horarios' },
   reports:    { module: ReportsPage,    title: 'Reportes',    sub: 'Exportar datos' },
   device:     { module: DevicePage,     title: 'Dispositivo', sub: 'DS-K1T323MBWX' },
-  system:     { module: DevicePage,     title: 'Configuración del Sistema', sub: 'Personalización de marca y auditoría' },
+  system:     { module: SystemConfigPage,     title: 'Configuración del Sistema', sub: 'Personalización de marca y auditoría' },
   users:      { module: UsersPage,      title: 'Usuarios',    sub: 'Gestionar administradores' },
 };
 
@@ -67,7 +67,7 @@ function navigate(page) {
       ReportsPage.switchReportTab(subRoute);
     } else if (basePage === 'system') {
       const subRoute = page.split('/')[1] || 'branding';
-      DevicePage.switchTab(subRoute);
+      SystemConfigPage.switchTab(subRoute);
     }
   }
 }
@@ -76,6 +76,12 @@ function navigate(page) {
 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
   el.addEventListener('click', () => {
     window.location.hash = el.dataset.page;
+  });
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      window.location.hash = el.dataset.page;
+    }
   });
 });
 
@@ -411,7 +417,7 @@ async function updateDeviceBadge() {
     } else {
       badge.classList.add('mock'); text.textContent = 'Modo simulado';
     }
-  } catch(e) {}
+  } catch(e) { console.warn(e); }
 }
 
 // ── Reloj en tiempo real ──────────────────────────────────────────────────────
@@ -432,11 +438,45 @@ function startClock() {
   setInterval(tick, 1000);
 }
 
+// ── Soporte de Tema Oscuro (Dark Mode) ──────────────────────────────────────────
+function initTheme() {
+  const toggleBtn = document.getElementById('themeToggleBtn');
+  if (!toggleBtn) return;
+
+  const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  
+  if (currentTheme === 'dark') {
+    document.documentElement.classList.add('dark-theme');
+    document.body.classList.add('dark-theme');
+    toggleBtn.innerHTML = Icons.sun(16, 16);
+  } else {
+    document.documentElement.classList.remove('dark-theme');
+    document.body.classList.remove('dark-theme');
+    toggleBtn.innerHTML = Icons.moon(16, 16);
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.contains('dark-theme');
+    if (isDark) {
+      document.documentElement.classList.remove('dark-theme');
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('theme', 'light');
+      toggleBtn.innerHTML = Icons.moon(16, 16);
+    } else {
+      document.documentElement.classList.add('dark-theme');
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('theme', 'dark');
+      toggleBtn.innerHTML = Icons.sun(16, 16);
+    }
+  });
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadUserInfo();
 loadSystemBranding();
 updateDeviceBadge();
 startClock();
+initTheme();
 
 // Determinar la página inicial basada en el hash de la URL
 const initialPage = window.location.hash.slice(1) || 'dashboard';

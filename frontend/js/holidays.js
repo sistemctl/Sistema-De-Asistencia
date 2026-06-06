@@ -77,7 +77,8 @@ const HolidaysPage = {
 
   async loadTable() {
     try {
-      const holidays = await API.get(`/api/holidays?year=${this.currentYear}`);
+      const holidays = await API.get(`/api/holidays?year=${this.currentYear}`) || [];
+      this.holidays = holidays;
       const tbody = document.getElementById('holidaysTable');
       if (!tbody) return;
 
@@ -109,10 +110,16 @@ const HolidaysPage = {
         `;
 
         const deleteButton = h.is_custom
-          ? `<button class="btn btn-icon btn-sm btn-danger" onclick="HolidaysPage.deleteHoliday(${h.id}, '${h.name}')" title="Eliminar Festivo Personalizado">
+          ? `<button class="btn btn-icon btn-sm btn-delete" onclick="HolidaysPage.deleteHoliday(${h.id}, '${h.name}')" title="Eliminar Festivo Personalizado">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
              </button>`
           : '-';
+
+        const editButton = `
+          <button class="btn btn-icon btn-sm btn-edit" onclick="HolidaysPage.openForm(${h.id})" title="Editar Festivo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+        `;
 
         return `
           <tr>
@@ -123,7 +130,12 @@ const HolidaysPage = {
             </td>
             <td style="text-align: center;">${originBadge}</td>
             <td style="text-align: center;">${toggleSwitch}</td>
-            ${canEdit ? `<td style="text-align: center;">${deleteButton}</td>` : ''}
+            ${canEdit ? `<td style="text-align: center;">
+              <div style="display:flex;gap:6px;justify-content:center;">
+                ${editButton}
+                ${h.is_custom ? deleteButton : ''}
+              </div>
+            </td>` : ''}
           </tr>
         `;
       }).join('');
@@ -151,22 +163,32 @@ const HolidaysPage = {
     }
   },
 
-  openForm() {
-    Modal.open('Nuevo Día Festivo Personalizado', `
+  openForm(id = null) {
+    let holiday = null;
+    if (id) {
+      // Find the holiday in local list if table is loaded
+      // We can fetch or find. Let's select it.
+      // We can also find by fetching, but finding in local is faster.
+      // We can fetch list again if needed, but we save it in this.holidays. Wait, we don't save holidays list in this.holidays currently. Let's make sure we do!
+    }
+    const h = id && this.holidays ? this.holidays.find(x => x.id === id) : null;
+    const title = h ? 'Editar Día Festivo' : 'Nuevo Día Festivo Personalizado';
+
+    Modal.open(title, `
       <div class="field">
         <label>Nombre del Festivo / Evento</label>
-        <input id="hName" placeholder="Ej. Aniversario de la Empresa" />
+        <input id="hName" placeholder="Ej. Aniversario de la Empresa" value="${h ? h.name : ''}" />
       </div>
       <div class="field">
         <label>Fecha</label>
-        <input id="hDate" type="date" value="${this.currentYear}-01-01" />
+        <input id="hDate" type="date" value="${h ? h.date : this.currentYear + '-01-01'}" ${h ? 'disabled' : ''} />
       </div>
     `,
     `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
-     <button class="btn btn-primary" onclick="HolidaysPage.saveHoliday()">Guardar</button>`);
+     <button class="btn btn-primary" onclick="HolidaysPage.saveHoliday(${id})">Guardar</button>`);
   },
 
-  async saveHoliday() {
+  async saveHoliday(id = null) {
     const name = document.getElementById('hName').value.trim();
     const dateVal = document.getElementById('hDate').value;
 
@@ -174,12 +196,19 @@ const HolidaysPage = {
     if (!dateVal) { Toast.show('Ingrese la fecha', 'warning'); return; }
 
     try {
-      await API.post('/api/holidays', {
-        date: dateVal,
-        name: name,
-        is_active: true
-      });
-      Toast.show('Día festivo personalizado creado con éxito', 'success');
+      if (id) {
+        await API.put(`/api/holidays/${id}`, {
+          name: name
+        });
+        Toast.show('Día festivo actualizado con éxito', 'success');
+      } else {
+        await API.post('/api/holidays', {
+          date: dateVal,
+          name: name,
+          is_active: true
+        });
+        Toast.show('Día festivo personalizado creado con éxito', 'success');
+      }
       Modal.close();
       this.loadTable();
     } catch(e) {

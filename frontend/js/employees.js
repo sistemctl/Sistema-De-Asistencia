@@ -33,18 +33,18 @@ const EmployeesPage = {
                 </button>
                 <div id="advancedFiltersMenu" style="display:none; position:absolute; top:40px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:200px; flex-direction:column; gap:12px;">
                   <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Avanzados</h4>
-                  <select id="filterDept" class="emp-filter-select" style="width:100%;">
+                  <select id="filterDept" class="form-control" style="width:100%;">
                     <option value="">🏢 Departamento</option>
                   </select>
-                  <select id="filterPosition" class="emp-filter-select" style="width:100%;">
+                  <select id="filterPosition" class="form-control" style="width:100%;">
                     <option value="">💼 Cargo</option>
                   </select>
-                  <select id="filterStatus" class="emp-filter-select" style="width:100%;">
+                  <select id="filterStatus" class="form-control" style="width:100%;">
                     <option value="">👤 Estado</option>
                     <option value="true">✅ Activo</option>
                     <option value="false">⛔ Inactivo</option>
                   </select>
-                  <select id="pageSize" class="emp-filter-select" style="width:100%;">
+                  <select id="pageSize" class="form-control" style="width:100%;">
                     <option value="10">📄 10 filas</option>
                     <option value="50" selected>📄 50 filas</option>
                     <option value="100">📄 100 filas</option>
@@ -84,6 +84,10 @@ const EmployeesPage = {
                 <button class="btn btn-secondary" id="btnImportFromDevice">
                   <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   Importar del Biométrico
+                </button>
+                <button class="btn btn-secondary" id="btnBulkQR" style="background:var(--surface-2); border:1px solid var(--border);" title="Generar QR para los que aún no lo tienen">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                  Generar QRs Masivos
                 </button>
                 <button class="btn btn-primary" id="btnNewEmp">
                   <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -211,9 +215,9 @@ const EmployeesPage = {
       </div>
     </div>`;
 
-    this.depts     = await API.get('/api/employees/departments') || [];
-    this.positions = await API.get('/api/employees/positions')   || [];
-    this.schedules = await API.get('/api/schedules')             || [];
+    this.depts     = await API.get('/api/employees/departments', true) || [];
+    this.positions = await API.get('/api/employees/positions', true)   || [];
+    this.schedules = await API.get('/api/schedules', true)             || [];
 
     // Llenar dropdowns de filtro
     const deptSel = document.getElementById('filterDept');
@@ -272,6 +276,7 @@ const EmployeesPage = {
 
     if (isAdmin) {
       document.getElementById('btnNewEmp')?.addEventListener('click', () => this.openForm());
+      document.getElementById('btnBulkQR')?.addEventListener('click', () => this.generateBulkQR());
       document.getElementById('btnImportFromDevice')?.addEventListener('click', () => this.importFromDevice());
     }
     // Close dropdowns if clicked outside
@@ -483,6 +488,31 @@ const EmployeesPage = {
 
 
 
+  async generateBulkQR() {
+    if(!confirm('¿Estás seguro de generar y habilitar Códigos QR para todos los empleados que aún no lo tienen?')) return;
+    try {
+      const res = await API.post('/api/employees/bulk-qr-generate');
+      Toast.show(res.message || 'QRs generados correctamente', 'success');
+      this.loadTable();
+    } catch(e) {
+      console.error(e);
+      Toast.show(e.message || 'Error al generar QRs', 'error');
+    }
+  },
+
+  async regenerateQR(id) {
+    if(!confirm('¿Seguro que deseas revocar el QR actual y generar uno nuevo?')) return;
+    try {
+      const res = await API.post(`/api/employees/${id}/regenerate-qr`);
+      Toast.show(res.message || 'Código QR regenerado', 'success');
+      Modal.close();
+      this.openForm(id); // Recargar formulario
+    } catch(e) {
+      console.error(e);
+      Toast.show(e.message || 'Error al regenerar QR', 'error');
+    }
+  },
+
   async openForm(id = null) {
     this.selectedPhotoFile = null;
     let emp = null;
@@ -490,9 +520,9 @@ const EmployeesPage = {
     
     // Cargar departamentos, cargos y horarios
     const depts = this.depts;
-    const positions = this.positions.length ? this.positions : await API.get('/api/employees/positions') || [];
+    const positions = this.positions.length ? this.positions : await API.get('/api/employees/positions', true) || [];
     this.positions = positions;
-    const schedules = await API.get('/api/schedules') || [];
+    const schedules = await API.get('/api/schedules', true) || [];
     
     const depOpts = depts.map(d => `<option value="${d.id}" ${emp?.department_id==d.id?'selected':''}>${d.name}</option>`).join('');
     const posOpts = positions.map(p => `<option value="${p.id}" ${emp?.position_id==p.id?'selected':''}>${p.name}</option>`).join('');
@@ -545,7 +575,7 @@ const EmployeesPage = {
           <label style="display:flex; justify-content:space-between; align-items:center;">
             <span>Cargo</span>
             ${Auth.canManageEmployees() ? `
-              <a href="#" onclick="EmployeesPage.managePositions(); return false;" style="font-size:0.75rem; color:var(--primary-color); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px;">
+              <a href="#" onclick="Modal.close(); setTimeout(() => { window.location.hash = '#parameters'; }, 200); return false;" style="font-size:0.75rem; color:var(--primary-color); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px;">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 5v14M5 12h14"></path></svg>
                 Gestionar
               </a>` : ''}
@@ -562,7 +592,7 @@ const EmployeesPage = {
           <label style="display:flex; justify-content:space-between; align-items:center;">
             <span>Departamento</span>
             ${Auth.canManageEmployees() ? `
-              <a href="#" onclick="EmployeesPage.manageDepartments(); return false;" style="font-size:0.75rem; color:var(--primary-color); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px;">
+              <a href="#" onclick="Modal.close(); setTimeout(() => { window.location.hash = '#parameters'; }, 200); return false;" style="font-size:0.75rem; color:var(--primary-color); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px;">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 5v14M5 12h14"></path></svg>
                 Gestionar
               </a>` : ''}
@@ -575,10 +605,13 @@ const EmployeesPage = {
         <div class="field" style="display:flex; align-items:center;">
           <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface-3); padding:10px 16px; border-radius:10px; border:1px solid var(--border); width: 100%;">
             <span style="font-weight:600; color:var(--text-1); font-size: 0.85rem;">Habilitar Gafete / Código QR</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="fQrEnabled" ${emp?.qr_enabled ? 'checked' : ''} />
-              <span class="slider"></span>
-            </label>
+            <div style="display:flex; align-items:center; gap: 12px;">
+              ${id && emp?.qr_enabled ? `<button type="button" class="btn btn-secondary" onclick="EmployeesPage.regenerateQR(${id})" style="padding: 4px 8px; font-size: 0.75rem; color: var(--danger); border-color: var(--danger); background: transparent;">Rotar/Regenerar</button>` : ''}
+              <label class="toggle-switch">
+                <input type="checkbox" id="fQrEnabled" ${emp?.qr_enabled ? 'checked' : ''} />
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -626,6 +659,28 @@ const EmployeesPage = {
     if (saveBtn) saveBtn.classList.add('btn-loading');
 
     try {
+      const first_name = document.getElementById('fFirstName').value.trim();
+      const last_name = document.getElementById('fLastName').value.trim();
+      const email = document.getElementById('fEmail').value.trim() || null;
+      const phone = document.getElementById('fPhone').value.trim() || null;
+
+      if (!first_name) {
+        if (saveBtn) saveBtn.classList.remove('btn-loading');
+        Toast.show('El nombre es obligatorio', 'warning');
+        return;
+      }
+      if (!last_name) {
+        if (saveBtn) saveBtn.classList.remove('btn-loading');
+        Toast.show('El apellido es obligatorio', 'warning');
+        return;
+      }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (saveBtn) saveBtn.classList.remove('btn-loading');
+        Toast.show('El formato del correo electrónico no es válido', 'warning');
+        return;
+      }
+
       const schedId = document.getElementById('fScheduleId').value || null;
       let startTime = "07:00";
       let endTime = "18:00";
@@ -633,9 +688,19 @@ const EmployeesPage = {
       if (schedId === null) {
         startTime = document.getElementById('fStart').value;
         endTime = document.getElementById('fEnd').value;
+        if (startTime >= endTime) {
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La hora de entrada debe ser anterior a la hora de salida', 'warning');
+          return;
+        }
       }
 
       const empCode = document.getElementById('fCode').value.trim();
+      if (!empCode) {
+        if (saveBtn) saveBtn.classList.remove('btn-loading');
+        Toast.show('El código de empleado es obligatorio', 'warning');
+        return;
+      }
       if (!/^\d+$/.test(empCode)) {
         if (saveBtn) saveBtn.classList.remove('btn-loading');
         Toast.show('El código de empleado debe contener únicamente números', 'error');
@@ -643,12 +708,12 @@ const EmployeesPage = {
       }
 
       const body = {
-        first_name: document.getElementById('fFirstName').value.trim(),
-        last_name: document.getElementById('fLastName').value.trim(),
+        first_name: first_name,
+        last_name: last_name,
         employee_code: empCode,
         position_id: document.getElementById('fPositionId').value ? parseInt(document.getElementById('fPositionId').value) : null,
-        email: document.getElementById('fEmail').value.trim() || null,
-        phone: document.getElementById('fPhone').value.trim() || null,
+        email: email,
+        phone: phone,
         department_id: document.getElementById('fDept').value || null,
         schedule_id: schedId ? parseInt(schedId) : null,
         card_number: document.getElementById('fCard').value.trim() || null,
@@ -687,282 +752,6 @@ const EmployeesPage = {
       console.error(e);
     }
   },
-
-  async manageDepartments() {
-    // Guardar temporalmente los datos actuales del formulario de empleado para no perderlos
-    const activeFormState = {
-      first_name: document.getElementById('fFirstName')?.value || '',
-      last_name: document.getElementById('fLastName')?.value || '',
-      employee_code: document.getElementById('fCode')?.value || '',
-      position_id: document.getElementById('fPositionId')?.value || '',
-      email: document.getElementById('fEmail')?.value || '',
-      phone: document.getElementById('fPhone')?.value || '',
-      card_number: document.getElementById('fCard')?.value || '',
-      schedule_id: document.getElementById('fScheduleId')?.value || '',
-      dept_id: document.getElementById('fDept')?.value || '',
-      is_edit: document.getElementById('modalTitle').textContent.includes('Editar'),
-      emp_id: document.querySelector('button[onclick^="EmployeesPage.saveEmployee"]')?.getAttribute('onclick').match(/\d+/)?.[0] || null
-    };
-
-    const renderDeptList = async () => {
-      const depts = await API.get('/api/employees/departments') || [];
-      this.depts = depts; // Actualizar lista local
-      
-      const listHtml = depts.length ? depts.map(d => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--text-1);">${d.name}</span>
-          <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deleteDept(${d.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>
-      `).join('') : '<p style="color:var(--text-3); text-align:center; margin:15px 0;">No hay departamentos registrados.</p>';
-
-      document.getElementById('deptListContainer').innerHTML = listHtml;
-    };
-
-    Modal.open('Gestionar Departamentos', `
-      <div style="margin-bottom:15px;">
-        <label>Agregar Nuevo Departamento</label>
-        <div style="display:flex; gap:8px; margin-top:5px;">
-          <input id="newDeptName" placeholder="Ej. Contabilidad, Recursos Humanos" style="flex:1" />
-          <button class="btn btn-primary" onclick="EmployeesPage.addDept()" style="padding:0 15px;">Agregar</button>
-        </div>
-      </div>
-      <label>Departamentos Existentes</label>
-      <div id="deptListContainer" style="max-height:220px; overflow-y:auto; margin-top:5px; padding-right:4px;">
-        Cargando...
-      </div>`,
-      `<button class="btn btn-secondary" onclick="EmployeesPage.restoreEmployeeForm(${JSON.stringify(activeFormState).replace(/"/g, '&quot;')})">Atrás / Cerrar</button>`);
-
-    await renderDeptList();
-  },
-
-  async addDept() {
-    const input = document.getElementById('newDeptName');
-    const name = input.value.trim();
-    if (!name) { Toast.show('Ingresa el nombre del departamento', 'warning'); return; }
-    try {
-      await API.post('/api/employees/departments', { name });
-      input.value = '';
-      Toast.show('Departamento agregado', 'success');
-      
-      const depts = await API.get('/api/employees/departments') || [];
-      this.depts = depts;
-      const listContainer = document.getElementById('deptListContainer');
-      listContainer.innerHTML = depts.map(d => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--text-1);">${d.name}</span>
-          <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deleteDept(${d.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>`).join('');
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
-  },
-
-  async deleteDept(id) {
-    Modal.confirm(
-      '¿Eliminar Departamento?',
-      '¿Estás seguro de eliminar este departamento? Los empleados en él quedarán sin departamento.',
-      async () => {
-        try {
-          await API.delete(`/api/employees/departments/${id}`);
-          Toast.show('Departamento eliminado', 'success');
-          
-          const depts = await API.get('/api/employees/departments') || [];
-          this.depts = depts;
-          const listContainer = document.getElementById('deptListContainer');
-          listContainer.innerHTML = depts.map(d => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-              <span style="font-weight:600; color:var(--text-1);">${d.name}</span>
-              <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deleteDept(${d.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </div>`).join('');
-        } catch (e) {
-          Toast.show(e.message, 'error');
-        }
-      },
-      'danger'
-    );
-  },
-
-  async managePositions() {
-    // Guardar temporalmente los datos actuales del formulario de empleado para no perderlos
-    const activeFormState = {
-      first_name: document.getElementById('fFirstName')?.value || '',
-      last_name: document.getElementById('fLastName')?.value || '',
-      employee_code: document.getElementById('fCode')?.value || '',
-      position_id: document.getElementById('fPositionId')?.value || '',
-      email: document.getElementById('fEmail')?.value || '',
-      phone: document.getElementById('fPhone')?.value || '',
-      card_number: document.getElementById('fCard')?.value || '',
-      schedule_id: document.getElementById('fScheduleId')?.value || '',
-      dept_id: document.getElementById('fDept')?.value || '',
-      is_edit: document.getElementById('modalTitle').textContent.includes('Editar'),
-      emp_id: document.querySelector('button[onclick^="EmployeesPage.saveEmployee"]')?.getAttribute('onclick').match(/\d+/)?.[0] || null
-    };
-
-    const renderPosList = async () => {
-      const positions = await API.get('/api/employees/positions') || [];
-      this.positions = positions; // Actualizar lista local
-      
-      const listHtml = positions.length ? positions.map(p => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--text-1);">${p.name}</span>
-          <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deletePos(${p.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>
-      `).join('') : '<p style="color:var(--text-3); text-align:center; margin:15px 0;">No hay cargos registrados.</p>';
-
-      document.getElementById('posListContainer').innerHTML = listHtml;
-    };
-
-    Modal.open('Gestionar Cargos', `
-      <div style="margin-bottom:15px;">
-        <label>Agregar Nuevo Cargo</label>
-        <div style="display:flex; gap:8px; margin-top:5px;">
-          <input id="newPosName" placeholder="Ej. Desarrollador, Diseñador" style="flex:1" />
-          <button class="btn btn-primary" onclick="EmployeesPage.addPos()" style="padding:0 15px;">Agregar</button>
-        </div>
-      </div>
-      <label>Cargos Existentes</label>
-      <div id="posListContainer" style="max-height:220px; overflow-y:auto; margin-top:5px; padding-right:4px;">
-        Cargando...
-      </div>`,
-      `<button class="btn btn-secondary" onclick="EmployeesPage.restoreEmployeeForm(${JSON.stringify(activeFormState).replace(/"/g, '&quot;')})">Atrás / Cerrar</button>`);
-
-    await renderPosList();
-  },
-
-  async addPos() {
-    const input = document.getElementById('newPosName');
-    const name = input.value.trim();
-    if (!name) { Toast.show('Ingresa el nombre del cargo', 'warning'); return; }
-    try {
-      await API.post('/api/employees/positions', { name });
-      input.value = '';
-      Toast.show('Cargo agregado', 'success');
-      
-      const positions = await API.get('/api/employees/positions') || [];
-      this.positions = positions;
-      const listContainer = document.getElementById('posListContainer');
-      listContainer.innerHTML = positions.map(p => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--text-1);">${p.name}</span>
-          <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deletePos(${p.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>`).join('');
-    } catch (e) {
-      Toast.show(e.message, 'error');
-    }
-  },
-
-  async deletePos(id) {
-    Modal.confirm(
-      '¿Eliminar Cargo?',
-      '¿Estás seguro de eliminar este cargo? Los empleados con él quedarán sin cargo.',
-      async () => {
-        try {
-          await API.delete(`/api/employees/positions/${id}`);
-          Toast.show('Cargo eliminado', 'success');
-          
-          const positions = await API.get('/api/employees/positions') || [];
-          this.positions = positions;
-          const listContainer = document.getElementById('posListContainer');
-          listContainer.innerHTML = positions.map(p => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--surface-3); border-radius:6px; margin-bottom:6px;">
-              <span style="font-weight:600; color:var(--text-1);">${p.name}</span>
-              <button class="btn btn-icon btn-sm btn-delete" onclick="EmployeesPage.deletePos(${p.id})" style="background:transparent; border:none; cursor:pointer;" title="Eliminar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </div>`).join('');
-        } catch (e) {
-          Toast.show(e.message, 'error');
-        }
-      },
-      'danger'
-    );
-  },
-
-  async restoreEmployeeForm(state) {
-    const depts = this.depts;
-    const positions = this.positions.length ? this.positions : await API.get('/api/employees/positions') || [];
-    this.positions = positions;
-    const schedules = await API.get('/api/schedules') || [];
-    
-    const depOpts = depts.map(d => `<option value="${d.id}" ${state.dept_id==d.id?'selected':''}>${d.name}</option>`).join('');
-    const posOpts = positions.map(p => `<option value="${p.id}" ${state.position_id==p.id?'selected':''}>${p.name}</option>`).join('');
-    const schedOpts = schedules.map(s => `<option value="${s.id}" ${state.schedule_id==s.id?'selected':''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`).join('');
-
-    Modal.open(state.is_edit ? 'Editar Empleado' : 'Nuevo Empleado', `
-      <div class="form-row">
-        <div class="field"><label>Nombre</label><input id="fFirstName" value="${state.first_name}" placeholder="Nombre" /></div>
-        <div class="field"><label>Apellido</label><input id="fLastName" value="${state.last_name}" placeholder="Apellido" /></div>
-      </div>
-      <div class="form-row">
-        <div class="field"><label>Código empleado</label><input id="fCode" value="${state.employee_code}" placeholder="EMP001" ${state.is_edit?'readonly':''} /></div>
-        <div class="field" style="position:relative;">
-          <label style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Cargo</span>
-            ${Auth.canManageEmployees() ? `
-              <a href="#" onclick="EmployeesPage.managePositions(); return false;" style="font-size:0.75rem; color:var(--primary-color); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 5v14M5 12h14"></path></svg>
-                Gestionar
-              </a>` : ''}
-          </label>
-          <select id="fPositionId"><option value="">Sin cargo</option>${posOpts}</select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="field"><label>Email</label><input id="fEmail" type="email" value="${state.email}" placeholder="correo@empresa.com" /></div>
-        <div class="field"><label>Teléfono</label><input id="fPhone" value="${state.phone}" placeholder="+57 300..." /></div>
-      </div>
-      <div class="form-row">
-        <div class="field" style="position:relative;">
-          <label style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Departamento</span>
-            ${Auth.canManageEmployees() ? `
-              <a href="#" onclick="EmployeesPage.manageDepartments(); return false;" style="font-size:0.75rem; color:var(--primary-color); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:3px;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 5v14M5 12h14"></path></svg>
-                Gestionar
-              </a>` : ''}
-          </label>
-          <select id="fDept"><option value="">Sin departamento</option>${depOpts}</select>
-        </div>
-        <div class="field"><label>N° Tarjeta M1</label><input id="fCard" value="${state.card_number}" placeholder="Opcional" ${state.qr_enabled ? 'readonly title="Gestionado por Gafete QR"' : ''} /></div>
-      </div>
-      <div class="form-row">
-        <div class="field" style="display:flex; align-items:center;">
-          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--surface-3); padding:10px 16px; border-radius:10px; border:1px solid var(--border); width: 100%;">
-            <span style="font-weight:600; color:var(--text-1); font-size: 0.85rem;">Habilitar Gafete / Código QR</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="fQrEnabled" ${state.qr_enabled ? 'checked' : ''} />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="field">
-          <label>Horario de Trabajo</label>
-          <select id="fScheduleId" onchange="EmployeesPage.onScheduleChange(this)">
-            <option value="">Sin Horario / Personalizado (Definir abajo)</option>
-            ${schedOpts}
-          </select>
-        </div>
-      </div>
-      <div class="form-row" id="manualHoursRow" style="${state.schedule_id ? 'display:none' : 'display:flex'}">
-        <div class="field"><label>Hora de Entrada</label><input id="fStart" type="time" value="07:00" /></div>
-        <div class="field"><label>Hora de Salida</label><input id="fEnd" type="time" value="18:00" /></div>
-      </div>`,
-      `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
-       <button class="btn btn-primary" onclick="EmployeesPage.saveEmployee(${state.emp_id || 'null'})">Guardar</button>`);
-  },
-
   onPhotoSelected(event) {
     const file = event.target.files[0];
     if (file) {
@@ -1026,6 +815,9 @@ const EmployeesPage = {
             <div style="margin-top: 45px; text-align: center; padding: 0 15px;">
               <div style="font-weight: 800; font-size: 1.1rem; color: #0f172a; line-height: 1.1; margin-bottom: 4px;">${emp.first_name}<br/>${emp.last_name}</div>
               <div style="font-size: 0.75rem; font-weight: 600; color: ${primaryColor}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">${emp.position?.name || 'EMPLEADO'}</div>
+              
+              ${settings.qr_badge_show_department && emp.department?.name ? `<div style="font-size: 0.65rem; color: #64748b; font-weight: 600; margin-bottom: 4px; line-height:1;">${emp.department.name}</div>` : ''}
+              ${settings.qr_badge_show_blood_type ? `<div style="font-size: 0.65rem; color: #ef4444; font-weight: 800; margin-bottom: 10px; line-height:1; letter-spacing: 0.5px;">O+</div>` : ''}
               
               <!-- Contenedor del QR -->
               <div style="display:flex; justify-content:center; margin-bottom:8px;">
@@ -1137,7 +929,7 @@ const EmployeesPage = {
       
       if (!response.ok) {
         let msg = 'Error al capturar desde el dispositivo';
-        try { msg = (await response.json()).detail || msg; } catch(e) {}
+        try { msg = (await response.json()).detail || msg; } catch(e) { console.warn(e); }
         throw new Error(msg);
       }
       
@@ -1526,10 +1318,10 @@ const EmployeesPage = {
             : `<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;box-shadow:inset 0 2px 10px rgba(0,0,0,0.01);">
                 <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
                   <thead>
-                    <tr style="background:var(--surface-2);position:sticky;top:0;">
-                      <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Fecha y hora</th>
-                      <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Tipo</th>
-                      <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Método</th>
+                    <tr>
+                      <th style="position:sticky;top:0;z-index:10;background:#ffffff;padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Fecha y hora</th>
+                      <th style="position:sticky;top:0;z-index:10;background:#ffffff;padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Tipo</th>
+                      <th style="position:sticky;top:0;z-index:10;background:#ffffff;padding:10px 14px;text-align:left;font-weight:700;color:var(--text-2);border-bottom:1px solid var(--border);">Método</th>
                     </tr>
                   </thead>
                   <tbody>

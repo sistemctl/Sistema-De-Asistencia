@@ -1,4 +1,7 @@
+import logging
 from datetime import date
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -34,7 +37,7 @@ def list_holidays(
         # Generate automatically using holidays library for Colombia
         co_holidays = holidays.Colombia(years=[year])
         if co_holidays:
-            print(f"Generando automáticamente {len(co_holidays)} festivos de Colombia para el año {year}...")
+            logger.info(f"Generando automáticamente {len(co_holidays)} festivos de Colombia para el año {year}...")
             new_holidays = []
             for h_date, name in sorted(co_holidays.items()):
                 # Guardar en base de datos

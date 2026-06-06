@@ -106,6 +106,29 @@ const ReportsPage = {
         #repTabContentAnalytics .card {
           padding: 16px 20px;
         }
+        .trend-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          padding: 2px 6px;
+          border-radius: 6px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          font-family: 'JetBrains Mono', monospace;
+          margin-left: 6px;
+        }
+        .trend-badge.trend-up {
+          background: rgba(0, 230, 118, 0.12);
+          color: #00c853;
+        }
+        .trend-badge.trend-down {
+          background: rgba(255, 61, 0, 0.12);
+          color: #d50000;
+        }
+        .trend-badge.trend-neutral {
+          background: var(--surface-3);
+          color: var(--text-3);
+        }
       </style>
 
       <!-- ── Navegación por Pestañas de Reportes ── -->
@@ -146,9 +169,23 @@ const ReportsPage = {
             </div>
             
             <!-- Selector de Rango de Fechas Único -->
-            <div class="field" style="margin: 0; flex: 1; min-width: 200px; max-width: 320px;">
+            <div class="field" style="margin: 0; flex: 1.5; min-width: 200px; max-width: 320px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
               <input type="text" id="anDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+            </div>
+
+            <!-- Selector Rápido de Presets -->
+            <div class="field" style="margin: 0; flex: 1; min-width: 150px; max-width: 180px;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango Rápido</label>
+              <select id="anDatePresets" onchange="ReportsPage.applyDatePreset('an', this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);">
+                <option value="">Personalizado</option>
+                <option value="today">Hoy</option>
+                <option value="yesterday">Ayer</option>
+                <option value="last7">Últimos 7 días</option>
+                <option value="last30" selected>Últimos 30 días</option>
+                <option value="thisMonth">Este mes</option>
+                <option value="lastMonth">Mes pasado</option>
+              </select>
             </div>
 
             <!-- Botón Filtros Avanzados y Acciones -->
@@ -161,13 +198,13 @@ const ReportsPage = {
               <div id="anAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
                 <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Adicionales</h4>
                 <select id="anFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                  <option value="">🏢 Todos los departamentos</option>
+                  <option value="">Todos los departamentos</option>
                 </select>
                 <select id="anFilterPosition" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                  <option value="">💼 Todos los cargos</option>
+                  <option value="">Todos los cargos</option>
                 </select>
                 <select id="anFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                  <option value="">🕒 Todos los horarios</option>
+                  <option value="">Todos los horarios</option>
                 </select>
               </div>
 
@@ -183,29 +220,56 @@ const ReportsPage = {
 
         <div id="repAnalyticsDashboard">
           <!-- ── TARJETAS DE KPI CORPORATE PRECISION ── -->
-          <div class="grid-4" style="margin-bottom: 24px;">
+          <div style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
             <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('punctuality')">
               <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Puntualidad General</span>
-              <span class="corp-display-lg" id="anTasaAsistencia">-</span>
-              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Entradas sin tardanza</span>
+              <div style="display: flex; align-items: baseline; justify-content: center;">
+                <span class="corp-display-lg" id="anTasaAsistencia">-</span>
+                <span id="anTasaAsistenciaTrend" class="trend-badge">-</span>
+              </div>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Entradas sin tardanza</span>
             </div>
             
             <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('lates')">
               <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Total Tardanzas</span>
-              <span class="corp-display-lg" id="anTotalTardanzas" style="color: var(--corp-secondary);">-</span>
-              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Registros con retraso</span>
+              <div style="display: flex; align-items: baseline; justify-content: center;">
+                <span class="corp-display-lg" id="anTotalTardanzas" style="color: var(--warning);">-</span>
+                <span id="anTotalTardanzasTrend" class="trend-badge">-</span>
+              </div>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Registros con retraso</span>
             </div>
-            
-            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('avg_entry')">
-              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Hora Promedio Entrada</span>
-              <span class="corp-display-lg" id="anPromedioEntrada">-</span>
-              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Llegada general</span>
-            </div>
-            
+
             <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('critical_day')">
               <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Día Crítico</span>
-              <span class="corp-display-lg" id="anDiaCritico">-</span>
-              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--corp-on-surface-var);">Más retrasos</span>
+              <span class="corp-display-lg" id="anDiaCritico" style="color: var(--accent);">-</span>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Día con más tardanzas</span>
+            </div>
+
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('absences')">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Tasa de Ausencia</span>
+              <div style="display: flex; align-items: baseline; justify-content: center;">
+                <span class="corp-display-lg" id="anTasaAusencia" style="color: var(--danger);">-</span>
+                <span id="anTasaAusenciaTrend" class="trend-badge">-</span>
+              </div>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Inasistencias injustificadas</span>
+            </div>
+
+            <div class="corp-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Horas Trabajadas</span>
+              <div style="display: flex; align-items: baseline; justify-content: center;">
+                <span class="corp-display-lg" id="anHorasTrabajadas" style="color: var(--success);">-</span>
+                <span id="anHorasTrabajadasTrend" class="trend-badge">-</span>
+              </div>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Tiempo total laborado</span>
+            </div>
+
+            <div class="corp-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Salidas Tempranas</span>
+              <div style="display: flex; align-items: baseline; justify-content: center;">
+                <span class="corp-display-lg" id="anSalidasTempranas" style="color: var(--warning);">-</span>
+                <span id="anSalidasTempranasTrend" class="trend-badge">-</span>
+              </div>
+              <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Salidas antes de hora</span>
             </div>
           </div>
 
@@ -246,7 +310,7 @@ const ReportsPage = {
                 Reporte Detallado de Asistencia
               </div>
               <div style="font-size: 0.75rem; color: var(--text-3); font-weight: 600; margin-top: 2px;">
-                Configure el rango de fechas, filtre colaboradores y exporte el reporte en Excel o PDF
+                Configure el rango de fechas, filtre colaboradores y exporte el reporte en Excel, PDF o CSV
               </div>
             </div>
             
@@ -263,6 +327,9 @@ const ReportsPage = {
                 </a>
                 <a href="#" onclick="ReportsPage.exportReport('pdf'); ReportsPage.closeExportMenu(); return false;" class="export-menu-item" style="border-top: 1px solid var(--border);">
                   <span style="font-size: 1.1rem; width: 20px;">📄</span> PDF Imprimible
+                </a>
+                <a href="#" onclick="ReportsPage.exportReport('csv'); ReportsPage.closeExportMenu(); return false;" class="export-menu-item" style="border-top: 1px solid var(--border);">
+                  <span style="font-size: 1.1rem; width: 20px;">📝</span> CSV Delimitado
                 </a>
                 <a href="#" onclick="ReportsPage.exportConsolidated(); ReportsPage.closeExportMenu(); return false;" class="export-menu-item" style="border-top: 1px solid var(--border);">
                   <span style="font-size: 1.1rem; width: 20px;">📅</span> Consolidado Diario
@@ -287,9 +354,23 @@ const ReportsPage = {
             </div>
             
             <!-- Selector de Rango de Fechas Único -->
-            <div class="field" style="margin: 0; flex: 1; min-width: 200px; max-width: 320px;">
+            <div class="field" style="margin: 0; flex: 1.5; min-width: 200px; max-width: 320px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
               <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+            </div>
+
+            <!-- Selector Rápido de Presets -->
+            <div class="field" style="margin: 0; flex: 1; min-width: 150px; max-width: 180px;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango Rápido</label>
+              <select id="recDatePresets" onchange="ReportsPage.applyDatePreset('rec', this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);">
+                <option value="">Personalizado</option>
+                <option value="today">Hoy</option>
+                <option value="yesterday">Ayer</option>
+                <option value="last7">Últimos 7 días</option>
+                <option value="last30" selected>Últimos 30 días</option>
+                <option value="thisMonth">Este mes</option>
+                <option value="lastMonth">Mes pasado</option>
+              </select>
             </div>
 
             <!-- Botones alineados en la misma fila con Filtros -->
@@ -302,13 +383,13 @@ const ReportsPage = {
               <div id="recAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
                 <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Adicionales</h4>
                 <select id="recFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                  <option value="">🏢 Todos los departamentos</option>
+                  <option value="">Todos los departamentos</option>
                 </select>
                 <select id="recFilterPosition" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                  <option value="">💼 Todos los cargos</option>
+                  <option value="">Todos los cargos</option>
                 </select>
                 <select id="recFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
-                  <option value="">🕒 Todos los horarios</option>
+                  <option value="">Todos los horarios</option>
                 </select>
               </div>
 
@@ -464,37 +545,37 @@ const ReportsPage = {
 
     try {
       // 1. Cargar Departamentos
-      const depts = await API.get('/api/employees/departments') || [];
+      const depts = await API.get('/api/employees/departments', true) || [];
       ['an', 'rec'].forEach(prefix => {
         const deptSel = document.getElementById(`${prefix}FilterDepartment`);
         if (deptSel) {
-          deptSel.innerHTML = '<option value="">🏢 Todos los departamentos</option>' + 
+          deptSel.innerHTML = '<option value="">Todos los departamentos</option>' + 
             depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
         }
       });
 
       // 2. Cargar Cargos
-      const positions = await API.get('/api/employees/positions') || [];
+      const positions = await API.get('/api/employees/positions', true) || [];
       ['an', 'rec'].forEach(prefix => {
         const posSel = document.getElementById(`${prefix}FilterPosition`);
         if (posSel) {
-          posSel.innerHTML = '<option value="">💼 Todos los cargos</option>' + 
+          posSel.innerHTML = '<option value="">Todos los cargos</option>' + 
             positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
         }
       });
 
       // 3. Cargar Horarios
-      const schedules = await API.get('/api/schedules') || [];
+      const schedules = await API.get('/api/schedules', true) || [];
       ['an', 'rec'].forEach(prefix => {
         const schedSel = document.getElementById(`${prefix}FilterSchedule`);
         if (schedSel) {
-          schedSel.innerHTML = '<option value="">🕒 Todos los horarios</option>' + 
+          schedSel.innerHTML = '<option value="">Todos los horarios</option>' + 
             schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
         }
       });
 
       // 4. Cargar Empleados para buscador dinámico
-      const emps = await API.get('/api/employees?limit=5000') || [];
+      const emps = await API.get('/api/employees?limit=5000', true) || [];
       this.filterOptionsData = emps.map(e => {
         const fullName = `${e.first_name} ${e.last_name} ${e.employee_code}`;
         const searchable = fullName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -599,162 +680,9 @@ const ReportsPage = {
   },
 
   async loadComparativeAnalytics() {
-    const container = document.getElementById('repAnalyticsTableContainer');
-    if (!container) return;
-
-    const getEntityHeader = () => {
-      if (this.currentTab === 'general') return 'Empleado';
-      if (this.currentTab === 'departments') return 'Departamento';
-      if (this.currentTab === 'positions') return 'Cargo';
-      if (this.currentTab === 'schedules') return 'Horario';
-      return 'Nombre';
-    };
-
-    container.innerHTML = `
-      <div class="double-bezel-outer">
-        <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
-        <div class="card-header">
-          <div>
-            <div class="card-title" style="font-size: 1.1rem; color: var(--accent);">
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Tabla Comparativa de Analíticas
-            </div>
-            <div class="card-sub">Resumen de puntualidad y métricas clave de todos los elementos en el periodo seleccionado</div>
-          </div>
-        </div>
-        <div class="table-wrap" style="margin-top:16px;">
-          <table>
-            <thead>
-              <tr>
-                <th style="padding: 12px 16px;">${getEntityHeader()}</th>
-                <th style="text-align:center; padding: 12px 16px;">Puntualidad</th>
-                <th style="text-align:center; padding: 12px 16px;">Total Tardanzas</th>
-                <th style="text-align:center; padding: 12px 16px;">Hora Promedio Entrada</th>
-                <th style="text-align:center; padding: 12px 16px;">Día Crítico</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colspan="5" style="text-align:center; color:var(--text-3); padding: 40px 20px;">
-                  <div class="spinner" style="margin: 0 auto 12px;"></div>
-                  Cargando métricas comparativas...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        </div>
-      </div>
-    `;
-
-    const { date_from, date_to } = this.getDates('anDateRange');
-    let entities = [];
-
-    try {
-      let emps = await API.get('/api/employees?limit=5000') || [];
-      const deptId = document.getElementById('anFilterDepartment')?.value;
-      const posId = document.getElementById('anFilterPosition')?.value;
-      const schedId = document.getElementById('anFilterSchedule')?.value;
-      
-      if (deptId) emps = emps.filter(e => e.department_id == deptId);
-      if (posId) emps = emps.filter(e => e.position_id == posId);
-      if (schedId) emps = emps.filter(e => e.schedule_id == schedId);
-      
-      entities = emps;
-
-      if (!entities.length) {
-        container.querySelector('tbody').innerHTML = `
-          <tr>
-            <td colspan="5" style="text-align:center; color:var(--text-3); padding: 30px 20px;">
-              No hay elementos registrados para mostrar.
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      const promises = entities.map(async (ent) => {
-        let params = new URLSearchParams();
-        if (date_from) params.set('date_from', date_from);
-        if (date_to) params.set('date_to', date_to);
-
-        if (this.currentTab === 'general') {
-          params.set('search', ent.employee_code);
-        } else if (this.currentTab === 'departments') {
-          params.set('department_id', ent.id);
-        } else if (this.currentTab === 'positions') {
-          params.set('position_id', ent.id);
-        } else if (this.currentTab === 'schedules') {
-          params.set('schedule_id', ent.id);
-        }
-
-        try {
-          const data = await API.get(`/api/reports/analytics?${params}`);
-          return {
-            name: this.currentTab === 'general' ? `${ent.first_name} ${ent.last_name}` : ent.name,
-            code: this.currentTab === 'general' ? ent.employee_code : null,
-            punctuality: data.kpis.punctuality_rate,
-            lates: data.kpis.total_lates,
-            avg_entry: data.kpis.avg_entry_time,
-            critical: data.kpis.critical_day
-          };
-        } catch (err) {
-          return {
-            name: this.currentTab === 'general' ? `${ent.first_name} ${ent.last_name}` : ent.name,
-            code: this.currentTab === 'general' ? ent.employee_code : null,
-            punctuality: '0%',
-            lates: 0,
-            avg_entry: '--:--',
-            critical: 'Ninguno'
-          };
-        }
-      });
-
-      const results = await Promise.all(promises);
-
-      const tbody = container.querySelector('tbody');
-      tbody.innerHTML = results.map(r => {
-        const rateVal = parseFloat(r.punctuality);
-        let badgeClass = 'badge-gray';
-        if (!isNaN(rateVal)) {
-          if (rateVal >= 90) badgeClass = 'badge-green';
-          else if (rateVal >= 70) badgeClass = 'badge-yellow';
-          else badgeClass = 'badge-red';
-        }
-        return `
-          <tr style="transition: background 0.2s;">
-            <td style="font-weight:600; color:var(--text-1); padding: 12px 16px;">
-              ${r.name} ${r.code ? `<code style="background:var(--surface-3);padding:2px 6px;border-radius:4px;font-size:.7rem;margin-left:8px;font-family:'JetBrains Mono',monospace;">${r.code}</code>` : ''}
-            </td>
-            <td style="text-align:center; padding: 12px 16px;">
-              <span class="badge ${badgeClass}">${r.punctuality}</span>
-            </td>
-            <td style="text-align:center; font-weight:600; color:var(--text-2); font-family:'JetBrains Mono',monospace; padding: 12px 16px;">
-              ${r.lates}
-            </td>
-            <td style="text-align:center; color:var(--text-2); font-family:'JetBrains Mono',monospace; padding: 12px 16px;">
-              ${r.avg_entry}
-            </td>
-            <td style="text-align:center; color:var(--text-2); padding: 12px 16px;">
-              ${r.critical}
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-    } catch (e) {
-      console.error('Error al generar la tabla comparativa', e);
-      container.querySelector('tbody').innerHTML = `
-        <tr>
-          <td colspan="5" style="text-align:center; color:var(--danger); padding: 20px;">
-            Error al generar los datos de la tabla comparativa.
-          </td>
-        </tr>
-      `;
-    }
+    return ReportsAnalytics.loadComparativeAnalytics();
   },
 
-  // Obtiene las fechas del Flatpickr por ID de input
   getDates(inputId) {
     const el = document.getElementById(inputId);
     const range = el ? el.value : '';
@@ -763,12 +691,11 @@ const ReportsPage = {
       const dates = range.split(range.includes(' a ') ? ' a ' : ' to ');
       if (dates.length > 0 && dates[0]) res.date_from = dates[0].trim();
       if (dates.length > 1 && dates[1]) res.date_to = dates[1].trim();
-      else res.date_to = res.date_from; // Si no hay rango, date_to es igual a date_from
+      else res.date_to = res.date_from;
     }
     return res;
   },
 
-  // Evento al cambiar la selección de algún filtro
   async onFilterChange(prefix) {
     if (prefix === 'an') {
       const filterVal = document.getElementById('anFilterEntity')?.value || '';
@@ -776,28 +703,24 @@ const ReportsPage = {
       const compTable = document.getElementById('repAnalyticsTableContainer');
 
       if (filterVal === '') {
-        // Mostrar ambos para la vista general
         if (dashboard) dashboard.style.display = 'block';
         if (compTable) compTable.style.display = 'block';
-        // Ejecutar ambos en paralelo para mayor rapidez
         await Promise.all([
-          this.loadAnalytics(),
-          this.loadComparativeAnalytics()
+          ReportsAnalytics.loadAnalytics(),
+          ReportsAnalytics.loadComparativeAnalytics()
         ]);
       } else {
-        // Mostrar solo el dashboard para el empleado específico
         if (dashboard) dashboard.style.display = 'block';
         if (compTable) compTable.style.display = 'none';
-        await this.loadAnalytics();
+        await ReportsAnalytics.loadAnalytics();
       }
     } else if (prefix === 'rec') {
-      await this.loadReportTable(1);
+      await ReportsTable.loadReportTable(1);
     }
   },
 
-  // Evento al cambiar la granularidad (Diario, Semanal, Mensual)
   async onGranularityChange() {
-    await this.loadReportTable(1);
+    await ReportsTable.loadReportTable(1);
   },
 
   clearAllFilters(prefix) {
@@ -815,7 +738,6 @@ const ReportsPage = {
       document.getElementById('recGranularity').value = 'daily';
     }
     
-    // Restablecer flatpickr fecha a los últimos 30 días
     const today = new Date();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
@@ -828,18 +750,11 @@ const ReportsPage = {
   },
 
   toggleExportMenu(event) {
-    event.stopPropagation();
-    const menu = document.getElementById('repExportMenu');
-    if (menu) {
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    }
+    ReportsExport.toggleExportMenu(event);
   },
 
   closeExportMenu() {
-    const menu = document.getElementById('repExportMenu');
-    if (menu) {
-      menu.style.display = 'none';
-    }
+    ReportsExport.closeExportMenu();
   },
 
   switchReportTab(tabName) {
@@ -862,7 +777,7 @@ const ReportsPage = {
       }
       if (!this.loadedTabs.analytics) {
         this.loadedTabs.analytics = true;
-        this.onFilterChange('an'); // Usar onFilterChange para cargar todo correctamente
+        this.onFilterChange('an');
       }
     } else {
       if (isRecordsActive) return;
@@ -875,782 +790,67 @@ const ReportsPage = {
       }
       if (!this.loadedTabs.records) {
         this.loadedTabs.records = true;
-        this.loadReportTable(1);
+        ReportsTable.loadReportTable(1);
       }
     }
   },
 
-  // Carga KPIs y Gráficos Sincronizados
   async loadAnalytics() {
-    try {
-      const filterVal = document.getElementById('anFilterEntity')?.value || '';
-      const { date_from, date_to } = this.getDates('anDateRange');
-      
-      const params = new URLSearchParams();
-      if (date_from) params.set('date_from', date_from);
-      if (date_to) params.set('date_to', date_to);
-
-      if (filterVal) {
-        const text = document.getElementById('anFilterEntityInput')?.value || '';
-        const match = text.match(/\(([^)]+)\)/);
-        if (match && match[1]) {
-          params.set('search', match[1]);
-        }
-      }
-      
-      const deptId = document.getElementById('anFilterDepartment')?.value;
-      const posId = document.getElementById('anFilterPosition')?.value;
-      const schedId = document.getElementById('anFilterSchedule')?.value;
-      if (deptId) params.set('department_id', deptId);
-      if (posId) params.set('position_id', posId);
-      if (schedId) params.set('schedule_id', schedId);
-
-      const data = await API.get(`/api/reports/analytics?${params}`);
-
-      // Actualizar valores de los KPIs en la UI
-      document.getElementById('anTasaAsistencia').textContent = data.kpis.punctuality_rate;
-      document.getElementById('anTotalTardanzas').textContent = data.kpis.total_lates;
-      document.getElementById('anPromedioEntrada').textContent = data.kpis.avg_entry_time;
-      document.getElementById('anDiaCritico').textContent = data.kpis.critical_day;
-
-      // Renderizar Doughnut Chart
-      const dCanvas = document.getElementById('anDoughnutChart');
-      if (dCanvas) {
-        const dCtx = dCanvas.getContext('2d');
-        if (this.doughnutChart) this.doughnutChart.destroy();
-        this.doughnutChart = new Chart(dCtx, {
-          type: 'doughnut',
-          data: {
-            labels: ['A tiempo', 'Tardanza', 'Ausente', 'Licencia'],
-            datasets: [{
-              data: [
-                data.distribution.ontime, 
-                data.distribution.late, 
-                data.distribution.absent, 
-                data.distribution.leaves
-              ],
-              backgroundColor: [
-                'rgba(0, 230, 118, 0.85)', // Cyan/Cian success
-                'rgba(255, 179, 0, 0.85)',  // Yellow warning
-                'rgba(255, 61, 0, 0.85)',   // Red danger
-                'rgba(170, 0, 255, 0.85)'   // Purple accent
-              ],
-              borderColor: 'rgba(255, 255, 255, 0.05)',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'right',
-                labels: {
-                  color: '#cbd5e1',
-                  font: { family: 'Plus Jakarta Sans', size: 10, weight: 600 }
-                }
-              }
-            },
-            cutout: '72%'
-          }
-        });
-      }
-
-      // Renderizar Line Chart
-      const lCanvas = document.getElementById('anLineChart');
-      if (lCanvas) {
-        const lCtx = lCanvas.getContext('2d');
-        if (this.lineChart) this.lineChart.destroy();
-
-        const gradPresent = lCtx.createLinearGradient(0, 0, 0, 200);
-        gradPresent.addColorStop(0, 'rgba(0, 230, 118, 0.2)');
-        gradPresent.addColorStop(1, 'rgba(0, 230, 118, 0.0)');
-
-        const gradLate = lCtx.createLinearGradient(0, 0, 0, 200);
-        gradLate.addColorStop(0, 'rgba(255, 179, 0, 0.2)');
-        gradLate.addColorStop(1, 'rgba(255, 179, 0, 0.0)');
-
-        this.lineChart = new Chart(lCtx, {
-          type: 'line',
-          data: {
-            labels: data.trend.labels,
-            datasets: [
-              {
-                label: 'A tiempo',
-                data: data.trend.present,
-                borderColor: 'rgba(0, 230, 118, 0.9)',
-                backgroundColor: gradPresent,
-                fill: true,
-                tension: 0.3,
-                borderWidth: 2
-              },
-              {
-                label: 'Tardanzas',
-                data: data.trend.late,
-                borderColor: 'rgba(255, 179, 0, 0.9)',
-                backgroundColor: gradLate,
-                fill: true,
-                tension: 0.3,
-                borderWidth: 2
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#cbd5e1',
-                  font: { family: 'Plus Jakarta Sans', size: 10, weight: 600 }
-                }
-              }
-            },
-            scales: {
-              x: { 
-                ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 9, weight: 500 } }, 
-                grid: { color: 'rgba(255,255,255,.015)' } 
-              },
-              y: { 
-                ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 9, weight: 500 }, stepSize: 1 }, 
-                grid: { color: 'rgba(255,255,255,.015)' } 
-              }
-            }
-          }
-        });
-      }
-    } catch(e) {
-      console.error(e);
-      Toast.show('Error al refrescar analíticas', 'error');
-    }
+    return ReportsAnalytics.loadAnalytics();
   },
-
-  // Carga la Tabla de Datos según los Filtros de Registros (recPrefix)
-  reportPage: 1,
 
   async loadReportTable(page = 1) {
-    this.reportPage = page;
-    const filterVal = document.getElementById('recFilterEntity')?.value || '';
-    const repGranularity = document.getElementById('recGranularity').value;
-    const { date_from, date_to } = this.getDates('recDateRange');
-    
-    const params = new URLSearchParams({
-      page: this.reportPage,
-      page_size: 15,
-      granularity: repGranularity
-    });
-
-    if (date_from) params.set('date_from', date_from);
-    if (date_to) params.set('date_to', date_to);
-
-    if (filterVal) params.set('employee_id', filterVal);
-    
-    const deptId = document.getElementById('recFilterDepartment')?.value;
-    const posId = document.getElementById('recFilterPosition')?.value;
-    const schedId = document.getElementById('recFilterSchedule')?.value;
-    if (deptId) params.set('department_id', deptId);
-    if (posId) params.set('position_id', posId);
-    if (schedId) params.set('schedule_id', schedId);
-
-    const tbody = document.getElementById('repTableBody');
-    tbody.innerHTML = Array.from({length: 4}).map(() => `<tr>
-      <td colspan="10"><div class="skeleton sk-text w-100" style="height:22px; margin:4px 0;"></div></td>
-    </tr>`).join('');
-
-    try {
-      const data = await API.get(`/api/reports/report?${params}`);
-      const thead = document.getElementById('repTableHead');
-      
-      // Adaptar el encabezado de la tabla según la Granularidad
-      if (repGranularity === 'daily') {
-        thead.innerHTML = `
-          <tr>
-            <th>Empleado</th>
-            <th>Código</th>
-            <th>Departamento</th>
-            <th>Fecha</th>
-            <th>Horario</th>
-            <th>Entrada</th>
-            <th>Sal. Alm.</th>
-            <th>Ret. Alm.</th>
-            <th>Salida</th>
-            <th>Estado</th>
-          </tr>
-        `;
-      } else {
-        thead.innerHTML = `
-          <tr>
-            <th>Empleado</th>
-            <th>Código</th>
-            <th>Departamento</th>
-            <th>Período</th>
-            <th>Horario</th>
-            <th>Asistió</th>
-            <th>Tardanzas</th>
-            <th>Incompletos</th>
-            <th>Eventos Totales</th>
-          </tr>
-        `;
-      }
-
-      if (!data?.items?.length) {
-        tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><h3>Sin registros de asistencia</h3><p>No se encontraron marcas de reloj para el empleado o rango de fechas seleccionado.</p></div></td></tr>`;
-        document.getElementById('repPagination').innerHTML = '';
-        return;
-      }
-
-      const formatTime = (isoString) => {
-        if (!isoString) return '-';
-        return new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'});
-      };
-
-      tbody.innerHTML = data.items.map(r => {
-        if (repGranularity === 'daily') {
-          let statusBadge = '<span class="corp-badge corp-badge-present">OK</span>';
-          if (!r.is_present) statusBadge = '<span class="corp-badge corp-badge-absent">Ausente</span>';
-          else if (r.missing_punches) statusBadge = '<span class="corp-badge corp-badge-late">Incompleto</span>';
-          else if (r.is_late) statusBadge = '<span class="corp-badge corp-badge-late">Tardanza</span>';
-
-          const isSplit = r.schedule_type === 'split';
-          const typeBadge = isSplit ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continua</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>');
-
-          return `
-            <tr>
-              <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                  ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
-                  <span style="font-weight:600">${r.employee_name}</span>
-                </div>
-              </td>
-              <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
-              <td style="color:var(--text-2)">${r.department}</td>
-              <td style="color:var(--text-2)">${new Date(r.date + "T00:00:00").toLocaleDateString('es')}</td>
-              <td>${typeBadge}</td>
-              <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${formatTime(r.punches.entry_1)}</td>
-              <td style="color:var(--text-3);font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.exit_1) : '—'}</td>
-              <td style="color:var(--text-3);font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.entry_2) : '—'}</td>
-              <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.exit_2) : formatTime(r.punches.exit_1)}</td>
-              <td>${statusBadge}</td>
-            </tr>
-          `;
-        } else {
-          const pStart = new Date(r.period_start + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'2-digit'});
-          const pEnd = new Date(r.period_end + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'2-digit', year:'numeric'});
-          
-          return `
-            <tr>
-              <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                  ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
-                  <span style="font-weight:600">${r.employee_name}</span>
-                </div>
-              </td>
-              <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
-              <td style="color:var(--text-2)">${r.department}</td>
-              <td style="color:var(--text-2); font-weight:500;">${pStart} - ${pEnd}</td>
-              <td>${r.schedule_type === 'split' ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continuo</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>')}</td>
-              <td>${r.is_present ? '<span class="corp-badge corp-badge-present">Sí</span>' : '<span class="corp-badge corp-badge-absent">No</span>'}</td>
-              <td>${r.is_late ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
-              <td>${r.missing_punches ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
-              <td style="font-weight:600; font-family:'JetBrains Mono',monospace; text-align:center;">${r.total_raw_events}</td>
-            </tr>
-          `;
-        }
-      }).join('');
-
-      // Generar paginación limpia
-      const pag = document.getElementById('repPagination');
-      pag.innerHTML = `
-        <span class="pagination-info">${data.total} registros encontrados — Página ${data.page} de ${data.pages}</span>
-        <div class="pagination-btns" style="display:flex; gap:8px;">
-          <button class="page-btn" ${data.page <= 1 ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page - 1})" style="display:flex;align-items:center;gap:6px;">
-            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg> Anterior
-          </button>
-          <button class="page-btn" ${data.page >= data.pages ? 'disabled' : ''} onclick="ReportsPage.loadReportTable(${data.page + 1})" style="display:flex;align-items:center;gap:6px;">
-            Siguiente <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-        </div>
-      `;
-
-    } catch (e) {
-      console.error(e);
-      Toast.show('Error al refrescar tabla de reportes', 'error');
-    }
-  },
-
-  // Abrir modal de selección de columnas antes de exportar
-  openColumnSelector(title, onConfirm) {
-    const html = `
-      <div style="padding: 10px 15px; text-align: left;">
-        <p style="font-weight: 600; font-size: 0.95rem; color: var(--text-1); margin-bottom: 16px; line-height: 1.4;">
-          Personaliza tu reporte seleccionando las columnas que deseas incluir:
-        </p>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_period" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>📅 Fecha / Período</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_employee_code" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>🔑 Código de Empleado</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_employee_name" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>👤 Nombre Completo</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_department" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>🏢 Departamento</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_schedule" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>🕒 Horario Asignado</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_punches" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>📟 Marcaciones (Punches)</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
-            <input type="checkbox" id="col_status" checked style="width: 18px; height: 18px; accent-color: var(--accent);" />
-            <span>📊 Estado / Asistencia</span>
-          </label>
-        </div>
-      </div>
-    `;
-
-    const footer = `
-      <div style="display: flex; gap: 10px; width: 100%;">
-        <button class="btn btn-secondary" onclick="Modal.close()" style="flex: 1;">Cancelar</button>
-        <button class="btn btn-primary" id="btnConfirmExport" style="flex: 1; font-weight: 600;">Generar Reporte</button>
-      </div>
-    `;
-
-    Modal.open(title, html, footer);
-
-    document.getElementById('btnConfirmExport').addEventListener('click', () => {
-      const selected = [];
-      ['period', 'employee_code', 'employee_name', 'department', 'schedule', 'punches', 'status'].forEach(key => {
-        if (document.getElementById('col_' + key)?.checked) {
-          selected.push(key);
-        }
-      });
-
-      if (selected.length === 0) {
-        Toast.show('Debes seleccionar al menos una columna', 'warning');
-        return;
-      }
-
-      Modal.close();
-      onConfirm(selected.join(','));
-    });
-  },
-
-  getExportFilename(extension, prefix = 'Reporte') {
-    const filterInput = document.getElementById('recFilterEntityInput');
-    let namePart = 'Todos';
-    if (filterInput && filterInput.value.trim() && !filterInput.value.includes('Todos')) {
-      let rawName = filterInput.value.split('(')[0].trim();
-      namePart = rawName.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s-]/g, '').trim().replace(/\s+/g, '_');
-    }
-    const { date_from, date_to } = this.getDates('recDateRange');
-    let datePart = '';
-    if (date_from && date_to) {
-      datePart = `_${date_from}_a_${date_to}`;
-    } else if (date_from) {
-      datePart = `_desde_${date_from}`;
-    } else {
-      datePart = `_${new Date().toISOString().split('T')[0]}`;
-    }
-    return `${prefix}_${namePart}${datePart}.${extension}`;
+    return ReportsTable.loadReportTable(page);
   },
 
   exportReport(format) {
-    const title = format === 'excel' ? 'Exportar Excel Detallado' : 'Exportar PDF Imprimible';
-    this.openColumnSelector(title, (columns) => {
-      this.executeExportReport(format, columns);
-    });
+    ReportsExport.exportReport(format);
   },
 
   exportConsolidated() {
-    this.openColumnSelector('Exportar Consolidado Diario', (columns) => {
-      this.executeExportConsolidated(columns);
-    });
-  },
-
-  // Exportar Excel o PDF Detallado unificado (usa filtros de la pestaña de Registros 'rec')
-  executeExportReport(format, columns) {
-    const token = API.token();
-    const filterVal = document.getElementById('recFilterEntity')?.value || '';
-    const repGranularity = document.getElementById('recGranularity').value;
-    const { date_from, date_to } = this.getDates('recDateRange');
-    
-    const params = new URLSearchParams({
-      granularity: repGranularity,
-      export: format
-    });
-
-    if (date_from) params.set('date_from', date_from);
-    if (date_to) params.set('date_to', date_to);
-    if (columns) params.set('columns', columns);
-
-    if (filterVal) params.set('employee_id', filterVal);
-    
-    const deptId = document.getElementById('recFilterDepartment')?.value;
-    const posId = document.getElementById('recFilterPosition')?.value;
-    const schedId = document.getElementById('recFilterSchedule')?.value;
-    if (deptId) params.set('department_id', deptId);
-    if (posId) params.set('position_id', posId);
-    if (schedId) params.set('schedule_id', schedId);
-
-    if (format === 'excel') {
-      Toast.show('Generando reporte EXCEL...', 'info');
-      fetch(`/api/reports/report?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => {
-          if (!r.ok) throw new Error();
-          return r.blob();
-        })
-        .then(blob => {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = this.getExportFilename('xlsx', 'Reporte');
-          a.click();
-          Toast.show('Reporte EXCEL descargado con éxito', 'success');
-        })
-        .catch(() => Toast.show('Error al generar reporte EXCEL', 'error'));
-      return;
-    }
-
-    // PDF Asíncrono
-    Toast.show('Iniciando generación de PDF...', 'info');
-    
-    // Quitar export de los params de async
-    params.delete('export');
-
-    fetch(`/api/reports/report/async?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (!r.ok) throw new Error('Error al iniciar generación de reporte');
-        return r.json();
-      })
-      .then(data => {
-        const taskId = data.task_id;
-        
-        // Abrir Modal de Progreso
-        Modal.open(
-          'Generando Reporte PDF',
-          `
-          <div style="text-align: center; padding: 15px 10px;">
-            <p style="font-weight: 600; font-size: 1rem; color: #1e293b; margin-bottom: 8px;">
-              Generando reporte de asistencia con gráficos individuales...
-            </p>
-            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">
-              Esto puede demorar unos segundos. Por favor, no cierre esta ventana.
-            </p>
-            <div style="background-color: #f1f5f9; border-radius: 9999px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-              <div id="reportProgressBar" style="background-color: var(--accent, #7c3aed); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
-            </div>
-            <div id="reportProgressPercent" style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">0%</div>
-          </div>
-          `,
-          `
-          <button class="btn btn-secondary" id="cancelReportBtn" style="width: 100%; background: #64748b; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer;">Cancelar</button>
-          `
-        );
-
-        // Ocultar botón de cerrar modal para evitar cierres accidentales
-        const closeBtn = document.getElementById('modalClose');
-        if (closeBtn) closeBtn.style.display = 'none';
-
-        let isPolling = true;
-        const pollInterval = setInterval(() => {
-          if (!isPolling) return;
-
-          fetch(`/api/reports/report/status/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.json())
-            .then(statusData => {
-              if (statusData.status === 'processing') {
-                const progress = statusData.progress || 0;
-                const bar = document.getElementById('reportProgressBar');
-                const pct = document.getElementById('reportProgressPercent');
-                if (bar) bar.style.width = `${progress}%`;
-                if (pct) pct.textContent = `${progress}%`;
-              } else if (statusData.status === 'completed') {
-                isPolling = false;
-                clearInterval(pollInterval);
-                
-                // Actualizar a 100%
-                const bar = document.getElementById('reportProgressBar');
-                const pct = document.getElementById('reportProgressPercent');
-                if (bar) bar.style.width = '100%';
-                if (pct) pct.textContent = '100% - Descargando...';
-
-                // Descargar archivo
-                setTimeout(() => {
-                  fetch(`/api/reports/report/download/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
-                    .then(res => {
-                      if (!res.ok) throw new Error();
-                      return res.blob();
-                    })
-                    .then(blob => {
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = this.getExportFilename('pdf', 'Reporte');
-                      a.click();
-                      
-                      if (closeBtn) closeBtn.style.display = 'block';
-                      Modal.close();
-                      Toast.show('Reporte PDF descargado con éxito', 'success');
-                    })
-                    .catch(() => {
-                      if (closeBtn) closeBtn.style.display = 'block';
-                      Modal.close();
-                      Toast.show('Error al descargar el archivo PDF', 'error');
-                    });
-                }, 500);
-
-              } else if (statusData.status === 'failed' || statusData.status === 'not_found') {
-                isPolling = false;
-                clearInterval(pollInterval);
-                if (closeBtn) closeBtn.style.display = 'block';
-                Modal.close();
-                Toast.show(`Falla al generar reporte: ${statusData.error || 'Desconocido'}`, 'error');
-              }
-            })
-            .catch(() => {
-              isPolling = false;
-              clearInterval(pollInterval);
-              if (closeBtn) closeBtn.style.display = 'block';
-              Modal.close();
-              Toast.show('Error de conexión al verificar estado del reporte', 'error');
-            });
-        }, 1500);
-
-        // Si el usuario cancela
-        const handleCancel = () => {
-          isPolling = false;
-          clearInterval(pollInterval);
-          if (closeBtn) closeBtn.style.display = 'block';
-          Modal.close();
-          Toast.show('Generación de reporte cancelada', 'warning');
-        };
-
-        const cancelBtn = document.getElementById('cancelReportBtn');
-        if (cancelBtn) {
-          cancelBtn.addEventListener('click', handleCancel);
-        }
-      })
-      .catch(err => {
-        Toast.show(err.message || 'Error al solicitar reporte PDF', 'error');
-      });
-  },
-
-  // Exportar Excel Consolidado unificado (usa filtros de la pestaña de Registros 'rec')
-  executeExportConsolidated(columns) {
-    const token = API.token();
-    const filterVal = document.getElementById('recFilterEntity')?.value || '';
-    const { date_from, date_to } = this.getDates('recDateRange');
-    const params = new URLSearchParams();
-    if (date_from) params.set('date_from', date_from);
-    if (date_to) params.set('date_to', date_to);
-    if (columns) params.set('columns', columns);
-
-    if (filterVal) params.set('employee_id', filterVal);
-
-    const deptId = document.getElementById('recFilterDepartment')?.value;
-    const posId = document.getElementById('recFilterPosition')?.value;
-    const schedId = document.getElementById('recFilterSchedule')?.value;
-    if (deptId) params.set('department_id', deptId);
-    if (posId) params.set('position_id', posId);
-    if (schedId) params.set('schedule_id', schedId);
-
-    Toast.show('Generando consolidado diario...', 'info');
-
-    fetch(`/api/reports/consolidated?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (!r.ok) throw new Error();
-        return r.blob();
-      })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = this.getExportFilename('xlsx', 'Consolidado'); a.click();
-        Toast.show('Reporte Consolidado descargado con éxito', 'success');
-      })
-      .catch(() => Toast.show('Error al generar Excel Consolidado', 'error'));
+    ReportsExport.exportConsolidated();
   },
 
   async showMetricDetails(type) {
-    const titles = {
-      punctuality: 'Ranking de Puntualidad en el Período',
-      lates: 'Detalle de Tardanzas en el Período',
-      avg_entry: 'Promedio de Hora de Entrada en el Período',
-      critical_day: 'Tasa de Asistencia por Día de la Semana'
-    };
+    return ReportsAnalytics.showMetricDetails(type);
+  },
 
-    Toast.show('Cargando detalles de analítica...', 'info');
-
-    try {
-      const filterVal = document.getElementById('anFilterEntity')?.value || '';
-      const { date_from, date_to } = this.getDates('anDateRange');
-      
-      const params = new URLSearchParams({ type });
-      if (date_from) params.set('date_from', date_from);
-      if (date_to) params.set('date_to', date_to);
-
-      if (filterVal) {
-        const text = document.getElementById('anFilterEntityInput')?.value || '';
-        const match = text.match(/\(([^)]+)\)/);
-        if (match && match[1]) {
-          params.set('search', match[1]);
-        }
-      }
-      
-      const deptId = document.getElementById('anFilterDepartment')?.value;
-      const posId = document.getElementById('anFilterPosition')?.value;
-      const schedId = document.getElementById('anFilterSchedule')?.value;
-      if (deptId) params.set('department_id', deptId);
-      if (posId) params.set('position_id', posId);
-      if (schedId) params.set('schedule_id', schedId);
-
-      const data = await API.get(`/api/reports/analytics/details?${params}`);
-
-      let html = '';
-      if (!data || data.length === 0) {
-        html = `
-          <div style="text-align: center; padding: 40px 20px; color: var(--text-3);">
-            <div style="font-size: 3rem; margin-bottom: 10px;">📭</div>
-            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No se encontraron registros para mostrar.</p>
-          </div>
-        `;
-      } else {
-        html = `
-          <div style="max-height: 450px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
-            <table style="width: 100%; min-width: auto; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
-              <thead>
-                <tr style="background: var(--surface-2); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-1); position: sticky; top: 0; z-index: 10;">
-        `;
-
-        if (type === 'punctuality') {
-          html += `
-                  <th style="padding: 12px 16px;">Código</th>
-                  <th style="padding: 12px 16px;">Nombre</th>
-                  <th style="padding: 12px 16px;">Departamento</th>
-                  <th style="padding: 12px 16px; text-align: center;">Entradas</th>
-                  <th style="padding: 12px 16px; text-align: center;">A Tiempo</th>
-                  <th style="padding: 12px 16px; text-align: center;">Tardanzas</th>
-                  <th style="padding: 12px 16px; text-align: center;">Puntualidad</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(emp => {
-                  const rateNum = parseFloat(emp.rate);
-                  const rateColor = rateNum >= 90 ? 'var(--success)' : rateNum >= 75 ? 'var(--warning)' : 'var(--danger)';
-                  return `
-                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${emp.employee_code}</td>
-                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${emp.full_name}</td>
-                    <td style="padding: 12px 16px; color: var(--text-2);">${emp.department}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: var(--text-1);">${emp.total_entries}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: var(--success); font-weight: 600;">${emp.ontime_entries}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: var(--warning); font-weight: 600;">${emp.late_entries}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: ${rateColor}; font-weight: 700;">${emp.rate}</td>
-                  </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-          `;
-        } else if (type === 'lates') {
-          html += `
-                  <th style="padding: 12px 16px;">Código</th>
-                  <th style="padding: 12px 16px;">Nombre</th>
-                  <th style="padding: 12px 16px;">Departamento</th>
-                  <th style="padding: 12px 16px;">Fecha</th>
-                  <th style="padding: 12px 16px;">H. Entrada Prog.</th>
-                  <th style="padding: 12px 16px;">H. Entrada Real</th>
-                  <th style="padding: 12px 16px;">Retraso</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(row => `
-                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
-                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
-                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
-                    <td style="padding: 12px 16px; color: var(--text-1); font-weight: 500;">${row.date}</td>
-                    <td style="padding: 12px 16px; color: var(--text-2);">${row.schedule_time}</td>
-                    <td style="padding: 12px 16px; color: var(--text-1);">${row.entry_time}</td>
-                    <td style="padding: 12px 16px; font-weight: 600; color: var(--warning);">${row.delay}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-          `;
-        } else if (type === 'avg_entry') {
-          html += `
-                  <th style="padding: 12px 16px;">Código</th>
-                  <th style="padding: 12px 16px;">Nombre</th>
-                  <th style="padding: 12px 16px;">Departamento</th>
-                  <th style="padding: 12px 16px;">Entrada Horario</th>
-                  <th style="padding: 12px 16px;">Promedio de Entrada</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(row => `
-                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
-                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
-                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
-                    <td style="padding: 12px 16px; color: var(--text-2);">${row.schedule_time}</td>
-                    <td style="padding: 12px 16px; font-weight: 600; color: var(--accent);">${row.avg_entry}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-          `;
-        } else if (type === 'critical_day') {
-          html += `
-                  <th style="padding: 12px 16px;">Día</th>
-                  <th style="padding: 12px 16px; text-align: center;">Total Entradas</th>
-                  <th style="padding: 12px 16px; text-align: center;">A Tiempo</th>
-                  <th style="padding: 12px 16px; text-align: center;">Tardanzas</th>
-                  <th style="padding: 12px 16px; text-align: center;">Puntualidad</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(row => {
-                  const rateNum = parseFloat(row.rate);
-                  const rateColor = rateNum >= 90 ? 'var(--success)' : rateNum >= 75 ? 'var(--warning)' : 'var(--danger)';
-                  return `
-                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-1);">${row.day_name}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: var(--text-1);">${row.total_entries}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: var(--success); font-weight: 600;">${row.ontime_entries}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: var(--warning); font-weight: 600;">${row.late_entries}</td>
-                    <td style="padding: 12px 16px; text-align: center; color: ${rateColor}; font-weight: 700;">${row.rate}</td>
-                  </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-          `;
-        }
-      }
-
-      Modal.open(titles[type], html, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>`);
-      
-      const modalEl = document.querySelector('#modalOverlay .modal');
-      if (modalEl) {
-        modalEl.style.maxWidth = '780px';
-      }
-    } catch(err) {
-      Toast.show('Error al cargar los detalles: ' + err.message, 'error');
+  applyDatePreset(prefix, val) {
+    const fp = document.getElementById(`${prefix}DateRange`)?._flatpickr;
+    if (!fp) return;
+    
+    const today = new Date();
+    let start, end;
+    
+    switch (val) {
+      case 'today':
+        start = end = today;
+        break;
+      case 'yesterday':
+        start = end = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'last7':
+        start = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+        end = today;
+        break;
+      case 'last30':
+        start = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
+        end = today;
+        break;
+      case 'thisMonth':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = today;
+        break;
+      case 'lastMonth':
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+        break;
+      default:
+        return; // Manual input
     }
+    
+    fp.setDate([start, end]);
+    this.onFilterChange(prefix);
   }
 };
 

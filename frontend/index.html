@@ -6,7 +6,7 @@
   <title>Iniciar Sesión — Sistema de Asistencia</title>
   <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/static/styles.css?v=11" />
+  <link rel="stylesheet" href="/static/main.css?v=30" />
   <style>
     body { display:flex; align-items:center; justify-content:center; min-height:100vh; background-color: #f8fafc; color: var(--text-1); font-family: 'Plus Jakarta Sans', sans-serif; position:relative; overflow:hidden; }
     
@@ -409,7 +409,7 @@
     }
 
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings/public');
       if (res.ok) {
         const data = await res.json();
         if (data.system_name) {

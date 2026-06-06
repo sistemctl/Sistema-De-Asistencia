@@ -2,6 +2,10 @@
 Cliente ISAPI para el Hikvision DS-K1T323MBWX.
 Incluye modo MOCK automático cuando el dispositivo no está disponible en red.
 """
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import random
 from datetime import datetime, timedelta
@@ -23,15 +27,18 @@ class HikvisionClient:
         self.password = password
         self.timeout = DEVICE_TIMEOUT
         self._is_online: Optional[bool] = None
+        
+        # Connection pooling + digest authentication caching
+        self.session = requests.Session()
+        self.session.auth = HTTPDigestAuth(self.username, self.password)
 
     # ── Conectividad ──────────────────────────────────────────────────────────
 
     def check_online(self) -> bool:
         """Verifica si el dispositivo responde. Actualiza self._is_online."""
         try:
-            r = requests.get(
+            r = self.session.get(
                 f"{self.base_url}/System/deviceInfo",
-                auth=HTTPDigestAuth(self.username, self.password),
                 timeout=self.timeout,
             )
             self._is_online = r.status_code in (200, 401)
@@ -48,9 +55,8 @@ class HikvisionClient:
     # ── Info del dispositivo ──────────────────────────────────────────────────
 
     def get_device_info(self) -> dict:
-        r = requests.get(
+        r = self.session.get(
             f"{self.base_url}/System/deviceInfo",
-            auth=HTTPDigestAuth(self.username, self.password),
             timeout=self.timeout,
         )
         r.raise_for_status()
@@ -81,9 +87,8 @@ class HikvisionClient:
                 "maxResults": limit,
             }
         }
-        r = requests.post(
+        r = self.session.post(
             f"{self.base_url}/AccessControl/UserInfo/Search?format=json",
-            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -113,9 +118,8 @@ class HikvisionClient:
 
         # El terminal Hikvision requiere el verbo PUT y la raíz UserInfo como objeto (no lista)
         payload = {"UserInfo": user_info}
-        r = requests.put(
+        r = self.session.put(
             f"{self.base_url}/AccessControl/UserInfo/SetUp?format=json",
-            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -124,9 +128,8 @@ class HikvisionClient:
 
     def delete_user(self, user_id: str) -> dict:
         payload = {"UserInfoDelCond": {"EmployeeNoList": [{"employeeNo": user_id}]}}
-        r = requests.put(
+        r = self.session.put(
             f"{self.base_url}/AccessControl/UserInfo/Delete?format=json",
-            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -137,16 +140,15 @@ class HikvisionClient:
         """Elimina la foto facial previa de un usuario del dispositivo si existe."""
         try:
             # 1. Intentar con el método HTTP DELETE directo
-            r = requests.delete(
+            r = self.session.delete(
                 f"{self.base_url}/Intelligent/FDLib/1/picture/{user_id}?format=json",
-                auth=HTTPDigestAuth(self.username, self.password),
                 timeout=self.timeout,
             )
             if r.status_code == 200:
-                print(f"Foto previa de {user_id} eliminada por DELETE directo.")
+                logger.info(f"Foto previa de {user_id} eliminada por DELETE directo.")
                 return r.json()
         except Exception as delete_direct_err:
-            print(f"Error o método no soportado en DELETE directo para {user_id}: {delete_direct_err}")
+            logger.error(f"Error o método no soportado en DELETE directo para {user_id}: {delete_direct_err}")
 
         # 2. Fallback al método PUT FDSearch/Delete (con la estructura de payload correcta)
         payload = {
@@ -155,17 +157,16 @@ class HikvisionClient:
             ]
         }
         try:
-            r = requests.put(
+            r = self.session.put(
                 f"{self.base_url}/Intelligent/FDLib/FDSearch/Delete?format=json&FDID=1&faceLibType=blackFD",
-                auth=HTTPDigestAuth(self.username, self.password),
                 json=payload,
                 timeout=self.timeout,
             )
             if r.status_code == 200:
-                print(f"Foto previa de {user_id} eliminada por PUT FDSearch/Delete.")
+                logger.info(f"Foto previa de {user_id} eliminada por PUT FDSearch/Delete.")
                 return r.json()
         except Exception as e:
-            print(f"Advertencia al intentar eliminar foto de rostro previa para {user_id}: {e}")
+            logger.error(f"Advertencia al intentar eliminar foto de rostro previa para {user_id}: {e}")
         return {}
 
     def upload_face_photo(self, user_id: str, photo_bytes: bytes) -> dict:
@@ -188,9 +189,8 @@ class HikvisionClient:
             'FaceDataRecord': (None, json.dumps(face_data), 'application/json'),
             'FaceImage': ('face.jpg', photo_bytes, 'image/jpeg')
         }
-        r = requests.post(
+        r = self.session.post(
             f"{self.base_url}/Intelligent/FDLib/FaceDataRecord?format=json",
-            auth=HTTPDigestAuth(self.username, self.password),
             files=files,
             timeout=self.timeout,
         )
@@ -208,7 +208,6 @@ class HikvisionClient:
         limit = 500  # Pedir de 500 en 500 para evitar saturar el dispositivo
 
         while True:
-
             # Formatear tiempos con offset ISO8601 correcto para la zona configurada
             tz = ZoneInfo(TIMEZONE)
             st_aware = start_time.replace(tzinfo=tz) if not start_time.tzinfo else start_time.astimezone(tz)
@@ -230,9 +229,8 @@ class HikvisionClient:
                 }
             }
             try:
-                r = requests.post(
+                r = self.session.post(
                     f"{self.base_url}/AccessControl/AcsEvent?format=json",
-                    auth=HTTPDigestAuth(self.username, self.password),
                     json=payload,
                     timeout=self.timeout,
                 )
@@ -272,9 +270,8 @@ class HikvisionClient:
     # ── Capacidades ───────────────────────────────────────────────────────────
 
     def get_capabilities(self) -> dict:
-        r = requests.get(
+        r = self.session.get(
             f"{self.base_url}/AccessControl/capabilities",
-            auth=HTTPDigestAuth(self.username, self.password),
             timeout=self.timeout,
         )
         r.raise_for_status()
@@ -283,15 +280,14 @@ class HikvisionClient:
     # ── Control Remoto ────────────────────────────────────────────────────────
     
     def reboot_device(self) -> dict:
-        r = requests.put(
+        r = self.session.put(
             f"{self.base_url}/System/reboot",
-            auth=HTTPDigestAuth(self.username, self.password),
             timeout=self.timeout,
         )
         r.raise_for_status()
         try:
             return r.json()
-        except:
+        except Exception:
             return {"status": "success", "message": "Reboot command sent"}
 
     def open_door(self, door_no: int = 1) -> dict:
@@ -300,9 +296,8 @@ class HikvisionClient:
                 "cmd": "open"
             }
         }
-        r = requests.put(
+        r = self.session.put(
             f"{self.base_url}/AccessControl/RemoteControl/door/{door_no}?format=json",
-            auth=HTTPDigestAuth(self.username, self.password),
             json=payload,
             timeout=self.timeout,
         )
@@ -322,9 +317,8 @@ class HikvisionClient:
         }
         try:
             # Primero intentar JSON
-            r = requests.put(
+            r = self.session.put(
                 f"{self.base_url}/System/time?format=json",
-                auth=HTTPDigestAuth(self.username, self.password),
                 json=payload,
                 timeout=self.timeout,
             )
@@ -337,9 +331,8 @@ class HikvisionClient:
 <Time>
     <localTime>{time_str}</localTime>
 </Time>"""
-                r = requests.put(
+                r = self.session.put(
                     f"{self.base_url}/System/time",
-                    auth=HTTPDigestAuth(self.username, self.password),
                     data=xml_payload,
                     timeout=self.timeout,
                 )
@@ -347,57 +340,3 @@ class HikvisionClient:
                 return {"status": "success", "message": "Time synced via XML"}
             raise e
 
-# ── Modo MOCK / Simulación ────────────────────────────────────────────────────
-
-MOCK_NAMES = [
-    "Carlos García", "María López", "Juan Martínez", "Ana Rodríguez",
-    "Pedro Sánchez", "Laura González", "Miguel Hernández", "Sofía Díaz",
-    "Luis Pérez", "Carmen Torres",
-]
-
-def generate_mock_events(since: datetime, employee_ids: list[str], max_events: int = 20) -> list[dict]:
-    """
-    Genera eventos de asistencia ficticios para desarrollo sin dispositivo.
-    Simula entradas entre 07:30 y 09:30 y salidas entre 17:00 y 18:30.
-    """
-    events = []
-    tz = ZoneInfo(TIMEZONE)
-    now = datetime.now(tz)
-    day = since.date()
-
-    # Solo generar eventos para días pasados hasta hoy
-    while day <= now.date() and len(events) < max_events:
-        if day.weekday() < 5:  # Lunes a viernes
-            for uid in random.sample(employee_ids, min(len(employee_ids), random.randint(7, len(employee_ids)))):
-                # Entrada
-                entry_hour = random.randint(7, 9)
-                entry_min = random.randint(0, 59)
-                entry_dt = datetime(day.year, day.month, day.day, entry_hour, entry_min, tzinfo=tz)
-                events.append({
-                    "eventId": f"MOCK-{day}-{uid}-IN",
-                    "employeeNoString": uid,
-                    "time": entry_dt.isoformat(),
-                    "major": 5,
-                    "minor": 75,
-                    "currentVerifyMode": "faceNotCompare",
-                    "name": random.choice(MOCK_NAMES),
-                    "_mock": True,
-                })
-                # Salida
-                if random.random() > 0.1:
-                    exit_hour = random.randint(17, 18)
-                    exit_min = random.randint(0, 59)
-                    exit_dt = datetime(day.year, day.month, day.day, exit_hour, exit_min, tzinfo=tz)
-                    events.append({
-                        "eventId": f"MOCK-{day}-{uid}-OUT",
-                        "employeeNoString": uid,
-                        "time": exit_dt.isoformat(),
-                        "major": 5,
-                        "minor": 75,
-                        "currentVerifyMode": "faceNotCompare",
-                        "name": random.choice(MOCK_NAMES),
-                        "_mock": True,
-                    })
-        day += timedelta(days=1)
-
-    return events[:max_events]
