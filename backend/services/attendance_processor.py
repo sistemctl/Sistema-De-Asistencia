@@ -109,8 +109,13 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
     summary["schedule_type"] = schedule.shift_type
     
     # Load advanced rules from SystemConfig
-    entry_tolerance = config.entry_tolerance_minutes if config else 10
-    exit_tolerance = config.exit_tolerance_minutes if config else 10
+    tolerance_enable = config.tolerance_enable if (config and hasattr(config, 'tolerance_enable')) else True
+    flexible_shift_enable = config.flexible_shift_enable if (config and hasattr(config, 'flexible_shift_enable')) else True
+    flexible_shift_start_str = config.flexible_shift_start if (config and hasattr(config, 'flexible_shift_start')) else "09:00:00"
+    flexible_shift_end_str = config.flexible_shift_end if (config and hasattr(config, 'flexible_shift_end')) else "18:00:00"
+
+    entry_tolerance = config.entry_tolerance_minutes if (config and tolerance_enable) else 0
+    exit_tolerance = config.exit_tolerance_minutes if (config and tolerance_enable) else 0
     require_checkin = config.require_checkin if config else True
     require_checkout = config.require_checkout if config else True
     
@@ -132,62 +137,132 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
     no_checkout_status = config.no_checkout_status if config else "Absent"
 
     if schedule.shift_type == "continuous":
-        # 1 Entry, 1 Exit
+        # Check if the schedule itself is flexible
+        is_flexible_sched = False
+        if flexible_shift_enable:
+            sched_name = (schedule.name or "").lower()
+            if "flexible" in sched_name or "flex" in sched_name:
+                is_flexible_sched = True
+
         work_start = parse_time(schedule.work_start_time)
         work_end = parse_time(schedule.work_end_time)
 
         if not work_start or not work_end:
             return summary
 
-        target_start = datetime.combine(target_date, work_start)
-        if work_start > work_end:
-            target_end = datetime.combine(target_date + timedelta(days=1), work_end)
-        else:
-            target_end = datetime.combine(target_date, work_end)
-        mid_point = target_start + (target_end - target_start) / 2
-
-        entries = [r for r in day_records if r.event_time <= mid_point]
-        exits = [r for r in day_records if r.event_time > mid_point]
-
-        if entries:
-            best_entry = min(entries, key=lambda r: abs((r.event_time - target_start).total_seconds()))
-            summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
-            summary["is_present"] = True
-            
-            # Check late/absent based on delay
-            diff_minutes = (best_entry.event_time - target_start).total_seconds() / 60.0
-            if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
-                summary["is_present"] = False
-            elif mark_late_enable and diff_minutes > mark_late_limit_minutes:
-                summary["is_late"] = True
-        else:
-            if require_checkin:
-                if no_checkin_enable:
-                    if no_checkin_status == "Absent":
-                        summary["is_present"] = False
-                    elif no_checkin_status in ["Present", "Normal"]:
-                        summary["is_present"] = True
+        if is_flexible_sched:
+            # Flexible shift logic
+            # Calculate duration of work required based on schedule times
+            if work_start > work_end:
+                duration_secs = (datetime.combine(target_date + timedelta(days=1), work_end) - datetime.combine(target_date, work_start)).total_seconds()
             else:
-                summary["is_present"] = True
+                duration_secs = (datetime.combine(target_date, work_end) - datetime.combine(target_date, work_start)).total_seconds()
 
-        if exits:
-            best_exit = min(exits, key=lambda r: abs((r.event_time - target_end).total_seconds()))
-            summary["punches"]["exit_1"] = best_exit.event_time.isoformat()
+            flex_start = parse_time(flexible_shift_start_str) or parse_time("09:00")
+            flex_end = parse_time(flexible_shift_end_str) or parse_time("18:00")
             
-            # Check early checkout
-            diff_minutes = (target_end - best_exit.event_time).total_seconds() / 60.0
-            if diff_minutes > 0: # Left early
-                summary["is_early_exit"] = True
-                if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
-                    summary["is_present"] = False
-        else:
-            if require_checkout:
-                if no_checkout_enable:
-                    if no_checkout_status == "Absent":
+            target_flex_start = datetime.combine(target_date, flex_start)
+            target_flex_end = datetime.combine(target_date, flex_end)
+            
+            # Midpoint is target_flex_start + 6 hours
+            mid_point = target_flex_start + timedelta(hours=6)
+            
+            entries = [r for r in day_records if r.event_time <= mid_point]
+            exits = [r for r in day_records if r.event_time > mid_point]
+            
+            entry_time_dt = None
+            if entries:
+                best_entry = min(entries, key=lambda r: r.event_time)
+                summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
+                summary["is_present"] = True
+                entry_time_dt = best_entry.event_time
+                
+                # Check late status relative to target_flex_end
+                diff_minutes = (best_entry.event_time - target_flex_end).total_seconds() / 60.0
+                if diff_minutes > entry_tolerance:
+                    if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
                         summary["is_present"] = False
-                summary["missing_punches"] = True
+                    elif mark_late_enable:
+                        summary["is_late"] = True
+            else:
+                if require_checkin:
+                    if no_checkin_enable:
+                        if no_checkin_status == "Absent":
+                            summary["is_present"] = False
+                        elif no_checkin_status in ["Present", "Normal"]:
+                            summary["is_present"] = True
+                else:
+                    summary["is_present"] = True
 
-        # Calculate hours_worked for continuous shift
+            if exits:
+                best_exit = max(exits, key=lambda r: r.event_time)
+                summary["punches"]["exit_1"] = best_exit.event_time.isoformat()
+                
+                # Check early exit relative to entry_time_dt + duration_secs
+                if entry_time_dt:
+                    expected_exit = entry_time_dt + timedelta(seconds=duration_secs)
+                    diff_minutes = (expected_exit - best_exit.event_time).total_seconds() / 60.0
+                    if diff_minutes > exit_tolerance:
+                        summary["is_early_exit"] = True
+                        if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
+                            summary["is_present"] = False
+            else:
+                if require_checkout:
+                    if no_checkout_enable:
+                        if no_checkout_status == "Absent":
+                            summary["is_present"] = False
+                    summary["missing_punches"] = True
+        else:
+            # Standard continuous shift logic
+            target_start = datetime.combine(target_date, work_start)
+            if work_start > work_end:
+                target_end = datetime.combine(target_date + timedelta(days=1), work_end)
+            else:
+                target_end = datetime.combine(target_date, work_end)
+            mid_point = target_start + (target_end - target_start) / 2
+
+            entries = [r for r in day_records if r.event_time <= mid_point]
+            exits = [r for r in day_records if r.event_time > mid_point]
+
+            if entries:
+                best_entry = min(entries, key=lambda r: abs((r.event_time - target_start).total_seconds()))
+                summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
+                summary["is_present"] = True
+                
+                # Check late/absent based on delay
+                diff_minutes = (best_entry.event_time - target_start).total_seconds() / 60.0
+                if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
+                    summary["is_present"] = False
+                elif mark_late_enable and diff_minutes > mark_late_limit_minutes:
+                    summary["is_late"] = True
+            else:
+                if require_checkin:
+                    if no_checkin_enable:
+                        if no_checkin_status == "Absent":
+                            summary["is_present"] = False
+                        elif no_checkin_status in ["Present", "Normal"]:
+                            summary["is_present"] = True
+                else:
+                    summary["is_present"] = True
+
+            if exits:
+                best_exit = min(exits, key=lambda r: abs((r.event_time - target_end).total_seconds()))
+                summary["punches"]["exit_1"] = best_exit.event_time.isoformat()
+                
+                # Check early checkout
+                diff_minutes = (target_end - best_exit.event_time).total_seconds() / 60.0
+                if diff_minutes > 0: # Left early
+                    summary["is_early_exit"] = True
+                    if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
+                        summary["is_present"] = False
+            else:
+                if require_checkout:
+                    if no_checkout_enable:
+                        if no_checkout_status == "Absent":
+                            summary["is_present"] = False
+                    summary["missing_punches"] = True
+
+        # Calculate hours_worked for continuous shift (common to both flexible and strict)
         e1 = summary["punches"]["entry_1"]
         x1 = summary["punches"]["exit_1"]
         if e1 and x1:

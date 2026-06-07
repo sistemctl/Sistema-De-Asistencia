@@ -184,54 +184,101 @@ const SystemSettingsPage = {
             </table>
 
             <!-- Configuración Turno Flexible y Tolerancias -->
-            <div class="settings-subgrid">
+            <div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
+              
+              <!-- Turno Flexible -->
               <div>
-                <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent); margin-bottom: 12px;">Turno Flexible</div>
-                <div class="field" style="background: var(--surface-2); padding: 14px; border-radius: 12px; border: 1px solid var(--border);">
-                  <label>Rango de Entrada/Salida predeterminada</label>
-                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
-                    <input type="time" id="sysFlexibleShiftStart" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-1);" />
-                    <span style="color: var(--text-3);">a</span>
-                    <input type="time" id="sysFlexibleShiftEnd" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-1);" />
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+                  <label class="toggle-switch" style="transform: scale(0.9);">
+                    <input type="checkbox" id="sysFlexibleShiftEnable">
+                    <span class="slider"></span>
+                  </label>
+                  Turno Flexible
+                </div>
+                <div style="background: var(--surface-2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.9rem;">Rango de Entrada/Salida predeterminada</div>
+                    <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 4px;">Define el rango horario base para empleados con turnos flexibles.</div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                      <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 600;">Hora Inicial</label>
+                      <input type="time" id="sysFlexibleShiftStart" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-1); font-family: monospace; font-size: 0.95rem;" />
+                    </div>
+                    <span style="color: var(--text-3); margin-top: 18px;">—</span>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                      <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 600;">Hora Final</label>
+                      <input type="time" id="sysFlexibleShiftEnd" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-1); font-family: monospace; font-size: 0.95rem;" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tolerancias -->
+              <div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+                  <label class="toggle-switch" style="transform: scale(0.9);">
+                    <input type="checkbox" id="sysToleranceEnable">
+                    <span class="slider"></span>
+                  </label>
+                  Tolerancias de Marcación (Minutos de gracia)
+                </div>
+                <div style="background: var(--surface-2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                  <div style="flex: 1; min-width: 200px;">
+                    <div style="font-weight: 600; font-size: 0.9rem;">Minutos de gracia permitidos</div>
+                    <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 4px;">Tiempo máximo permitido antes de aplicar una penalización por llegada tardía o salida anticipada.</div>
+                  </div>
+                  <div style="display: flex; gap: 16px; align-items: center;">
+                    <div style="display: flex; flex-direction: column; gap: 4px; width: 110px;">
+                      <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 600;">En Entradas</label>
+                      <div style="position: relative;">
+                        <input id="sysEntryTolerance" type="number" min="0" max="120" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-1); font-family: monospace; font-size: 0.95rem;" />
+                        <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--text-3); pointer-events: none;">min</span>
+                      </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; width: 110px;">
+                      <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 600;">En Salidas</label>
+                      <div style="position: relative;">
+                        <input id="sysExitTolerance" type="number" min="0" max="120" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-1); font-family: monospace; font-size: 0.95rem;" />
+                        <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--text-3); pointer-events: none;">min</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              <div>
-                <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent); margin-bottom: 12px;">Tolerancias de Marcación</div>
-                <div class="field" style="background: var(--surface-2); padding: 14px; border-radius: 12px; border: 1px solid var(--border); display: flex; gap: 12px;">
-                  <div style="flex: 1;">
-                    <label style="font-size: 0.78rem;">Tolerancia Entrada</label>
-                    <input id="sysEntryTolerance" type="number" min="0" max="120" style="width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px;" />
-                  </div>
-                  <div style="flex: 1;">
-                    <label style="font-size: 0.78rem;">Tolerancia Salida</label>
-                    <input id="sysExitTolerance" type="number" min="0" max="120" style="width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px;" />
-                  </div>
-                </div>
-              </div>
             </div>
             
             <!-- Formatos y Días -->
-            <div class="settings-subgrid">
-              <div class="field">
-                <label>Formato de Visualización de Hora</label>
-                <select id="sysTimeFormat" style="width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); padding: 12px 18px; border-radius: 12px; box-sizing: border-box; cursor: pointer;">
-                  <option value="24h">24 Horas (Ej. 17:30)</option>
-                  <option value="12h">12 Horas AM/PM (Ej. 05:30 PM)</option>
-                </select>
-              </div>
-              
-              <div class="field">
-                <label>Días Laborables de la Semana (Cálculo de Ausencias)</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--surface-2); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border);">
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="1" /> Lunes</label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="2" /> Martes</label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="3" /> Miércoles</label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="4" /> Jueves</label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="5" /> Viernes</label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="6" /> Sábado</label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; text-transform: none; margin: 0; font-size: 0.8rem;"><input type="checkbox" class="sys-workday-check" value="7" /> Domingo</label>
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent); margin-bottom: 12px;">Preferencias Globales y Días Laborables</div>
+                <div style="background: var(--surface-2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                  
+                  <!-- Formato de Hora -->
+                  <div style="display: flex; flex-direction: column; justify-content: flex-start;">
+                    <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 600; margin-bottom: 8px;">Formato de Visualización de Hora</label>
+                    <select id="sysTimeFormat" style="width: 100%; background: var(--surface-3); border: 1px solid var(--border); color: var(--text-1); padding: 12px 16px; border-radius: 8px; box-sizing: border-box; cursor: pointer; font-size: 0.95rem;">
+                      <option value="24h">24 Horas (Ej. 17:30)</option>
+                      <option value="12h">12 Horas AM/PM (Ej. 05:30 PM)</option>
+                    </select>
+                    <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 8px;">Este formato se aplicará globalmente en reportes y vistas de calendario.</div>
+                  </div>
+                  
+                  <!-- Días Laborables -->
+                  <div>
+                    <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 600; margin-bottom: 8px; display: block;">Días Laborables (Para Cálculo de Ausencias)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--surface-3); padding: 14px; border-radius: 8px; border: 1px solid var(--border);">
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="1" /> Lunes</label>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="2" /> Martes</label>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="3" /> Miércoles</label>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="4" /> Jueves</label>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="5" /> Viernes</label>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="6" /> Sábado</label>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-1);"><input type="checkbox" class="sys-workday-check" value="7" /> Domingo</label>
+                    </div>
+                  </div>
+                  
                 </div>
               </div>
             </div>
@@ -283,6 +330,8 @@ const SystemSettingsPage = {
       
       document.getElementById('sysTimeFormat').value = data.time_format || '24h';
       
+      document.getElementById('sysToleranceEnable').checked = data.tolerance_enable ?? true;
+      document.getElementById('sysFlexibleShiftEnable').checked = data.flexible_shift_enable ?? true;
       document.getElementById('sysFlexibleShiftStart').value = data.flexible_shift_start || '09:00:00';
       document.getElementById('sysFlexibleShiftEnd').value = data.flexible_shift_end || '18:00:00';
 
@@ -329,8 +378,11 @@ const SystemSettingsPage = {
     const noCheckoutEnable = document.getElementById('sysNoCheckoutEnable').checked;
     const noCheckoutStatus = document.getElementById('sysNoCheckoutStatus').value;
     
+    const flexibleShiftEnable = document.getElementById('sysFlexibleShiftEnable').checked;
     const flexibleShiftStart = document.getElementById('sysFlexibleShiftStart').value || '09:00:00';
     const flexibleShiftEnd = document.getElementById('sysFlexibleShiftEnd').value || '18:00:00';
+    
+    const toleranceEnable = document.getElementById('sysToleranceEnable').checked;
 
     try {
       if (!this.settings.system_name) {
@@ -347,6 +399,7 @@ const SystemSettingsPage = {
         bg_surface_color: this.settings.bg_surface_color || '#ffffff',
         work_days: workDaysStr,
         time_format: timeFormat,
+        tolerance_enable: toleranceEnable,
         entry_tolerance_minutes: entryTolerance,
         exit_tolerance_minutes: exitTolerance,
         require_checkin: requireCheckin,
@@ -363,6 +416,7 @@ const SystemSettingsPage = {
         no_checkin_status: noCheckinStatus,
         no_checkout_enable: noCheckoutEnable,
         no_checkout_status: noCheckoutStatus,
+        flexible_shift_enable: flexibleShiftEnable,
         flexible_shift_start: flexibleShiftStart,
         flexible_shift_end: flexibleShiftEnd
       });

@@ -23,6 +23,7 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    force_password_change: bool = False
     perm_manage_users: bool = False
     perm_manage_device: bool = False
     perm_manage_settings: bool = False
@@ -41,6 +42,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     role: str = "viewer"
+    force_password_change: bool = False
     perm_manage_users: bool = False
     perm_manage_device: bool = False
     perm_manage_settings: bool = False
@@ -56,6 +58,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None
+    force_password_change: Optional[bool] = None
     perm_manage_users: Optional[bool] = None
     perm_manage_device: Optional[bool] = None
     perm_manage_settings: Optional[bool] = None

@@ -3,6 +3,7 @@ const EmployeesPage = {
   page: 1, limit: 50, search: '', depts: [], positions: [], schedules: [],
   filterDept: '', filterPosition: '', filterStatus: '',
   visibleColumns: { code: true, position: true, dept: true, schedule: true, device: true, creds: true, status: true },
+  currentView: localStorage.getItem('employees_view') || 'table',
 
   async render() {
     const isAdmin = Auth.canManageEmployees();
@@ -64,7 +65,17 @@ const EmployeesPage = {
                 <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 Limpiar
               </button>
-              <div class="col-selector-container" style="position: relative;">
+              <!-- Selector de Vista (Tabla / Rejilla) -->
+              <div style="display:flex; gap:4px; background:var(--surface-2); padding:4px; border-radius:10px; border:1px solid var(--border); margin-right:4px;">
+                <button class="btn btn-sm btn-icon" id="btnViewTable" onclick="EmployeesPage.setView('table')" style="width:32px; height:32px; border-radius:6px; padding:0; display:flex; align-items:center; justify-content:center; background:${this.currentView === 'table' ? 'var(--surface-1)' : 'transparent'}; border:${this.currentView === 'table' ? '1px solid var(--border)' : 'none'}; box-shadow:${this.currentView === 'table' ? 'var(--shadow)' : 'none'}; color:${this.currentView === 'table' ? 'var(--accent)' : 'var(--text-3)'};" title="Vista de Tabla">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+                <button class="btn btn-sm btn-icon" id="btnViewGrid" onclick="EmployeesPage.setView('grid')" style="width:32px; height:32px; border-radius:6px; padding:0; display:flex; align-items:center; justify-content:center; background:${this.currentView === 'grid' ? 'var(--surface-1)' : 'transparent'}; border:${this.currentView === 'grid' ? '1px solid var(--border)' : 'none'}; box-shadow:${this.currentView === 'grid' ? 'var(--shadow)' : 'none'}; color:${this.currentView === 'grid' ? 'var(--accent)' : 'var(--text-3)'};" title="Vista de Rejilla">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </button>
+              </div>
+
+              <div class="col-selector-container" style="position: relative; display: ${this.currentView === 'table' ? 'block' : 'none'};" id="colSelectorContainer">
                 <button class="btn btn-secondary" id="btnToggleColSelector" onclick="EmployeesPage.toggleColSelector(event)" style="padding: 8px 12px; gap: 6px;" title="Seleccionar Columnas">
                   <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                   Columnas
@@ -171,38 +182,9 @@ const EmployeesPage = {
           </div>
         ` : ''}
 
-        <!-- Tabla con scroll vertical interno -->
-        <div class="table-wrap" style="margin: 0; border: none; border-radius: 0; overflow-y: auto; max-height: 520px; flex: 1;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="border-top: none;">
-                ${isAdmin ? `<th style="width:40px;text-align:center;border-top:none;"><input type="checkbox" id="selectAllEmps" onchange="EmployeesPage.toggleSelectAll(this)"></th>` : ''}
-                <th style="border-top:none;">Empleado</th>
-                <th style="border-top:none;" class="col-code">Código</th>
-                <th style="border-top:none;" class="col-position">Cargo</th>
-                <th style="border-top:none;" class="col-dept">Departamento</th>
-                <th style="border-top:none;" class="col-schedule">Horario</th>
-                <th style="border-top:none;" class="col-device">Dispositivo</th>
-                <th style="border-top:none;" class="col-creds">Credenciales</th>
-                <th style="border-top:none;" class="col-status">Estado</th>
-                <th style="border-top:none;">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="empTable">
-              ${[1,2,3,4].map(() => `<tr>
-                ${isAdmin ? `<td style="text-align:center;"><div class="skeleton" style="width:16px;height:16px;border-radius:4px;margin:auto;"></div></td>` : ''}
-                <td><div style="display:flex;gap:10px;align-items:center"><div class="skeleton sk-avatar"></div><div style="flex:1"><div class="skeleton sk-text w-50"></div><div class="skeleton sk-text w-75" style="margin:0"></div></div></div></td>
-                <td class="col-code"><div class="skeleton sk-text w-50"></div></td>
-                <td class="col-position"><div class="skeleton sk-text w-75"></div></td>
-                <td class="col-dept"><div class="skeleton sk-text w-75"></div></td>
-                <td class="col-schedule"><div class="skeleton sk-text w-50"></div></td>
-                <td class="col-device"><div class="skeleton sk-text w-50"></div></td>
-                <td class="col-creds"><div class="skeleton sk-text w-50"></div></td>
-                <td class="col-status"><div class="skeleton sk-text w-50"></div></td>
-                <td><div class="skeleton sk-text w-50"></div></td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
+        <!-- Contenedor dinámico de visualización (Tabla o Rejilla) -->
+        <div id="employeesViewContainer" style="margin: 0; border: none; border-radius: 0; overflow-y: auto; max-height: 520px; flex: 1; display: flex; flex-direction: column;">
+          <!-- La tabla o rejilla se inyectará dinámicamente aquí -->
         </div>
 
         <div style="height:1px; background:var(--border);"></div>
@@ -307,6 +289,34 @@ const EmployeesPage = {
     }
   },
 
+  setView(view) {
+    this.currentView = view;
+    localStorage.setItem('employees_view', view);
+    
+    // Actualizar botones de alternancia
+    const btnTable = document.getElementById('btnViewTable');
+    const btnGrid = document.getElementById('btnViewGrid');
+    const colContainer = document.getElementById('colSelectorContainer');
+    
+    if (btnTable && btnGrid) {
+      btnTable.style.background = view === 'table' ? 'var(--surface-1)' : 'transparent';
+      btnTable.style.border = view === 'table' ? '1px solid var(--border)' : 'none';
+      btnTable.style.boxShadow = view === 'table' ? 'var(--shadow)' : 'none';
+      btnTable.style.color = view === 'table' ? 'var(--accent)' : 'var(--text-3)';
+      
+      btnGrid.style.background = view === 'grid' ? 'var(--surface-1)' : 'transparent';
+      btnGrid.style.border = view === 'grid' ? '1px solid var(--border)' : 'none';
+      btnGrid.style.boxShadow = view === 'grid' ? 'var(--shadow)' : 'none';
+      btnGrid.style.color = view === 'grid' ? 'var(--accent)' : 'var(--text-3)';
+    }
+    
+    if (colContainer) {
+      colContainer.style.display = view === 'table' ? 'block' : 'none';
+    }
+    
+    this.loadTable();
+  },
+
   toggleColumn(col, visible) {
     this.visibleColumns[col] = visible;
     this.updateColumnStyles();
@@ -359,7 +369,7 @@ const EmployeesPage = {
 
     try {
       const emps = await API.get(`/api/employees?${params}`);
-      const tbody = document.getElementById('empTable');
+      const container = document.getElementById('employeesViewContainer');
       const isAdmin = Auth.canManageEmployees();
       
       const selectAll = document.getElementById('selectAllEmps');
@@ -368,68 +378,207 @@ const EmployeesPage = {
       if (bar) bar.style.display = 'none';
 
       if (!emps?.length) { 
-        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 10 : 9}"><div class="empty-state" style="padding:80px 20px;">
+        container.innerHTML = `<div class="empty-state" style="padding:80px 20px; text-align: center; width: 100%;">
           <div style="margin-bottom:24px; color:var(--text-3); opacity:0.6;">
             <svg viewBox="0 0 24 24" width="80" height="80" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
           </div>
           <h3 style="font-size:1.2rem; margin-bottom:8px;">Aún no hay equipo</h3>
-          <p style="font-size:0.9rem;">Registra a tu primer empleado o importa desde el dispositivo biométrico.</p>
-        </div></td></tr>`; 
+          <p style="font-size:0.9rem; color:var(--text-3);">Registra a tu primer empleado o importa desde el dispositivo biométrico.</p>
+        </div>`; 
         return; 
       }
-      tbody.innerHTML = emps.map(e => `
-        <tr>
-          ${isAdmin ? `<td style="text-align:center;"><input type="checkbox" class="emp-checkbox" value="${e.id}" onchange="EmployeesPage.onRowCheckboxChange()"></td>` : ''}
-          <td>
-            <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia">
-              ${e.photo_path ? `<div class="emp-avatar"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(`${e.first_name} ${e.last_name}`)}
-              <div>
-                <div class="emp-name-link">${e.first_name} ${e.last_name}</div>
-                <div style="font-size:.75rem;color:var(--text-3)">${e.email||''}</div>
+
+      if (this.currentView === 'table') {
+        // Renderizar tabla
+        container.innerHTML = `
+          <div class="table-wrap" style="margin: 0; border: none; border-radius: 0; flex: 1;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-top: none;">
+                  ${isAdmin ? `<th style="width:40px;text-align:center;border-top:none;"><input type="checkbox" id="selectAllEmps" onchange="EmployeesPage.toggleSelectAll(this)"></th>` : ''}
+                  <th style="border-top:none;">Empleado</th>
+                  <th style="border-top:none;" class="col-code">Código</th>
+                  <th style="border-top:none;" class="col-position">Cargo</th>
+                  <th style="border-top:none;" class="col-dept">Departamento</th>
+                  <th style="border-top:none;" class="col-schedule">Horario</th>
+                  <th style="border-top:none;" class="col-device">Dispositivo</th>
+                  <th style="border-top:none;" class="col-creds">Credenciales</th>
+                  <th style="border-top:none;" class="col-status">Estado</th>
+                  <th style="border-top:none;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="empTable"></tbody>
+            </table>
+          </div>
+        `;
+        
+        const tbody = document.getElementById('empTable');
+        tbody.innerHTML = emps.map(e => `
+          <tr>
+            ${isAdmin ? `<td style="text-align:center;"><input type="checkbox" class="emp-checkbox" value="${e.id}" onchange="EmployeesPage.onRowCheckboxChange()"></td>` : ''}
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia">
+                ${e.photo_path ? `<div class="emp-avatar"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(`${e.first_name} ${e.last_name}`)}
+                <div>
+                  <div class="emp-name-link">${e.first_name} ${e.last_name}</div>
+                  <div style="font-size:.75rem;color:var(--text-3)">${e.email||''}</div>
+                </div>
               </div>
-            </div>
-          </td>
-          <td class="col-code"><code class="copyable" title="Clic para copiar código de empleado" style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
-          <td class="col-position" style="color:var(--text-2)">${e.position?.name||'-'}</td>
-          <td class="col-dept">${e.department?.name||'-'}</td>
-          <td class="col-schedule" style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
-          <td class="col-device">
-            ${e.synced_to_device 
-              ? `<span class="badge badge-green">✓ Sync</span>` 
-              : `<span id="sync-badge-${e.id}" class="badge badge-gray" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Haga clic para sincronizar ahora con el biométrico">
-                  ⚠️ Sin sync 🔄
-                 </span>`}
-          </td>
-          <td class="col-creds">
-            <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start;">
-              <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.4'}; display:flex; filter: ${e.photo_path ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'};">
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8V5c0-1.1.9-2 2-2h3"></path><path d="M16 3h3c1.1 0 2 .9 2 2v3"></path><path d="M19 16v3c0 1.1-.9 2-2 2h-3"></path><path d="M8 21H5c-1.1 0-2-.9-2-2v-3"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              </span>
-              <span title="${e.card_number ? `Tarjeta: ${e.card_number} (Clic para copiar)` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.4'}; display:flex; filter: ${e.card_number ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'}; cursor: ${e.card_number ? 'pointer' : 'default'};" class="${e.card_number ? 'copyable' : ''}" data-copy="${e.card_number || ''}">
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-              </span>
-            </div>
-          </td>
-          <td class="col-status">${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
-          <td>
-            <div class="table-actions" style="display:flex;gap:6px">
-              <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia" style="color:var(--accent);border-color:rgba(var(--accent-rgb),0.2);background:rgba(var(--accent-rgb),0.06);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </button>
-              ${isAdmin ? `
-                ${e.qr_enabled ? `
-                <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showBadge(${e.id})" title="Imprimir Gafete" style="color:#0ea5e9;border-color:rgba(14,165,233,0.2);background:rgba(14,165,233,0.06);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                </button>` : ''}
-                <button class="btn btn-icon btn-sm" onclick="EmployeesPage.openForm(${e.id})" title="Editar">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </td>
+            <td class="col-code"><code class="copyable" title="Clic para copiar código de empleado" style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
+            <td class="col-position" style="color:var(--text-2)">${e.position?.name||'-'}</td>
+            <td class="col-dept">${e.department?.name||'-'}</td>
+            <td class="col-schedule" style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
+            <td class="col-device">
+              ${e.synced_to_device 
+                ? `<span class="badge badge-green">✓ Sync</span>` 
+                : `<span id="sync-badge-${e.id}" class="badge badge-gray" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Haga clic para sincronizar ahora con el biométrico">
+                    ⚠️ Sin sync 🔄
+                   </span>`}
+            </td>
+            <td class="col-creds">
+              <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start;">
+                <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.4'}; display:flex; filter: ${e.photo_path ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'};">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8V5c0-1.1.9-2 2-2h3"></path><path d="M16 3h3c1.1 0 2 .9 2 2v3"></path><path d="M19 16v3c0 1.1-.9 2-2 2h-3"></path><path d="M8 21H5c-1.1 0-2-.9-2-2v-3"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </span>
+                <span title="${e.card_number ? `Tarjeta: ${e.card_number} (Clic para copiar)` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.4'}; display:flex; filter: ${e.card_number ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'}; cursor: ${e.card_number ? 'pointer' : 'default'};" class="${e.card_number ? 'copyable' : ''}" data-copy="${e.card_number || ''}">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                </span>
+              </div>
+            </td>
+            <td class="col-status">${e.is_active ? `<span class="badge badge-green">Activo</span>` : `<span class="badge badge-red">Inactivo</span>`}</td>
+            <td>
+              <div class="table-actions" style="display:flex;gap:6px">
+                <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia" style="color:var(--accent);border-color:rgba(var(--accent-rgb),0.2);background:rgba(var(--accent-rgb),0.06);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 </button>
-                <button class="btn btn-icon btn-sm btn-danger" onclick="EmployeesPage.deleteEmployee(${e.id}, '${e.first_name} ${e.last_name}')" title="Eliminar">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>` : ''}
-            </div>
-          </td>
-        </tr>`).join('');
+                ${isAdmin ? `
+                  ${e.qr_enabled ? `
+                  <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showBadge(${e.id})" title="Imprimir Gafete" style="color:#0ea5e9;border-color:rgba(14,165,233,0.2);background:rgba(14,165,233,0.06);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                  </button>` : ''}
+                  <button class="btn btn-icon btn-sm" onclick="EmployeesPage.openForm(${e.id})" title="Editar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  </button>
+                  <button class="btn btn-icon btn-sm btn-danger" onclick="EmployeesPage.deleteEmployee(${e.id}, '${e.first_name} ${e.last_name}')" title="Eliminar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>` : ''}
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        // Renderizar rejilla / Grid Bento
+        container.innerHTML = `
+          <div class="employee-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 20px; box-sizing: border-box; width: 100%;">
+            ${emps.map(e => {
+              const name = `${e.first_name} ${e.last_name}`;
+              const initials = (e.first_name.charAt(0) + (e.last_name && e.last_name !== '-' ? e.last_name.charAt(0) : '')).toUpperCase();
+              return `
+                <div class="employee-card" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); position: relative; display: flex; flex-direction: column; gap: 16px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+                  
+                  <!-- Checkbox de selección arriba a la izquierda -->
+                  ${isAdmin ? `
+                    <div style="position: absolute; top: 16px; left: 16px; z-index: 5;">
+                      <input type="checkbox" class="emp-checkbox" value="${e.id}" onchange="EmployeesPage.onRowCheckboxChange()" style="transform: scale(1.1); cursor: pointer;" />
+                    </div>
+                  ` : ''}
+
+                  <!-- Botón de estado activo/inactivo arriba a la derecha -->
+                  <div style="position: absolute; top: 16px; right: 16px;">
+                    ${e.is_active 
+                      ? `<span class="badge badge-green" style="font-weight: 700; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase;">Activo</span>` 
+                      : `<span class="badge badge-red" style="font-weight: 700; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase;">Inactivo</span>`}
+                  </div>
+
+                  <!-- Perfil y Nombre -->
+                  <div style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 10px; gap: 12px; cursor: pointer;" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia">
+                    ${e.photo_path 
+                      ? `<div class="emp-avatar" style="width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.06);"><img src="/uploads/${e.photo_path}?t=${new Date().getTime()}" style="width: 100%; height: 100%; object-fit: cover;"></div>` 
+                      : `<div style="width: 76px; height: 76px; border-radius: 50%; background: rgba(var(--accent-rgb), 0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.6rem; border: 2px solid var(--border);">${initials}</div>`}
+                    <div>
+                      <div class="emp-name-link" style="font-size: 1.05rem; font-weight: 700; color: var(--text-1);">${name}</div>
+                      <div style="font-size: 0.78rem; color: var(--text-3); margin-top: 2px;">${e.email || 'Sin correo electrónico'}</div>
+                    </div>
+                  </div>
+
+                  <!-- Divider -->
+                  <div style="height: 1px; background: var(--border); margin: 0 -20px;"></div>
+
+                  <!-- Información / Metadatos -->
+                  <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.82rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: var(--text-3); font-weight: 600;">Código:</span>
+                      <code class="copyable" title="Clic para copiar código" style="background:var(--surface-3); padding:2px 8px; border-radius:6px; font-size:.75rem; font-family:'JetBrains Mono',monospace;">${e.employee_code}</code>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: var(--text-3); font-weight: 600;">Cargo:</span>
+                      <span style="color: var(--text-2); font-weight: 600;">${e.position?.name || '—'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: var(--text-3); font-weight: 600;">Departamento:</span>
+                      <span style="color: var(--text-2); font-weight: 600;">${e.department?.name || '—'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; text-align: right;">
+                      <span style="color: var(--text-3); font-weight: 600;">Horario:</span>
+                      <span style="color: var(--text-2); font-weight: 600; font-size: 0.76rem;">
+                        ${e.schedule ? `<strong style="color:var(--accent)">${e.schedule.name}</strong><br><span style="font-size: 0.7rem; color:var(--text-3)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Divider -->
+                  <div style="height: 1px; background: var(--border); margin: 0 -20px;"></div>
+
+                  <!-- Estado Sync y Credenciales + Acciones -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+                    
+                    <!-- Credenciales & Sync -->
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <!-- Sync -->
+                      <div>
+                        ${e.synced_to_device 
+                          ? `<span class="badge badge-green" style="padding:3px 6px; font-size:0.7rem;">✓ Sync</span>` 
+                          : `<span id="sync-badge-${e.id}" class="badge badge-gray" style="cursor:pointer; padding:3px 6px; font-size:0.7rem; display:inline-flex; align-items:center; gap:2px;" onclick="EmployeesPage.syncEmployeeToDevice(${e.id})" title="Sincronizar ahora con biométrico">⚠️ Sync 🔄</span>`}
+                      </div>
+                      
+                      <!-- Rostro -->
+                      <span title="${e.photo_path ? 'Rostro registrado' : 'Sin rostro'}" style="color: ${e.photo_path ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.photo_path ? '1' : '0.4'}; display:flex; filter: ${e.photo_path ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'};">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M5 8V5c0-1.1.9-2 2-2h3"></path><path d="M16 3h3c1.1 0 2 .9 2 2v3"></path><path d="M19 16v3c0 1.1-.9 2-2 2h-3"></path><path d="M8 21H5c-1.1 0-2-.9-2-2v-3"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </span>
+
+                      <!-- Tarjeta -->
+                      <span title="${e.card_number ? `Tarjeta: ${e.card_number}` : 'Sin tarjeta'}" style="color: ${e.card_number ? 'var(--success)' : 'var(--text-3)'}; opacity: ${e.card_number ? '1' : '0.4'}; display:flex; filter: ${e.card_number ? 'drop-shadow(0 0 4px rgba(22,163,74,0.4))' : 'none'};">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                      </span>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div style="display: flex; gap: 4px;">
+                      <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showProfile(${e.id})" title="Ver perfil de asistencia" style="color:var(--accent); border-color:rgba(var(--accent-rgb),0.2); background:rgba(var(--accent-rgb),0.06);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      </button>
+                      ${isAdmin ? `
+                        ${e.qr_enabled ? `
+                        <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showBadge(${e.id})" title="Imprimir Gafete" style="color:#0ea5e9; border-color:rgba(14,165,233,0.2); background:rgba(14,165,233,0.06);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        </button>` : ''}
+                        <button class="btn btn-icon btn-sm" onclick="EmployeesPage.openForm(${e.id})" title="Editar">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="btn btn-icon btn-sm btn-danger" onclick="EmployeesPage.deleteEmployee(${e.id}, '${e.first_name} ${e.last_name}')" title="Eliminar">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>` : ''}
+                    </div>
+
+                  </div>
+
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
 
       // Render pagination UI
       const pagEl = document.getElementById('empPagination');

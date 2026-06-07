@@ -62,7 +62,7 @@
   transform: translateY(-1px);
 }
 .segmented-btn:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 .segmented-btn.active {
   background: var(--bg-raised);

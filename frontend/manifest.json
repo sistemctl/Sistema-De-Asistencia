@@ -1,0 +1,18 @@
+{
+  "name": "Sistema de Asistencia DS-K1T323MBWX",
+  "short_name": "Asistencia",
+  "description": "Sistema biométrico de control de asistencia de personal",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}

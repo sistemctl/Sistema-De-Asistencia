@@ -4,13 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Asistencia</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
   <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/main.css?v=30" />
+  <link rel="stylesheet" href="/static/main.css?v=31" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     window.onerror = function(message, source, lineno, colno, error) {
       const errDiv = document.createElement('div');
@@ -155,6 +160,10 @@
         <span class="topbar-subtitle" id="topbarSubtitle">Resumen general</span>
       </div>
       <div class="topbar-right">
+        <button class="btn-primary" id="installPwaBtn" style="display:none; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; font-size:0.85rem; height:34px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Instalar App
+        </button>
         <button class="btn-icon" id="themeToggleBtn" title="Cambiar tema" aria-label="Cambiar tema" style="width: 38px; height: 38px; border-radius: 50%;"></button>
         <div class="device-badge" id="deviceBadge">
           <span class="status-dot"></span>
@@ -194,13 +203,13 @@
 <script src="/js/icons.js?v=1"></script>
 <script src="/js/auth.js?v=9"></script>
 <script src="/js/dashboard.js?v=19"></script>
-<script src="/js/employees.js?v=34"></script>
+<script src="/js/employees.js?v=35"></script>
 <script src="/js/departments.js?v=7"></script>
 <script src="/js/positions.js?v=2"></script>
 <script src="/js/schedules.js?v=12"></script>
 <script src="/js/parameters.js?v=5"></script>
 <script src="/js/system_settings.js?v=4"></script>
-<script src="/js/attendance.js?v=11"></script>
+<script src="/js/attendance.js?v=12"></script>
 <script src="/js/reports_analytics.js?v=1"></script>
 <script src="/js/reports_table.js?v=1"></script>
 <script src="/js/reports_export.js?v=1"></script>
@@ -213,6 +222,7 @@
 <script src="/js/audit.js?v=1"></script>
 
 
-<script src="/js/app.js?v=22"></script>
+<script src="/js/app.js?v=23"></script>
+<script src="/js/pwa.js"></script>
 </body>
 </html>

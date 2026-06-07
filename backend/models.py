@@ -22,6 +22,7 @@ class User(Base):
     full_name = Column(String(150), nullable=False)
     role = Column(String(20), default="viewer")          # admin | viewer
     is_active = Column(Boolean, default=True)
+    force_password_change = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.now)
     last_login = Column(DateTime, nullable=True)
 
@@ -205,6 +206,8 @@ class SystemConfig(Base):
     qr_badge_show_blood_type = Column(Boolean, default=True)
     qr_badge_show_department = Column(Boolean, default=True)
     mobile_qr_portal_enabled = Column(Boolean, default=False)
+    
+    tolerance_enable = Column(Boolean, default=True)
     entry_tolerance_minutes = Column(Integer, default=10)
     exit_tolerance_minutes = Column(Integer, default=10)
     require_checkin = Column(Boolean, default=True)
@@ -230,6 +233,7 @@ class SystemConfig(Base):
     no_checkout_status = Column(String(20), default="Absent")
     
     # Turno flexible rango de horas
+    flexible_shift_enable = Column(Boolean, default=True)
     flexible_shift_start = Column(String(10), default="09:00:00")
     flexible_shift_end = Column(String(10), default="18:00:00")
     

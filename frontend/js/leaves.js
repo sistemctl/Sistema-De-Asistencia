@@ -275,18 +275,40 @@ const LeavesPage = {
 
   openForm(leaveId = null) {
     const leave = leaveId ? this.leaves.find(l => l.id === leaveId) : null;
-    const employeeOptions = this.employees
-      .map(e => `<option value="${e.id}" ${leave && leave.employee_id === e.id ? 'selected' : ''}>${e.first_name} ${e.last_name} (${e.employee_code})</option>`)
+    let selectedEmpText = '';
+    
+    if (leave) {
+        const emp = this.employees.find(e => e.id === leave.employee_id);
+        if (emp) selectedEmpText = `${emp.first_name} ${emp.last_name} (${emp.employee_code})`;
+    }
+
+    const employeeOptionsHtml = this.employees
+      .map(e => `
+        <div class="leave-emp-option" data-name="${(e.first_name + ' ' + e.last_name).toLowerCase()} ${e.employee_code.toLowerCase()}" 
+             onclick="document.getElementById('leaveEmpId').value='${e.id}'; document.getElementById('leaveEmpSearch').value='${e.first_name.replace(/'/g, "\\'")} ${e.last_name.replace(/'/g, "\\'")} (${e.employee_code})'; document.getElementById('leaveEmpDropdown').style.display='none';"
+             style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;"
+             onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+          <div style="font-weight:600; color:var(--text-1);">${e.first_name} ${e.last_name}</div>
+          <div style="font-size:0.75rem; color:var(--text-3);">Cód: ${e.employee_code}</div>
+        </div>
+      `)
       .join('');
 
     Modal.open(leaveId ? 'Editar Novedad' : 'Registrar Novedad de Personal', `
       <input type="hidden" id="leaveId" value="${leaveId || ''}">
-      <div class="field">
+      <div class="field" style="position:relative;">
         <label style="font-weight: 600; font-size: 0.82rem;">Seleccionar Empleado</label>
-        <select id="leaveEmpId" ${leaveId ? 'disabled' : ''} style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);">
-          <option value="">Selecciona un empleado...</option>
-          ${employeeOptions}
-        </select>
+        <input type="hidden" id="leaveEmpId" value="${leave ? leave.employee_id : ''}">
+        <input type="text" id="leaveEmpSearch" ${leaveId ? 'disabled' : ''} 
+               placeholder="🔍 Buscar por nombre o código de empleado..." 
+               autocomplete="off" value="${selectedEmpText}" 
+               style="width:100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1);" 
+               onfocus="document.getElementById('leaveEmpDropdown').style.display='block'" 
+               oninput="LeavesPage.filterModalEmployees(this.value)"
+               onblur="setTimeout(() => { const el = document.getElementById('leaveEmpDropdown'); if(el) el.style.display='none'; }, 200)">
+        <div id="leaveEmpDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background: #ffffff; border:1px solid var(--border); border-radius:8px; z-index:9999; box-shadow:0 10px 25px rgba(0,0,0,0.2); margin-top:4px;">
+          ${employeeOptionsHtml}
+        </div>
       </div>
       <div class="field">
         <label style="font-weight: 600; font-size: 0.82rem;">Tipo de Novedad</label>
@@ -471,5 +493,18 @@ const LeavesPage = {
     `;
 
     Modal.open(`Historial de Novedades: ${employeeName}`, modalBody, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>`);
+  },
+
+  filterModalEmployees(val) {
+    const query = val.toLowerCase();
+    document.querySelectorAll('.leave-emp-option').forEach(opt => {
+      if (opt.dataset.name.includes(query)) {
+        opt.style.display = 'block';
+      } else {
+        opt.style.display = 'none';
+      }
+    });
+    const dropdown = document.getElementById('leaveEmpDropdown');
+    if (dropdown) dropdown.style.display = 'block';
   }
 };

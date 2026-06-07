@@ -241,8 +241,18 @@ const UsersPage = {
     const pwdField = id ? '' : `
       <div class="field">
         <label>Contraseña inicial</label>
-        <input id="uPassword" type="password" placeholder="••••••••" />
-      </div>`;
+        <input id="uPassword" type="password" placeholder="Mínimo 8 caracteres (A-Z, a-z, 0-9, símbolos)" />
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Confirmar Contraseña inicial</label>
+        <input id="uPasswordConfirm" type="password" placeholder="Repita la contraseña" />
+      </div>
+      <div style="font-size:0.75rem; color:var(--text-3); margin-top: 4px; margin-bottom: 10px;">
+        La contraseña debe tener al menos 8 caracteres, mayúsculas, minúsculas, números y caracteres especiales.
+      </div>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-2); cursor: pointer; margin-top: 10px;">
+        <input type="checkbox" id="uForcePwd" checked style="accent-color: var(--accent);" /> Exigir cambio de contraseña al iniciar sesión
+      </label>`;
 
     const statusField = id ? `
       <div class="field">
@@ -373,13 +383,16 @@ const UsersPage = {
           perm_export_reports,
           perm_manage_attendance,
           perm_sync_device,
-          perm_view_employees
+          perm_view_employees,
+          force_password_change: document.getElementById('uForcePwd') ? document.getElementById('uForcePwd').checked : u.force_password_change
         });
         Toast.show('Usuario actualizado con éxito', 'success');
       } else {
         // Creación
         const username = document.getElementById('uUsername').value.trim();
         const password = document.getElementById('uPassword').value;
+        const confirm = document.getElementById('uPasswordConfirm').value;
+
         if (!username) { 
           if (saveBtn) saveBtn.classList.remove('btn-loading');
           Toast.show('Ingrese un nombre de usuario', 'warning'); 
@@ -387,13 +400,35 @@ const UsersPage = {
         }
         if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
           if (saveBtn) saveBtn.classList.remove('btn-loading');
-          Toast.show('El nombre de usuario debe ser alfanumérico (letras, números o guion bajo) y tener entre 3 y 20 caracteres', 'warning');
+          Toast.show('El nombre de usuario debe ser alfanumérico y tener entre 3 y 20 caracteres', 'warning');
           return;
         }
-        if (!password || password.length < 4) { 
+        
+        if (password !== confirm) {
           if (saveBtn) saveBtn.classList.remove('btn-loading');
-          Toast.show('La contraseña debe tener al menos 4 caracteres', 'warning'); 
+          Toast.show('Las contraseñas no coinciden', 'warning'); 
           return; 
+        }
+        if (password.length < 8) { 
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La contraseña debe tener al menos 8 caracteres', 'warning'); 
+          return; 
+        }
+        if (!/(?=.*[a-z])/.test(password)) {
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La contraseña debe contener al menos una minúscula', 'warning'); return;
+        }
+        if (!/(?=.*[A-Z])/.test(password)) {
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La contraseña debe contener al menos una mayúscula', 'warning'); return;
+        }
+        if (!/(?=.*\d)/.test(password)) {
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La contraseña debe contener al menos un número', 'warning'); return;
+        }
+        if (!/(?=.*[\W_])/.test(password)) {
+          if (saveBtn) saveBtn.classList.remove('btn-loading');
+          Toast.show('La contraseña debe contener al menos un carácter especial', 'warning'); return;
         }
 
         await API.post('/api/auth/users', {
@@ -409,7 +444,8 @@ const UsersPage = {
           perm_export_reports,
           perm_manage_attendance,
           perm_sync_device,
-          perm_view_employees
+          perm_view_employees,
+          force_password_change: document.getElementById('uForcePwd').checked
         });
         Toast.show('Usuario creado con éxito', 'success');
       }
@@ -426,10 +462,20 @@ const UsersPage = {
   openChangePassword(id, username) {
     Modal.open(`Cambiar Contraseña - ${username}`, `
       <p style="color:var(--text-2);font-size:.875rem;margin-bottom:14px">Ingrese la nueva contraseña para la cuenta del sistema <strong>${username}</strong>.</p>
-      <div class="field">
+      <div class="field" style="margin-bottom:12px;">
         <label>Nueva Contraseña</label>
-        <input id="newPassword" type="password" placeholder="Mínimo 4 caracteres" />
+        <input id="newPassword" type="password" placeholder="Mínimo 8 caracteres (A-Z, a-z, 0-9, símbolos)" />
       </div>
+      <div class="field">
+        <label>Confirmar Contraseña</label>
+        <input id="confirmPassword" type="password" placeholder="Repita la nueva contraseña" />
+      </div>
+      <div style="font-size:0.75rem; color:var(--text-3); margin-top: 8px;">
+        La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas, números y caracteres especiales.
+      </div>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-2); cursor: pointer; margin-top: 16px;">
+        <input type="checkbox" id="cPwdForce" checked style="accent-color: var(--accent);" /> Exigir al usuario cambiar esta contraseña al ingresar
+      </label>
     `,
     `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
      <button class="btn btn-primary" onclick="UsersPage.savePassword(${id})">Cambiar Contraseña</button>`);
@@ -437,10 +483,19 @@ const UsersPage = {
 
   async savePassword(id) {
     const password = document.getElementById('newPassword').value;
-    if (!password || password.length < 4) { Toast.show('La contraseña debe tener al menos 4 caracteres', 'warning'); return; }
+    const confirm = document.getElementById('confirmPassword').value;
+
+    if (password !== confirm) { Toast.show('Las contraseñas no coinciden', 'warning'); return; }
+    if (password.length < 8) { Toast.show('La contraseña debe tener al menos 8 caracteres', 'warning'); return; }
+    if (!/(?=.*[a-z])/.test(password)) { Toast.show('La contraseña debe contener al menos una minúscula', 'warning'); return; }
+    if (!/(?=.*[A-Z])/.test(password)) { Toast.show('La contraseña debe contener al menos una mayúscula', 'warning'); return; }
+    if (!/(?=.*\d)/.test(password)) { Toast.show('La contraseña debe contener al menos un número', 'warning'); return; }
+    if (!/(?=.*[\W_])/.test(password)) { Toast.show('La contraseña debe contener al menos un carácter especial', 'warning'); return; }
+
+    const forcePwd = document.getElementById('cPwdForce').checked;
 
     try {
-      await API.put(`/api/auth/users/${id}`, { password: password });
+      await API.put(`/api/auth/users/${id}`, { password: password, force_password_change: forcePwd });
       Toast.show('Contraseña actualizada correctamente', 'success');
       Modal.close();
     } catch(e) { Toast.show(e.message, 'error'); }

@@ -53,6 +53,7 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depen
         perm_manage_attendance=data.perm_manage_attendance,
         perm_sync_device=data.perm_sync_device,
         perm_view_employees=data.perm_view_employees,
+        force_password_change=data.force_password_change,
     )
     db.add(user)
     db.commit()
@@ -61,37 +62,49 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depen
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
-def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _: User = Depends(check_permission("perm_manage_users"))):
+def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    is_admin = current_user.role == 'admin' or current_user.perm_manage_users
+    
+    if user_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="No tienes permisos para editar este usuario")
+
     if data.full_name is not None:
         user.full_name = data.full_name
     if data.password is not None:
         user.hashed_password = get_password_hash(data.password)
-    if data.role is not None:
-        user.role = data.role
-    if data.is_active is not None:
-        user.is_active = data.is_active
-    
-    if data.perm_manage_users is not None:
-        user.perm_manage_users = data.perm_manage_users
-    if data.perm_manage_device is not None:
-        user.perm_manage_device = data.perm_manage_device
-    if data.perm_manage_settings is not None:
-        user.perm_manage_settings = data.perm_manage_settings
-    if data.perm_manage_employees is not None:
-        user.perm_manage_employees = data.perm_manage_employees
-    if data.perm_manage_schedules is not None:
-        user.perm_manage_schedules = data.perm_manage_schedules
-    if data.perm_export_reports is not None:
-        user.perm_export_reports = data.perm_export_reports
-    if data.perm_manage_attendance is not None:
-        user.perm_manage_attendance = data.perm_manage_attendance
-    if data.perm_sync_device is not None:
-        user.perm_sync_device = data.perm_sync_device
-    if data.perm_view_employees is not None:
-        user.perm_view_employees = data.perm_view_employees
+        
+    if is_admin:
+        if data.role is not None:
+            user.role = data.role
+        if data.is_active is not None:
+            user.is_active = data.is_active
+        
+        if data.perm_manage_users is not None:
+            user.perm_manage_users = data.perm_manage_users
+        if data.perm_manage_device is not None:
+            user.perm_manage_device = data.perm_manage_device
+        if data.perm_manage_settings is not None:
+            user.perm_manage_settings = data.perm_manage_settings
+        if data.perm_manage_employees is not None:
+            user.perm_manage_employees = data.perm_manage_employees
+        if data.perm_manage_schedules is not None:
+            user.perm_manage_schedules = data.perm_manage_schedules
+        if data.perm_export_reports is not None:
+            user.perm_export_reports = data.perm_export_reports
+        if data.perm_manage_attendance is not None:
+            user.perm_manage_attendance = data.perm_manage_attendance
+        if data.perm_sync_device is not None:
+            user.perm_sync_device = data.perm_sync_device
+        if data.perm_view_employees is not None:
+            user.perm_view_employees = data.perm_view_employees
+            
+    if data.force_password_change is not None:
+        if is_admin or (user_id == current_user.id and data.force_password_change is False):
+            user.force_password_change = data.force_password_change
 
     db.commit()
     db.refresh(user)

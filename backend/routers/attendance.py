@@ -52,25 +52,42 @@ def create_manual_punch(
     is_late = False
     if data.event_type == "entry":
         # Check tolerance vs schedule start time
-        from backend.services.attendance_processor import _is_late_for_schedule
-        from backend.models import DeviceConfig
+        from backend.models import SystemConfig
+        sys_config = db.query(SystemConfig).first()
+        tolerance_enable = sys_config.tolerance_enable if (sys_config and hasattr(sys_config, 'tolerance_enable')) else True
+        flexible_shift_enable = sys_config.flexible_shift_enable if (sys_config and hasattr(sys_config, 'flexible_shift_enable')) else True
+        flexible_shift_end_str = sys_config.flexible_shift_end if (sys_config and hasattr(sys_config, 'flexible_shift_end')) else "18:00:00"
+        
+        tolerance = sys_config.entry_tolerance_minutes if (sys_config and tolerance_enable) else 0
+        
         # We can calculate is_late based on employee base schedule
         if emp.schedule:
-            # Simple check
-            config = db.query(DeviceConfig).first()
-            tolerance = config.entry_tolerance_minutes if config else 5
-            
-            # Helper logic or direct check
-            from datetime import time
-            sched_time_str = emp.schedule.work_start_time
-            try:
-                sh, sm = map(int, sched_time_str.split(":"))
-                limit_min = sh * 60 + sm + tolerance
-                punch_min = data.event_time.hour * 60 + data.event_time.minute
-                if punch_min > limit_min:
-                    is_late = True
-            except Exception:
-                pass
+            sched = emp.schedule
+            is_flexible_sched = False
+            if flexible_shift_enable:
+                sched_name = (sched.name or "").lower()
+                if "flexible" in sched_name or "flex" in sched_name:
+                    is_flexible_sched = True
+
+            if is_flexible_sched:
+                try:
+                    eh, em = map(int, flexible_shift_end_str.split(":")[:2])
+                    limit_min = eh * 60 + em + tolerance
+                    punch_min = data.event_time.hour * 60 + data.event_time.minute
+                    if punch_min > limit_min:
+                        is_late = True
+                except Exception:
+                    pass
+            else:
+                sched_time_str = sched.work_start_time
+                try:
+                    sh, sm = map(int, sched_time_str.split(":"))
+                    limit_min = sh * 60 + sm + tolerance
+                    punch_min = data.event_time.hour * 60 + data.event_time.minute
+                    if punch_min > limit_min:
+                        is_late = True
+                except Exception:
+                    pass
 
     record = AttendanceRecord(
         employee_id=data.employee_id,

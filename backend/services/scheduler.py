@@ -248,11 +248,19 @@ def sync_job():
 
         new_count = _process_events(db, raw_events, cfg)
 
-        # Actualizar estadísticas
         cfg.last_successful_sync = get_local_now().replace(tzinfo=None)
         cfg.total_events_synced += new_count
         _finish_log(db, log, "success", fetched=len(raw_events), new=new_count, is_mock=is_mock)
         logger.info(f"✅ Sync completado — {new_count} registros nuevos")
+
+        if new_count > 0:
+            from backend.routers import ws
+            import asyncio
+            if ws.main_loop:
+                asyncio.run_coroutine_threadsafe(
+                    ws.manager.broadcast({"type": "NEW_ATTENDANCE", "count": new_count}), 
+                    ws.main_loop
+                )
 
     except Exception as e:
         db.rollback()
@@ -374,6 +382,15 @@ def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
         _finish_log(db, log, "success", fetched=total_downloaded, new=total_inserted, is_mock=False)
         logger.info(f"✅ Sync Histórico completado — {total_inserted} registros insertados")
 
+        if total_inserted > 0:
+            from backend.routers import ws
+            import asyncio
+            if ws.main_loop:
+                asyncio.run_coroutine_threadsafe(
+                    ws.manager.broadcast({"type": "NEW_ATTENDANCE", "count": total_inserted}), 
+                    ws.main_loop
+                )
+
     except Exception as e:
         db.rollback()
         _finish_log(db, log, "error", error=str(e))
@@ -452,8 +469,19 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
         is_late = False
         event_type = "entry"
         try:
+            from backend.models import SystemConfig
+            sys_config = db.query(SystemConfig).first()
+            tolerance_enable = sys_config.tolerance_enable if (sys_config and hasattr(sys_config, 'tolerance_enable')) else True
+            flexible_shift_enable = sys_config.flexible_shift_enable if (sys_config and hasattr(sys_config, 'flexible_shift_enable')) else True
+            flexible_shift_start_str = sys_config.flexible_shift_start if (sys_config and hasattr(sys_config, 'flexible_shift_start')) else "09:00:00"
+            flexible_shift_end_str = sys_config.flexible_shift_end if (sys_config and hasattr(sys_config, 'flexible_shift_end')) else "18:00:00"
+
+            entry_tolerance = sys_config.entry_tolerance_minutes if (sys_config and tolerance_enable) else 0
+            exit_tolerance = sys_config.exit_tolerance_minutes if (sys_config and tolerance_enable) else 0
+
             # 1. Definir los checkpoints (horas objetivo y su tipo 'entry' o 'exit')
             checkpoints = []
+            is_flexible_sched = False
             
             if employee.schedule_id and employee.schedule:
                 sched = employee.schedule
@@ -471,38 +499,89 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
                         {"time": sched.work_start_time, "type": "entry"},
                         {"time": sched.work_end_time, "type": "exit"}
                     ]
+                    if flexible_shift_enable:
+                        sched_name = (sched.name or "").lower()
+                        if "flexible" in sched_name or "flex" in sched_name:
+                            is_flexible_sched = True
             else:
                 # Horario personalizado (2 checkpoints)
                 checkpoints = [
                     {"time": employee.work_start_time, "type": "entry"},
                     {"time": employee.work_end_time, "type": "exit"}
                 ]
-            
-            # 2. Encontrar el checkpoint más cercano al event_time de forma dinámica
-            closest_checkpoint = None
-            min_diff_mins = float('inf')
-            
-            for cp in checkpoints:
-                if cp["time"]:
-                    h, m = map(int, cp["time"].split(":"))
-                    target = event_time.replace(hour=h, minute=m, second=0)
-                    diff = (event_time - target).total_seconds() / 60.0
-                    if abs(diff) < abs(min_diff_mins):
-                        min_diff_mins = diff
-                        closest_checkpoint = cp
-            
-            if closest_checkpoint:
-                event_type = closest_checkpoint["type"]
-                # 3. Calcular si es tardanza o salida temprana
-                if event_type == "entry":
-                    is_late = min_diff_mins > cfg.entry_tolerance_minutes
+
+            if is_flexible_sched:
+                # Flexible schedule evaluation in real-time sync
+                # Find work duration
+                from backend.services.attendance_processor import parse_time
+                work_start = parse_time(employee.schedule.work_start_time)
+                work_end = parse_time(employee.schedule.work_end_time)
+                if work_start and work_end:
+                    if work_start > work_end:
+                        duration_secs = (datetime.combine(event_time.date() + timedelta(days=1), work_end) - datetime.combine(event_time.date(), work_start)).total_seconds()
+                    else:
+                        duration_secs = (datetime.combine(event_time.date(), work_end) - datetime.combine(event_time.date(), work_start)).total_seconds()
                 else:
-                    # Salida temprana (negativo significa que salió antes de la hora)
-                    is_late = min_diff_mins < -cfg.exit_tolerance_minutes
+                    duration_secs = 8 * 3600
+
+                flex_start = parse_time(flexible_shift_start_str) or parse_time("09:00")
+                flex_end = parse_time(flexible_shift_end_str) or parse_time("18:00")
+                
+                target_flex_start = datetime.combine(event_time.date(), flex_start)
+                target_flex_end = datetime.combine(event_time.date(), flex_end)
+                mid_point = target_flex_start + timedelta(hours=6)
+
+                event_type = "entry" if event_time <= mid_point else "exit"
+
+                if event_type == "entry":
+                    # Check late relative to target_flex_end
+                    diff_minutes = (event_time - target_flex_end).total_seconds() / 60.0
+                    is_late = diff_minutes > entry_tolerance
+                else:
+                    # Check early checkout relative to actual entry punch on that day (if any exists in DB)
+                    entry_rec = db.query(AttendanceRecord).filter(
+                        AttendanceRecord.employee_id == employee.id,
+                        AttendanceRecord.event_time >= datetime.combine(event_time.date(), datetime.min.time()),
+                        AttendanceRecord.event_time <= event_time,
+                        AttendanceRecord.event_type == "entry"
+                    ).order_by(AttendanceRecord.event_time.asc()).first()
+
+                    if entry_rec:
+                        expected_exit = entry_rec.event_time + timedelta(seconds=duration_secs)
+                        diff_minutes = (expected_exit - event_time).total_seconds() / 60.0
+                        is_late = diff_minutes > exit_tolerance
+                    else:
+                        # Fallback if no entry was recorded, check against the schedule's end time
+                        if work_end:
+                            target_end = datetime.combine(event_time.date(), work_end)
+                            diff_minutes = (target_end - event_time).total_seconds() / 60.0
+                            is_late = diff_minutes > exit_tolerance
             else:
-                # Fallback si no hay checkpoints
-                hour = event_time.hour
-                event_type = "entry" if 5 <= hour < 13 else "exit"
+                # 2. Encontrar el checkpoint más cercano al event_time de forma dinámica
+                closest_checkpoint = None
+                min_diff_mins = float('inf')
+                
+                for cp in checkpoints:
+                    if cp["time"]:
+                        h, m = map(int, cp["time"].split(":"))
+                        target = event_time.replace(hour=h, minute=m, second=0)
+                        diff = (event_time - target).total_seconds() / 60.0
+                        if abs(diff) < abs(min_diff_mins):
+                            min_diff_mins = diff
+                            closest_checkpoint = cp
+                
+                if closest_checkpoint:
+                    event_type = closest_checkpoint["type"]
+                    # 3. Calcular si es tardanza o salida temprana
+                    if event_type == "entry":
+                        is_late = min_diff_mins > entry_tolerance
+                    else:
+                        # Salida temprana (negativo significa que salió antes de la hora)
+                        is_late = min_diff_mins < -exit_tolerance
+                else:
+                    # Fallback si no hay checkpoints
+                    hour = event_time.hour
+                    event_type = "entry" if 5 <= hour < 13 else "exit"
         except Exception:
             # Fallback general
             hour = event_time.hour

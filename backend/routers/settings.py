@@ -21,6 +21,7 @@ class SettingsUpdateSchema(BaseModel):
     bg_surface_color: Optional[str] = None
     work_days: str
     time_format: str
+    tolerance_enable: bool
     entry_tolerance_minutes: int
     exit_tolerance_minutes: int
     require_checkin: bool
@@ -37,6 +38,7 @@ class SettingsUpdateSchema(BaseModel):
     no_checkin_status: str
     no_checkout_enable: bool
     no_checkout_status: str
+    flexible_shift_enable: bool
     flexible_shift_start: str
     flexible_shift_end: str
     smtp_host: Optional[str] = "smtp.gmail.com"
@@ -71,6 +73,7 @@ class SettingsPatchSchema(BaseModel):
     bg_surface_color: Optional[str] = None
     work_days: Optional[str] = None
     time_format: Optional[str] = None
+    tolerance_enable: Optional[bool] = None
     entry_tolerance_minutes: Optional[int] = None
     exit_tolerance_minutes: Optional[int] = None
     require_checkin: Optional[bool] = None
@@ -87,6 +90,7 @@ class SettingsPatchSchema(BaseModel):
     no_checkin_status: Optional[str] = None
     no_checkout_enable: Optional[bool] = None
     no_checkout_status: Optional[str] = None
+    flexible_shift_enable: Optional[bool] = None
     flexible_shift_start: Optional[str] = None
     flexible_shift_end: Optional[str] = None
     smtp_host: Optional[str] = None
@@ -150,6 +154,7 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
             "bg_surface_color": "#ffffff",
             "work_days": "1,2,3,4,5",
             "time_format": "24h",
+            "tolerance_enable": True,
             "entry_tolerance_minutes": 10,
             "exit_tolerance_minutes": 10,
             "require_checkin": True,
@@ -166,6 +171,7 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
             "no_checkin_status": "Absent",
             "no_checkout_enable": True,
             "no_checkout_status": "Absent",
+            "flexible_shift_enable": True,
             "flexible_shift_start": "09:00:00",
             "flexible_shift_end": "18:00:00",
             "smtp_host": "smtp.gmail.com",
@@ -200,6 +206,7 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "bg_surface_color": config.bg_surface_color or "#ffffff",
         "work_days": config.work_days,
         "time_format": config.time_format,
+        "tolerance_enable": config.tolerance_enable,
         "entry_tolerance_minutes": config.entry_tolerance_minutes,
         "exit_tolerance_minutes": config.exit_tolerance_minutes,
         "require_checkin": config.require_checkin,
@@ -216,6 +223,7 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "no_checkin_status": config.no_checkin_status,
         "no_checkout_enable": config.no_checkout_enable,
         "no_checkout_status": config.no_checkout_status,
+        "flexible_shift_enable": config.flexible_shift_enable,
         "flexible_shift_start": config.flexible_shift_start,
         "flexible_shift_end": config.flexible_shift_end,
         "smtp_host": config.smtp_host,
@@ -260,6 +268,7 @@ def update_settings(
     config.bg_surface_color = data.bg_surface_color
     config.work_days = data.work_days
     config.time_format = data.time_format
+    config.tolerance_enable = data.tolerance_enable
     config.entry_tolerance_minutes = data.entry_tolerance_minutes
     config.exit_tolerance_minutes = data.exit_tolerance_minutes
     config.require_checkin = data.require_checkin
@@ -276,6 +285,7 @@ def update_settings(
     config.no_checkin_status = data.no_checkin_status
     config.no_checkout_enable = data.no_checkout_enable
     config.no_checkout_status = data.no_checkout_status
+    config.flexible_shift_enable = data.flexible_shift_enable
     config.flexible_shift_start = data.flexible_shift_start
     config.flexible_shift_end = data.flexible_shift_end
     

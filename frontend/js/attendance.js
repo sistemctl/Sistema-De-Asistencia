@@ -18,6 +18,15 @@ const AttendancePage = {
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
           Últimas Entradas del Dispositivo
         </button>
+
+        ${Auth.canManageEmployees() ? `
+          <div style="margin-left: auto; display: flex; align-items: center; margin-bottom: 8px;">
+            <button class="btn btn-primary" onclick="AttendancePage.openManualPunchModal()">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              Reg. Marcación Manual
+            </button>
+          </div>
+        ` : ''}
       </div>
       <style>
         .att-tab-btn.active { color: var(--accent) !important; }
@@ -42,25 +51,55 @@ const AttendancePage = {
 
     if (tab === 'records') {
       content.innerHTML = `
-        <div class="section-actions" style="margin-bottom:20px; flex-wrap:wrap; display:flex; gap:10px; align-items:center; justify-content: space-between; width: 100%;">
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <input type="text" id="fSearch" class="form-control" placeholder="Buscar empleado o código" style="width:250px;" />
-            <input type="text" id="fDateRange" class="form-control" placeholder="Rango de fechas" style="width:260px;" />
-            <select id="fType" class="form-control" style="width:120px;">
-              <option value="">Todos</option><option value="entry">Entradas</option><option value="exit">Salidas</option>
+        <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; margin-bottom:20px; background:var(--surface-1); padding:16px 20px; border-radius:12px; border:1px solid var(--border); width: 100%; box-sizing: border-box;">
+          
+          <div style="flex:1; min-width:200px;">
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Búsqueda</label>
+            <input type="text" id="fSearch" class="form-control" placeholder="Buscar empleado o código..." style="width:100%;" />
+          </div>
+
+          <div style="flex:1; min-width:220px;">
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Rango de Fechas</label>
+            <div style="width:100%;">
+              <input type="text" id="fDateRange" class="form-control" placeholder="Seleccionar fechas" style="width:100%;" />
+            </div>
+          </div>
+
+          <div style="flex: 0 1 150px; min-width: 140px;">
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Rango Rápido</label>
+            <select id="fQuickRange" class="form-control" style="width:100%;" onchange="AttendancePage.setDateRange(this.value)">
+              <option value="">Personalizado</option>
+              <option value="today">Hoy</option>
+              <option value="yesterday">Ayer</option>
+              <option value="week">Últimos 7 días</option>
+              <option value="month">Este mes</option>
+              <option value="last_month">Mes pasado</option>
             </select>
-            <button class="btn btn-primary" id="btnFilter">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          </div>
+
+          <div style="flex: 0 1 140px; min-width: 120px;">
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Tipo de Registro</label>
+            <select id="fType" class="form-control" style="width:100%;">
+              <option value="">Todos</option>
+              <option value="entry">Entradas</option>
+              <option value="exit">Salidas</option>
+            </select>
+          </div>
+
+          <div style="flex: 0 0 auto;">
+            <button class="btn btn-primary" id="btnFilter" style="height: 42px; display:flex; align-items:center; padding: 0 20px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
               Filtrar
             </button>
           </div>
-          ${Auth.canManageEmployees() ? `
-            <button class="btn btn-outline" onclick="AttendancePage.openManualPunchModal()">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-              Reg. Marcación Manual
-            </button>
-          ` : ''}
+
         </div>
+        
+        <!-- Contenedor de KPIs Dinámicos -->
+        <div id="attendanceKpisContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; width: 100%; box-sizing: border-box;">
+          <!-- KPIs dinámicos se inyectarán aquí -->
+        </div>
+
         <div class="double-bezel-outer">
           <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
           <div class="table-wrap">
@@ -93,7 +132,7 @@ const AttendancePage = {
 
       const today = new Date().toISOString().split('T')[0];
       const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-      flatpickr('#fDateRange', {
+      this._fp = flatpickr('#fDateRange', {
         mode: 'range', locale: 'es', showMonths: 2,
         dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y',
         defaultDate: [firstDay, today],
@@ -152,9 +191,33 @@ const AttendancePage = {
     }
   },
 
+  setDateRange(range) {
+    if (!this._fp) return;
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+    
+    if (range === 'today') {
+      // already set
+    } else if (range === 'yesterday') {
+      start.setDate(today.getDate() - 1);
+      end.setDate(today.getDate() - 1);
+    } else if (range === 'week') {
+      start.setDate(today.getDate() - 7);
+    } else if (range === 'month') {
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (range === 'last_month') {
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      end = new Date(today.getFullYear(), today.getMonth(), 0);
+    }
+    
+    this._fp.setDate([start, end]);
+    document.getElementById('fQuickRange').value = ''; // Reset select visually
+    // Auto submit filter when a quick button is pressed
+    document.getElementById('btnFilter').click();
+  },
 
-
-  async loadTable() {
+  async loadTable(page = 1) {
     const p = new URLSearchParams({ page: this.page, page_size: 50 });
     const search = document.getElementById('fSearch').value;
     const range = document.getElementById('fDateRange').value;
@@ -171,12 +234,77 @@ const AttendancePage = {
     try {
       const data = await API.get(`/api/attendance/daily-summary?${p}`);
       const tbody = document.getElementById('attTable');
+      const kpisContainer = document.getElementById('attendanceKpisContainer');
+      
       if (!data?.items?.length) {
         tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         </div><h3>Sin registros</h3><p>No se encontraron registros diarios para estos filtros.</p></div></td></tr>`;
         document.getElementById('attPag').innerHTML = '';
+        if (kpisContainer) kpisContainer.innerHTML = '';
         return;
+      }
+
+      // Calcular KPIs dinámicos
+      const emps = data.items || [];
+      const total = emps.length;
+      let presentes = 0;
+      let tardanzas = 0;
+      let ausentes = 0;
+      let justificados = 0;
+
+      emps.forEach(r => {
+        if (r.is_present) {
+          presentes++;
+          if (r.is_late) tardanzas++;
+        } else {
+          ausentes++;
+        }
+        if (r.justification) {
+          justificados++;
+        }
+      });
+
+      const avgAttendance = total > 0 ? ((presentes / total) * 100).toFixed(1) : '0.0';
+
+      if (kpisContainer) {
+        kpisContainer.innerHTML = `
+          <div class="kpi-card" style="border-left: 4px solid var(--success, #10b981); background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Asistencia</span>
+              <span style="font-size: 1.25rem;">📈</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${avgAttendance}%</div>
+            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Tasa de asistencia del listado</div>
+          </div>
+
+          <div class="kpi-card" style="border-left: 4px solid var(--warning, #f59e0b); background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Tardanzas</span>
+              <span style="font-size: 1.25rem;">⏰</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${tardanzas}</div>
+            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Colaboradores con retardo</div>
+          </div>
+
+          <div class="kpi-card" style="border-left: 4px solid var(--danger, #ef4444); background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Ausencias</span>
+              <span style="font-size: 1.25rem;">⛔</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${ausentes}</div>
+            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Inasistencias registradas</div>
+          </div>
+
+          <div class="kpi-card" style="border-left: 4px solid #8b5cf6; background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Justificados</span>
+              <span style="font-size: 1.25rem;">⚖️</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${justificados}</div>
+            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Marcaciones justificadas</div>
+          </div>
+        `;
       }
       
       const formatTime = (isoString) => {
@@ -424,9 +552,9 @@ const AttendancePage = {
   async openManualPunchModal() {
     try {
       const employees = await API.get('/api/employees') || [];
-      const employeeOptions = employees
-        .map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`)
-        .join('');
+      this._employeeOptionsData = employees;
+      
+      const renderOptions = (emps) => emps.map(e => `<option value="${e.id}" style="padding: 6px; border-radius: 4px; margin-bottom: 2px;">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
 
       const now = new Date();
       // format to YYYY-MM-DDTHH:MM
@@ -436,9 +564,9 @@ const AttendancePage = {
         <div style="display:flex; flex-direction:column; gap:16px; padding: 4px 0;">
           <div>
             <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Colaborador</label>
-            <select id="manPunchEmpId" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);">
-              <option value="">Selecciona un empleado...</option>
-              ${employeeOptions}
+            <input type="text" id="manPunchSearch" placeholder="🔍 Buscar por nombre o ID..." oninput="AttendancePage.filterEmployees(this.value)" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1); margin-bottom: 8px; font-size: 0.85rem;" autocomplete="off" />
+            <select id="manPunchEmpId" size="4" style="width:100%; border:1px solid var(--border); padding:4px; border-radius:8px; background:var(--surface-1); color:var(--text-1);">
+              ${renderOptions(employees)}
             </select>
           </div>
           <div>
@@ -450,7 +578,7 @@ const AttendancePage = {
           </div>
           <div>
             <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Fecha y Hora</label>
-            <input type="datetime-local" id="manPunchTime" value="${localISO}" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);" />
+            <input type="text" id="manPunchTime" value="${localISO}" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);" />
           </div>
         </div>
       `;
@@ -461,6 +589,18 @@ const AttendancePage = {
       `;
 
       Modal.open("Registrar Marcación Manual", html, footer);
+      
+      setTimeout(() => {
+        if (window.flatpickr) {
+          flatpickr("#manPunchTime", {
+            enableTime: true,
+            dateFormat: "Y-m-d\\TH:i",
+            locale: "es",
+            time_24hr: true,
+            defaultDate: localISO
+          });
+        }
+      }, 50);
     } catch (err) {
       Toast.show("Error al obtener lista de empleados", "error");
     }
@@ -487,5 +627,19 @@ const AttendancePage = {
     } catch (err) {
       Toast.show(err.message || "Error al guardar la marcación manual", "error");
     }
+  },
+
+  filterEmployees(query) {
+    const q = query.toLowerCase();
+    const filtered = (this._employeeOptionsData || []).filter(e => 
+      (e.first_name || '').toLowerCase().includes(q) || 
+      (e.last_name || '').toLowerCase().includes(q) || 
+      (e.employee_code || '').toLowerCase().includes(q)
+    );
+    const select = document.getElementById('manPunchEmpId');
+    if (!select) return;
+    
+    select.innerHTML = filtered.map(e => `<option value="${e.id}" style="padding: 6px; border-radius: 4px; margin-bottom: 2px;">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
+    if (filtered.length > 0) select.selectedIndex = 0;
   }
 };

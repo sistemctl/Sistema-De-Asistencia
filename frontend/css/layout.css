@@ -111,7 +111,7 @@
   color: var(--accent);
   transform: translateX(6px);
 }
-.nav-item:hover svg { transform: scale(1.15); }
+.nav-item:hover svg { color: var(--accent); }
 .nav-item.active {
   background: rgba(var(--accent-rgb), 0.10);
   color: var(--accent);
@@ -138,9 +138,6 @@
   background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.08), rgba(var(--accent-2-rgb), 0.08));
   border-color: rgba(var(--accent-rgb), 0.25);
   box-shadow: 0 10px 20px -8px rgba(var(--accent-rgb), 0.12);
-}
-.user-chip:hover .user-avatar {
-  transform: scale(1.08);
 }
 .user-avatar {
   width: 34px;

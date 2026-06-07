@@ -38,11 +38,14 @@ const SchedulesPage = {
       
       <!-- Sub-pestañas internas -->
       <div class="subtabs-container" style="margin-bottom:20px; border-bottom:1px solid var(--border); display:flex; gap:24px;">
-        <button class="sched-tab-btn ${subTab==='catalog'?'active':''}" onclick="SchedulesPage.switchSubTab('catalog')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.92rem;cursor:pointer;position:relative;transition:color 0.2s;">
+        <button class="sched-tab-btn ${subTab==='catalog'?'active':''}" onclick="SchedulesPage.switchSubTab('catalog')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.92rem;cursor:pointer;position:relative;transition:color 0.2s;" data-tab="catalog">
           Catálogo de Horarios
         </button>
-        <button class="sched-tab-btn ${subTab==='matrix'?'active':''}" onclick="SchedulesPage.switchSubTab('matrix')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.92rem;cursor:pointer;position:relative;transition:color 0.2s;">
-          Calendario Semanal
+        <button class="sched-tab-btn ${subTab==='matrix'?'active':''}" onclick="SchedulesPage.switchSubTab('matrix')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.92rem;cursor:pointer;position:relative;transition:color 0.2s;" data-tab="matrix">
+          Matriz Semanal
+        </button>
+        <button class="sched-tab-btn ${subTab==='calendar'?'active':''}" onclick="SchedulesPage.switchSubTab('calendar')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.92rem;cursor:pointer;position:relative;transition:color 0.2s;" data-tab="calendar">
+          Calendario Visual
         </button>
       </div>
       <style>
@@ -61,8 +64,7 @@ const SchedulesPage = {
   async switchSubTab(subTab) {
     this.currentSubTab = subTab;
     document.querySelectorAll('.sched-tab-btn').forEach(btn => {
-      const isCatalog = btn.textContent.includes('Catálogo');
-      btn.classList.toggle('active', (isCatalog && subTab === 'catalog') || (!isCatalog && subTab === 'matrix'));
+      btn.classList.toggle('active', btn.dataset.tab === subTab);
     });
 
     const container = document.getElementById('schedSubContent');
@@ -109,6 +111,8 @@ const SchedulesPage = {
       await this.loadTable();
     } else if (subTab === 'matrix') {
       await this.renderWeeklyMatrix(container);
+    } else if (subTab === 'calendar') {
+      await this.renderFullCalendar(container);
     }
   },
 
@@ -706,6 +710,179 @@ const SchedulesPage = {
       this.renderWeeklyMatrix(document.getElementById('schedSubContent'));
     } catch(e) {
       Toast.show(e.message, 'error');
+    }
+  },
+
+  async renderFullCalendar(container) {
+    container.innerHTML = `
+      <div class="card" style="padding: 20px; position: relative;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 16px; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="display:flex; flex-direction:column;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 4px; text-transform: uppercase;">Departamento</label>
+              <select id="calDeptFilter" class="form-control" style="min-width: 220px;" onchange="SchedulesPage.reloadCalendarEvents()">
+                <option value="">Todos los departamentos</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button class="btn btn-secondary btn-sm" onclick="SchedulesPage.exportCalendarPDF()" style="display:flex; align-items:center; gap:6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Exportar PDF
+            </button>
+          </div>
+        </div>
+        <div id="fullCalendarDiv" style="min-height: 600px; background:#fff; padding: 10px; border-radius: 8px;"></div>
+      </div>
+    `;
+
+    try {
+      // Fetch departments for filter
+      const depts = await API.get('/api/employees/departments', true) || [];
+      const deptSelect = document.getElementById('calDeptFilter');
+      if (deptSelect) {
+        depts.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = d.name;
+          deptSelect.appendChild(opt);
+        });
+      }
+      
+      this.currentCalendarInstance = null;
+      await this.reloadCalendarEvents();
+
+    } catch (e) {
+      container.innerHTML = '<div style="color:red; padding:20px;">Error al inicializar calendario visual: ' + e.message + '</div>';
+    }
+  },
+
+  async reloadCalendarEvents() {
+    const calEl = document.getElementById('fullCalendarDiv');
+    if (!calEl) return;
+    
+    const deptId = document.getElementById('calDeptFilter')?.value;
+    
+    try {
+      if (this.currentCalendarInstance) {
+        this.currentCalendarInstance.destroy();
+      }
+      calEl.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-3);">Cargando horarios...</div>';
+
+      const url = deptId ? `/api/employees?department_id=${deptId}&is_active=true` : '/api/employees?is_active=true';
+      
+      const [employees, schedules] = await Promise.all([
+        API.get(url),
+        API.get('/api/schedules')
+      ]);
+
+      calEl.innerHTML = ''; // clear loading
+      const events = [];
+      const dayMap = { 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:0 };
+      
+      employees.forEach(emp => {
+        if (!emp.schedule_id) return;
+        const sched = schedules.find(s => s.id === emp.schedule_id);
+        if (!sched) return;
+
+        const workDays = sched.work_days.split(',').map(d => dayMap[parseInt(d)]);
+        const color = sched.shift_type === 'split' ? '#f59e0b' : '#4f46e5';
+
+        events.push({
+          title: emp.full_name,
+          startTime: sched.work_start_time,
+          endTime: sched.work_end_time,
+          daysOfWeek: workDays,
+          color: color,
+          textColor: '#ffffff',
+          extendedProps: {
+            employee: emp.full_name,
+            schedule: sched.name,
+            shift_type: sched.shift_type,
+            time_range: sched.work_start_time.substring(0,5) + ' - ' + sched.work_end_time.substring(0,5)
+          }
+        });
+      });
+
+      this.currentCalendarInstance = new FullCalendar.Calendar(calEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        buttonText: {
+          today: 'Hoy',
+          month: 'Mes',
+          week: 'Semana',
+          day: 'Día'
+        },
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        slotMinTime: '05:00:00',
+        slotMaxTime: '23:00:00',
+        events: events,
+        allDaySlot: false,
+        height: 'auto',
+        displayEventTime: false,
+        eventDisplay: 'block',
+        dayMaxEvents: 3,
+        moreLinkHint: 'Mostrar más',
+        buttonHints: {
+          prev: 'Anterior',
+          next: 'Siguiente',
+          today: 'Hoy'
+        },
+        eventContent: function(arg) {
+          const shortName = arg.event.title.split(' ').slice(0, 2).join(' ');
+          return {
+            html: `<div style="padding: 2px 4px; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 4px;">
+              <span style="opacity:0.9; font-weight:700; background:rgba(0,0,0,0.15); padding:1px 4px; border-radius:3px; margin-right:4px;">${arg.event.extendedProps.time_range}</span>
+              <span style="font-weight: 600;">${shortName}</span>
+            </div>`
+          };
+        },
+        eventClick: function(info) {
+          Toast.show(info.event.extendedProps.employee + ' - ' + info.event.extendedProps.schedule, 'info');
+        }
+      });
+      this.currentCalendarInstance.render();
+
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al recargar calendario', 'error');
+    }
+  },
+
+  async exportCalendarPDF() {
+    try {
+      const calEl = document.getElementById('fullCalendarDiv');
+      if (!calEl) return;
+      Toast.show('Preparando calendario para exportar...', 'info');
+      
+      const canvas = await html2canvas(calEl, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: '#ffffff' 
+      });
+      const imgData = canvas.toDataURL('image/png');
+      
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      // leave some margin
+      const imgWidth = pdfWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.setFontSize(14);
+      pdf.text("Calendario Visual de Turnos", 10, 12);
+      pdf.addImage(imgData, 'PNG', 10, 16, imgWidth, imgHeight);
+      pdf.save('Calendario_Turnos.pdf');
+      
+      Toast.show('Calendario exportado exitosamente', 'success');
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al generar el PDF del calendario', 'error');
     }
   },
 

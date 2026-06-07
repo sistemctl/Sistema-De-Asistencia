@@ -120,34 +120,16 @@ if (syncBtn) {
 
 // ── Modal close ──────────────────────────────────────────────────────────────
 document.getElementById('modalClose').addEventListener('click', Modal.close);
+// Use event listener on overlay but respect force-password lock
 document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  const user = Auth.user();
+  if (user && user.force_password_change) return; // Bloquear cierre si es obligatorio
   if (e.target === document.getElementById('modalOverlay')) Modal.close();
 });
 
 // ── Copy to Clipboard global helper with elastic tooltip ────────────────────
 document.addEventListener('click', async (e) => {
-  // Ripple effect para botones
-  const btn = e.target.closest('.btn');
-  if (btn) {
-    const circle = document.createElement('span');
-    const diameter = Math.max(btn.clientWidth, btn.clientHeight);
-    const radius = diameter / 2;
-    const rect = btn.getBoundingClientRect();
-    
-    circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${e.clientX - rect.left - radius}px`;
-    circle.style.top = `${e.clientY - rect.top - radius}px`;
-    circle.classList.add('ripple-effect');
-    
-    // Remover ripples anteriores si los hay
-    const existingRipple = btn.querySelector('.ripple-effect');
-    if (existingRipple) {
-      existingRipple.remove();
-    }
-    
-    btn.appendChild(circle);
-    setTimeout(() => circle.remove(), 600);
-  }
+
 
   // Copy to clipboard
   const copyEl = e.target.closest('.copyable');
@@ -288,6 +270,7 @@ function getBrightness(hex) {
 async function loadSystemBranding() {
   try {
     const data = await API.get('/api/settings');
+    window.currentBrandingData = data;
     
     // Actualizar nombre de la pestaña/título
     document.title = data.system_name || 'Sistema de Asistencia';
@@ -355,11 +338,6 @@ async function loadSystemBranding() {
 
 // Función para aplicar colores de tema en tiempo real
 function applyThemeColors(pColor, aColor, base, surface) {
-  // Inyectar variables base
-  document.documentElement.style.setProperty('--bg-base', base);
-  document.documentElement.style.setProperty('--bg-raised', surface);
-  document.documentElement.style.setProperty('--surface-1', surface);
-  
   // Mapear primario/acento y sus componentes RGB
   document.documentElement.style.setProperty('--accent', pColor);
   const pRgb = hexToRgb(pColor);
@@ -373,6 +351,24 @@ function applyThemeColors(pColor, aColor, base, surface) {
   if (aRgb) {
     document.documentElement.style.setProperty('--accent-2-rgb', aRgb);
   }
+
+  // Si está activo el modo oscuro, no inyectamos los colores de fondo/superficie/texto claros como inline-styles,
+  // permitiendo que apliquen los estilos de dark_mode.css
+  if (document.documentElement.classList.contains('dark-theme')) {
+    const propsToRemove = [
+      '--bg-base', '--bg-raised', '--surface-1', '--surface-2', '--surface-3',
+      '--text-1', '--text-2', '--text-3',
+      '--border', '--border-light'
+    ];
+    propsToRemove.forEach(prop => document.documentElement.style.removeProperty(prop));
+    document.body.style.backgroundImage = 'none';
+    return;
+  }
+
+  // Inyectar variables base
+  document.documentElement.style.setProperty('--bg-base', base);
+  document.documentElement.style.setProperty('--bg-raised', surface);
+  document.documentElement.style.setProperty('--surface-1', surface);
 
   // Calcular contraste según el brillo de las tarjetas (donde reside el texto)
   const brightness = getBrightness(surface);
@@ -468,15 +464,21 @@ function initTheme() {
       localStorage.setItem('theme', 'dark');
       toggleBtn.innerHTML = Icons.sun(16, 16);
     }
+    
+    // Volver a evaluar colores de branding con el nuevo estado del tema
+    if (window.currentBrandingData) {
+      const d = window.currentBrandingData;
+      applyThemeColors(d.primary_color, d.accent_color, d.bg_base_color, d.bg_surface_color);
+    }
   });
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadUserInfo();
+initTheme();
 loadSystemBranding();
 updateDeviceBadge();
 startClock();
-initTheme();
 
 // Determinar la página inicial basada en el hash de la URL
 const initialPage = window.location.hash.slice(1) || 'dashboard';
@@ -486,4 +488,60 @@ navigate(initialPage);
 devicePollInterval = setInterval(() => {
   updateDeviceBadge();
 }, 60000);
+
+// Comprobar si necesita cambiar la contraseña
+const currentUser = Auth.user();
+if (currentUser && currentUser.force_password_change) {
+  setTimeout(() => {
+    Modal.open('Cambio de Contraseña Obligatorio', `
+      <p style="color:var(--text-2);font-size:.875rem;margin-bottom:14px">Por razones de seguridad, debes actualizar tu contraseña antes de continuar.</p>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Nueva Contraseña</label>
+        <input id="forcedNewPassword" type="password" placeholder="Mínimo 8 caracteres (A-Z, a-z, 0-9, símbolos)" />
+      </div>
+      <div class="field">
+        <label>Confirmar Contraseña</label>
+        <input id="forcedConfirmPassword" type="password" placeholder="Repita la nueva contraseña" />
+      </div>
+      <div style="font-size:0.75rem; color:var(--text-3); margin-top: 8px;">
+        La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas, números y caracteres especiales.
+      </div>
+    `, `<button class="btn btn-primary" id="btnForcePwdSave" style="width:100%">Guardar Contraseña</button>`);
+    
+    const closeBtn = document.getElementById('modalClose');
+    if (closeBtn) closeBtn.style.display = 'none';
+    
+    // Deshabilitar click afuera (modificando evento o previniendo propagación)
+    document.getElementById('modalBox').addEventListener('click', (e) => e.stopPropagation());
+    // Se sobreescribe el onclick temporalmente
+    const oldOverlayClick = document.getElementById('modalOverlay').onclick;
+    document.getElementById('modalOverlay').onclick = null;
+
+    document.getElementById('btnForcePwdSave').onclick = async () => {
+      const pwd = document.getElementById('forcedNewPassword').value;
+      const confirm = document.getElementById('forcedConfirmPassword').value;
+      if (pwd !== confirm) { Toast.show('Las contraseñas no coinciden', 'warning'); return; }
+      if (pwd.length < 8) { Toast.show('La contraseña debe tener al menos 8 caracteres', 'warning'); return; }
+      if (!/(?=.*[a-z])/.test(pwd)) { Toast.show('La contraseña debe contener al menos una minúscula', 'warning'); return; }
+      if (!/(?=.*[A-Z])/.test(pwd)) { Toast.show('La contraseña debe contener al menos una mayúscula', 'warning'); return; }
+      if (!/(?=.*\d)/.test(pwd)) { Toast.show('La contraseña debe contener al menos un número', 'warning'); return; }
+      if (!/(?=.*[\W_])/.test(pwd)) { Toast.show('La contraseña debe contener al menos un carácter especial', 'warning'); return; }
+
+      try {
+        document.getElementById('btnForcePwdSave').classList.add('btn-loading');
+        await API.put('/api/auth/users/' + currentUser.id, { password: pwd, force_password_change: false });
+        
+        currentUser.force_password_change = false;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        
+        Toast.show('Contraseña actualizada correctamente.', 'success');
+        if (closeBtn) closeBtn.style.display = 'block';
+        Modal.close();
+      } catch(e) {
+        document.getElementById('btnForcePwdSave').classList.remove('btn-loading');
+        Toast.show(e.message, 'error');
+      }
+    };
+  }, 500); // Dar tiempo a que renderice la app
+}
 

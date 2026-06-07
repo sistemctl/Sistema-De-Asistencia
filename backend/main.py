@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Eventos de inicio y apagado de la aplicación."""
     logger.info(f"🚀 Iniciando {APP_NAME} v{APP_VERSION}")
+    
+    import asyncio
+    from backend.routers import ws
+    ws.main_loop = asyncio.get_running_loop()
+    
     init_db()
     start_scheduler()
     logger.info("✅ Sistema listo")
@@ -65,6 +70,8 @@ app.include_router(holidays.router)
 app.include_router(leaves.router)
 app.include_router(audit.router)
 app.include_router(backup.router)
+from backend.routers import ws
+app.include_router(ws.router)
 
 
 # ── Archivos estáticos del frontend ──────────────────────────────────────────
@@ -96,6 +103,14 @@ if FRONTEND_DIR.exists():
     @app.get("/static/favicon.svg", include_in_schema=False)
     def serve_favicon_static():
         return FileResponse(str(FRONTEND_DIR / "favicon.svg"), media_type="image/svg+xml")
+
+    @app.get("/manifest.json", include_in_schema=False)
+    def serve_manifest():
+        return FileResponse(str(FRONTEND_DIR / "manifest.json"), media_type="application/json")
+
+    @app.get("/sw.js", include_in_schema=False)
+    def serve_sw():
+        return FileResponse(str(FRONTEND_DIR / "sw.js"), media_type="application/javascript")
 
 
 @app.get("/api/health")

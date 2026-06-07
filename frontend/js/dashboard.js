@@ -10,32 +10,34 @@ const DashboardPage = {
     this.selectedDate = todayISO;
 
     document.getElementById('pageContent').innerHTML = `
-      <!-- Barra de fecha -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="dash-date-selector" onclick="document.getElementById('dashDatePicker')._flatpickr?.open()">
-            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            <span style="font-size:0.82rem;font-weight:600;opacity:0.9;">Viendo datos de:</span>
-            <input id="dashDatePicker" class="dash-date-input" placeholder="Seleccionar fecha…" readonly />
-          </div>
-          <span id="dashDateLabel" style="font-size:.78rem;color:var(--text-3);font-weight:600;background:rgba(var(--accent-rgb),0.06);padding:4px 10px;border-radius:20px;border:1px dashed rgba(var(--accent-rgb),0.2);display:none;"></span>
-        </div>
-        <button id="dashGoToday" class="btn btn-secondary btn-sm" style="display:none;border-radius:20px;padding:6px 14px;font-weight:600;">
-          ← Volver a hoy
-        </button>
-      </div>
-
-      <!-- Banner de Bienvenida y Biométrico -->
+      <!-- Banner de Bienvenida, Fecha y Biométrico -->
       <div class="welcome-banner">
         <div class="welcome-banner-greeting">
           <h2 id="welcomeGreeting">¡Hola!</h2>
           <p id="welcomeSub">Que tengas una excelente jornada laboral hoy.</p>
         </div>
-        <div class="biometric-badge" id="biometricStatusBadge">
-          <div class="biometric-indicator offline" id="biometricIndicator"></div>
-          <div class="biometric-details">
-            <span class="biometric-details-title">Dispositivo Biométrico</span>
-            <span class="biometric-details-sub" id="biometricInfo">Cargando estado...</span>
+        
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: relative; z-index: 2;">
+          <!-- Barra de fecha integrada -->
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="dash-date-selector" onclick="document.getElementById('dashDatePicker')._flatpickr?.open()" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(10px);">
+              <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <span style="font-size:0.82rem;font-weight:600;opacity:0.9;">Viendo datos de:</span>
+              <input id="dashDatePicker" class="dash-date-input" placeholder="Seleccionar fecha…" readonly />
+            </div>
+            <span id="dashDateLabel" style="font-size:.78rem;color:var(--text-3);font-weight:600;background:rgba(var(--accent-rgb),0.06);padding:4px 10px;border-radius:20px;border:1px dashed rgba(var(--accent-rgb),0.2);display:none;"></span>
+            <button id="dashGoToday" class="btn btn-secondary btn-sm" style="display:none;border-radius:20px;padding:6px 14px;font-weight:600;">
+              ← Volver a hoy
+            </button>
+          </div>
+
+          <!-- Biometric Badge -->
+          <div class="biometric-badge" id="biometricStatusBadge" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(10px);">
+            <div class="biometric-indicator offline" id="biometricIndicator"></div>
+            <div class="biometric-details">
+              <span class="biometric-details-title">Dispositivo Biométrico</span>
+              <span class="biometric-details-sub" id="biometricInfo">Cargando estado...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -142,6 +144,7 @@ const DashboardPage = {
       this.reload();
     });
 
+    this.initWebSocket();
     await this.reload();
   },
 
@@ -466,4 +469,30 @@ const DashboardPage = {
     if (diff < 86400) return `${Math.floor(diff/3600)}h`;
     return new Date(iso).toLocaleDateString('es');
   },
+
+  initWebSocket() {
+    if (this.ws) return;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    
+    this.ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'NEW_ATTENDANCE') {
+          const todayISO = new Date().toISOString().slice(0, 10);
+          if (this.selectedDate === todayISO) {
+             Toast.show(`⚡ ¡Nuevo registro biométrico sincronizado!`, 'info');
+             this.reload();
+          }
+        }
+      } catch (e) {
+        console.error("WS error:", e);
+      }
+    };
+    
+    this.ws.onclose = () => {
+      this.ws = null;
+      setTimeout(() => this.initWebSocket(), 5000);
+    };
+  }
 };
