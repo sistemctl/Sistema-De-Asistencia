@@ -342,7 +342,10 @@ def generate_attendance_excel(summaries: list, granularity: str, columns: Option
             elif s.get("leave_type") and s["leave_type"] in leave_map:
                 status = leave_map[s["leave_type"]]
             elif not s["is_present"]:
-                status = "Ausente"
+                if s.get("is_holiday"):
+                    status = "Festivo"
+                else:
+                    status = "Ausente"
             elif s["missing_punches"]:
                 status = "Incompleto"
             elif s["is_late"]:

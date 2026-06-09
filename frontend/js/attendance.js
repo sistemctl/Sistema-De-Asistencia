@@ -248,7 +248,11 @@ const AttendancePage = {
       
       tbody.innerHTML = data.items.map(r => {
         let statusBadge = '<span class="badge badge-green">OK</span>';
-        if (!r.is_present) statusBadge = '<span class="badge badge-red">Ausente</span>';
+        if (!r.is_present) {
+          statusBadge = r.is_holiday 
+            ? '<span class="badge badge-purple">Festivo</span>' 
+            : '<span class="badge badge-red">Ausente</span>';
+        }
         else if (r.missing_punches) statusBadge = '<span class="badge badge-yellow">Incompleto</span>';
         else if (r.is_late) statusBadge = '<span class="badge badge-yellow">Tardanza</span>';
         

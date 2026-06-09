@@ -86,7 +86,11 @@ const ReportsTable = {
       tbody.innerHTML = data.items.map(r => {
         if (repGranularity === 'daily') {
           let statusBadge = '<span class="corp-badge corp-badge-present">OK</span>';
-          if (!r.is_present) statusBadge = '<span class="corp-badge corp-badge-absent">Ausente</span>';
+          if (!r.is_present) {
+            statusBadge = r.is_holiday 
+              ? '<span class="corp-badge corp-badge-holiday">Festivo</span>' 
+              : '<span class="corp-badge corp-badge-absent">Ausente</span>';
+          }
           else if (r.missing_punches) statusBadge = '<span class="corp-badge corp-badge-late">Incompleto</span>';
           else if (r.is_late) statusBadge = '<span class="corp-badge corp-badge-late">Tardanza</span>';
 

@@ -447,23 +447,27 @@ def _get_employee_flowables(
             elif s.get("leave_type") and s["leave_type"] in leave_map:
                 status_text, status_color = leave_map[s["leave_type"]]
             elif not s.get("is_present", False):
-                is_workday = True
-                try:
-                    d_obj = datetime.strptime(s["date"], "%Y-%m-%d")
-                    d_date = d_obj.date()
-                    if d_date in daily_schedules_map:
-                        is_workday = not daily_schedules_map[d_date].is_off
-                    else:
-                        is_workday = (d_obj.weekday() + 1) in work_days
-                except Exception:
-                    pass
-                
-                if is_workday:
-                    status_text = "Ausente"
-                    status_color = "#991b1b"
+                if s.get("is_holiday"):
+                    status_text = "Festivo"
+                    status_color = "#6d28d9"
                 else:
-                    status_text = "Descanso"
-                    status_color = "#475569"
+                    is_workday = True
+                    try:
+                        d_obj = datetime.strptime(s["date"], "%Y-%m-%d")
+                        d_date = d_obj.date()
+                        if d_date in daily_schedules_map:
+                            is_workday = not daily_schedules_map[d_date].is_off
+                        else:
+                            is_workday = (d_obj.weekday() + 1) in work_days
+                    except Exception:
+                        pass
+                    
+                    if is_workday:
+                        status_text = "Ausente"
+                        status_color = "#991b1b"
+                    else:
+                        status_text = "Descanso"
+                        status_color = "#475569"
             elif s.get("missing_punches", False):
                 status_text = "Incompleto"
                 status_color = "#854d0e"

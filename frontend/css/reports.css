@@ -161,6 +161,7 @@
 .corp-badge-absent { background: rgba(255, 61, 0, 0.12); color: var(--danger); }
 .corp-badge-late { background: rgba(255, 179, 0, 0.15); color: var(--warning); }
 .corp-badge-rest { background: var(--surface-3); color: var(--text-3); }
+.corp-badge-holiday { background: rgba(147, 51, 234, 0.15); color: #a855f7; }
 .corp-btn-primary {
   background: var(--accent);
   color: var(--bg-raised);
