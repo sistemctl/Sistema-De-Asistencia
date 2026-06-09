@@ -54,7 +54,8 @@ function navigate(page) {
       const subRoute = page.split('/')[1] || 'branding';
       PAGES[basePage].module.render(subRoute);
     } else if (basePage === 'device') {
-      PAGES[basePage].module.render('device_status');
+      const subRoute = page.split('/')[1] || 'device_status';
+      PAGES[basePage].module.render(subRoute);
     } else {
       PAGES[basePage].module.render();
     }
@@ -68,6 +69,9 @@ function navigate(page) {
     } else if (basePage === 'system') {
       const subRoute = page.split('/')[1] || 'branding';
       SystemConfigPage.switchTab(subRoute);
+    } else if (basePage === 'device') {
+      const subRoute = page.split('/')[1] || 'device_status';
+      DevicePage.switchTab(subRoute);
     }
   }
 }

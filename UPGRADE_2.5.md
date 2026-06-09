@@ -5,6 +5,7 @@ Esta guía contiene los pasos necesarios para actualizar el **Sistema de Asisten
 ---
 
 ## 📋 Resumen de Cambios en la v2.5
+- **Rediseño del Módulo de Dispositivos:** Reestructuración de la interfaz en pestañas (Red y Conexión, Control Remoto, Ajustes de Seguridad e Historial de Sincronización) para evitar la sobrecarga visual. Opciones redundantes como reglas de asistencia y sincronización periódica fueron movidas a la sección Ajustes del Sistema.
 - **Modularización de CSS:** Arquitectura de estilos rediseñada para ser completamente modular (`main.css`, `tokens.css`, `components.css`, `layout.css`, etc.), eliminando la dependencia de hojas de estilo monolíticas (`styles.css` ha sido eliminado).
 - **Soporte Nativo de Modo Oscuro:** Integración de un modo oscuro unificado y cohesivo, que puede activarse sin dependencias de terceros gracias al uso intensivo de variables CSS (`dark_mode.css`).
 - **Correcciones Visuales (SMTP y Toggles):** Solucionados los problemas de superposición y layout de los selectores tipo interruptor (`toggle-switch`) en el módulo de configuración de SMTP y ajustes del sistema.

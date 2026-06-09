@@ -62,6 +62,8 @@ class SettingsUpdateSchema(BaseModel):
     qr_badge_show_blood_type: Optional[bool] = True
     qr_badge_show_department: Optional[bool] = True
     mobile_qr_portal_enabled: Optional[bool] = False
+    daily_report_time: Optional[str] = "19:00"
+    absences_check_time: Optional[str] = "11:00"
 
 
 class SettingsPatchSchema(BaseModel):
@@ -114,6 +116,8 @@ class SettingsPatchSchema(BaseModel):
     qr_badge_show_blood_type: Optional[bool] = None
     qr_badge_show_department: Optional[bool] = None
     mobile_qr_portal_enabled: Optional[bool] = None
+    daily_report_time: Optional[str] = None
+    absences_check_time: Optional[str] = None
 
 
 @router.get("/public")
@@ -194,7 +198,9 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
             "cleanup_sync_enabled": True,
             "qr_badge_show_blood_type": True,
             "qr_badge_show_department": True,
-            "mobile_qr_portal_enabled": False
+            "mobile_qr_portal_enabled": False,
+            "daily_report_time": "19:00",
+            "absences_check_time": "11:00"
         }
     return {
         "system_name": config.system_name,
@@ -246,7 +252,9 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "cleanup_sync_enabled": config.cleanup_sync_enabled,
         "qr_badge_show_blood_type": config.qr_badge_show_blood_type,
         "qr_badge_show_department": config.qr_badge_show_department,
-        "mobile_qr_portal_enabled": config.mobile_qr_portal_enabled
+        "mobile_qr_portal_enabled": config.mobile_qr_portal_enabled,
+        "daily_report_time": config.daily_report_time or "19:00",
+        "absences_check_time": config.absences_check_time or "11:00"
     }
 
 @router.put("")
@@ -314,9 +322,15 @@ def update_settings(
     config.qr_badge_show_blood_type = data.qr_badge_show_blood_type
     config.qr_badge_show_department = data.qr_badge_show_department
     config.mobile_qr_portal_enabled = data.mobile_qr_portal_enabled
+    config.daily_report_time = data.daily_report_time
+    config.absences_check_time = data.absences_check_time
     
     db.commit()
     db.refresh(config)
+
+    # Configurar dinámicamente el estado de las tareas del scheduler (pausar/reanudar)
+    from backend.services.scheduler import configure_scheduler_jobs
+    configure_scheduler_jobs(db)
 
     from backend.services.audit import log_action
     log_action(db, current_user.id, "UPDATE", "SystemConfig", str(config.id), "Configuración general del sistema actualizada")
@@ -347,6 +361,10 @@ def patch_settings(
             
     db.commit()
     db.refresh(config)
+
+    # Configurar dinámicamente el estado de las tareas del scheduler (pausar/reanudar)
+    from backend.services.scheduler import configure_scheduler_jobs
+    configure_scheduler_jobs(db)
 
     from backend.services.audit import log_action
     log_action(db, current_user.id, "UPDATE", "SystemConfig", str(config.id), "Configuración parcial del sistema actualizada")

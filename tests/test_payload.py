@@ -32,11 +32,17 @@ print("PAYLOAD:", payload)
 
 import requests
 from requests.auth import HTTPDigestAuth
-r = requests.post(
-    f"http://{cfg.ip_address}:{cfg.port}/ISAPI/AccessControl/AcsEvent?format=json",
-    auth=HTTPDigestAuth(cfg.username, cfg.password),
-    json=payload,
-    timeout=10
-)
-print("STATUS:", r.status_code)
-print("RESPONSE:", r.text)
+
+try:
+    r = requests.post(
+        f"http://{cfg.ip_address}:{cfg.port}/ISAPI/AccessControl/AcsEvent?format=json",
+        auth=HTTPDigestAuth(cfg.username, cfg.password),
+        json=payload,
+        timeout=10
+    )
+    print("STATUS:", r.status_code)
+    print("RESPONSE:", r.text)
+except requests.exceptions.RequestException as e:
+    print(f"⚠️ El dispositivo físico en {cfg.ip_address} está fuera de línea o inaccesible: {e}")
+    print("Esto es esperado si no estás en la red local del biométrico.")
+

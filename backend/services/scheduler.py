@@ -39,37 +39,150 @@ def start_scheduler():
         next_run_time=get_local_now().replace(tzinfo=None),  # Ejecutar inmediatamente al iniciar
     )
     
-    # Agregar tarea diaria para ausencias a las 11:00 AM
+    # Obtener horarios dinámicos de la base de datos
+    db = SessionLocal()
+    from backend.models import SystemConfig
+    sys_cfg = db.query(SystemConfig).first()
+    
+    absences_hour, absences_minute = 11, 0
+    report_hour, report_minute = 19, 0
+    cleanup_hour, cleanup_minute = 2, 0
+    
+    if sys_cfg:
+        if sys_cfg.absences_check_time:
+            try:
+                absences_hour, absences_minute = map(int, sys_cfg.absences_check_time.split(":"))
+            except Exception:
+                pass
+        if sys_cfg.daily_report_time:
+            try:
+                report_hour, report_minute = map(int, sys_cfg.daily_report_time.split(":"))
+            except Exception:
+                pass
+        if sys_cfg.cleanup_time:
+            try:
+                cleanup_hour, cleanup_minute = map(int, sys_cfg.cleanup_time.split(":"))
+            except Exception:
+                pass
+    db.close()
+    
+    # Agregar tarea diaria para ausencias
     _scheduler.add_job(
         check_daily_absences,
         trigger="cron",
-        hour=11,
-        minute=0,
+        hour=absences_hour,
+        minute=absences_minute,
         id="check_daily_absences",
         replace_existing=True,
     )
     
-    # Agregar tarea de reporte diario a administradores a las 18:00
+    # Agregar tarea de reporte diario a administradores
     _scheduler.add_job(
         send_daily_report,
         trigger="cron",
-        hour=18,
-        minute=0,
+        hour=report_hour,
+        minute=report_minute,
         id="send_daily_report",
         replace_existing=True,
     )
     
-    # Agregar tarea de mantenimiento (limpieza) que verifica la hora configurada
+    # Agregar tarea de mantenimiento (limpieza)
     _scheduler.add_job(
         run_daily_cleanup,
         trigger="cron",
-        minute=0, # Se ejecuta cada hora para revisar si coincide con cleanup_time
+        hour=cleanup_hour,
+        minute=cleanup_minute,
         id="run_daily_cleanup",
         replace_existing=True,
     )
     
     _scheduler.start()
-    logger.info(f"✅ Scheduler iniciado — sincronización cada {interval} minutos y revisión de ausencias a las 11:00, reporte a las 18:00")
+    logger.info(f"✅ Scheduler iniciado — sincronización cada {interval} minutos, ausencias a las {absences_hour:02d}:{absences_minute:02d}, reporte a las {report_hour:02d}:{report_minute:02d}, limpieza a las {cleanup_hour:02d}:{cleanup_minute:02d}")
+    
+    # Aplicar estado inicial de tareas según la BD
+    db = SessionLocal()
+    try:
+        configure_scheduler_jobs(db)
+    finally:
+        db.close()
+
+
+def configure_scheduler_jobs(db: Session):
+    """
+    Pausa o reanuda tareas en el scheduler según la configuración en la base de datos.
+    Llamar al iniciar la app o cuando se actualicen los ajustes generales.
+    """
+    from backend.models import SystemConfig, DeviceConfig
+    
+    # 1. Configuración de Limpieza y Alertas por Correo
+    sys_cfg = db.query(SystemConfig).first()
+    if sys_cfg:
+        # Tarea de limpieza diaria
+        if sys_cfg.cleanup_enabled:
+            try:
+                cleanup_time = sys_cfg.cleanup_time or "02:00"
+                h, m = map(int, cleanup_time.split(":"))
+                _scheduler.reschedule_job("run_daily_cleanup", trigger="cron", hour=h, minute=m)
+                _scheduler.resume_job("run_daily_cleanup")
+                logger.info(f"🧹 Tarea 'run_daily_cleanup' reanudada (activada) a las {cleanup_time} en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al configurar/reanudar run_daily_cleanup: {e}")
+        else:
+            try:
+                _scheduler.pause_job("run_daily_cleanup")
+                logger.info("🧹 Tarea 'run_daily_cleanup' pausada (desactivada) en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al pausar run_daily_cleanup: {e}")
+
+        # Tarea de reporte diario (las 19:00)
+        if sys_cfg.email_notifications_enabled and sys_cfg.alert_admin_daily_report:
+            try:
+                report_time = sys_cfg.daily_report_time or "19:00"
+                h, m = map(int, report_time.split(":"))
+                _scheduler.reschedule_job("send_daily_report", trigger="cron", hour=h, minute=m)
+                _scheduler.resume_job("send_daily_report")
+                logger.info(f"📊 Tarea 'send_daily_report' reanudada (activada) a las {report_time} en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al configurar/reanudar send_daily_report: {e}")
+        else:
+            try:
+                _scheduler.pause_job("send_daily_report")
+                logger.info("📊 Tarea 'send_daily_report' pausada (desactivada) en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al pausar send_daily_report: {e}")
+
+        # Tarea de ausencias diarias (las 11:00)
+        if sys_cfg.email_notifications_enabled and sys_cfg.email_alerts_recipients:
+            try:
+                absences_time = sys_cfg.absences_check_time or "11:00"
+                h, m = map(int, absences_time.split(":"))
+                _scheduler.reschedule_job("check_daily_absences", trigger="cron", hour=h, minute=m)
+                _scheduler.resume_job("check_daily_absences")
+                logger.info(f"🔍 Tarea 'check_daily_absences' reanudada (activada) a las {absences_time} en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al configurar/reanudar check_daily_absences: {e}")
+        else:
+            try:
+                _scheduler.pause_job("check_daily_absences")
+                logger.info("🔍 Tarea 'check_daily_absences' pausada (desactivada) en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al pausar check_daily_absences: {e}")
+
+    # 2. Configuración de Sincronización Automática
+    dev_cfg = db.query(DeviceConfig).first()
+    if dev_cfg:
+        if getattr(dev_cfg, "automatic_sync_enabled", True):
+            try:
+                _scheduler.resume_job("sync_hikvision")
+                logger.info("📟 Tarea 'sync_hikvision' (sincronización automática) reanudada en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al reanudar sync_hikvision: {e}")
+        else:
+            try:
+                _scheduler.pause_job("sync_hikvision")
+                logger.info("📟 Tarea 'sync_hikvision' (sincronización automática) pausada en el scheduler.")
+            except Exception as e:
+                logger.debug(f"Error al pausar sync_hikvision: {e}")
 
 
 def check_daily_absences():
@@ -94,7 +207,7 @@ def check_daily_absences():
 
 
 def send_daily_report():
-    """Genera y envía el reporte diario consolidado a administradores a las 18:00."""
+    """Genera y envía el reporte diario consolidado a administradores a las 19:00."""
     logger.info("📊 Ejecutando generación de reporte diario...")
     db = SessionLocal()
     try:
@@ -110,22 +223,18 @@ def send_daily_report():
 
 
 def run_daily_cleanup():
-    """Revisa si es la hora configurada para limpiar la base de datos y ejecuta."""
+    """Ejecuta la limpieza automática de la base de datos de acuerdo al horario configurado."""
+    logger.info("🧹 Ejecutando limpieza automática de datos obsoletos...")
     db = SessionLocal()
     try:
         from backend.models import SystemConfig
         config = db.query(SystemConfig).first()
-        if not config or not config.cleanup_enabled or not config.cleanup_time:
+        if not config or not config.cleanup_enabled:
             return
             
-        c_hour = int(config.cleanup_time.split(":")[0])
-        now_hour = get_local_now().hour
-        
-        if c_hour == now_hour:
-            logger.info("🧹 Es la hora configurada. Ejecutando limpieza automática de datos...")
-            from backend.services.maintenance import cleanup_old_data
-            cleanup_old_data(db, config)
-            
+        from backend.services.maintenance import cleanup_old_data
+        cleanup_old_data(db, config)
+        logger.info("🧹 Limpieza automática finalizada con éxito.")
     except Exception as e:
         logger.error(f"❌ Error en tarea de limpieza: {e}")
     finally:

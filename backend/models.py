@@ -151,6 +151,7 @@ class DeviceConfig(Base):
     username = Column(String(100), default="admin")
     password = Column(String(255), default="admin123")
     sync_interval_minutes = Column(Integer, default=5)
+    automatic_sync_enabled = Column(Boolean, default=True)
     is_online = Column(Boolean, default=False)
     last_check = Column(DateTime, nullable=True)
     last_successful_sync = Column(DateTime, nullable=True)
@@ -188,6 +189,10 @@ class SystemConfig(Base):
     # Datos de retención y limpieza (Mantenimiento)
     cleanup_enabled = Column(Boolean, default=False)
     cleanup_time = Column(String(10), default="02:00")
+    
+    # Tiempos de programación de tareas en segundo plano
+    daily_report_time = Column(String(10), default="19:00")
+    absences_check_time = Column(String(10), default="11:00")
     
     retention_attendance_days = Column(Integer, default=1825)
     retention_audit_logs_days = Column(Integer, default=365)
@@ -311,6 +316,7 @@ class AttendanceJustification(Base):
     justification_type = Column(String(50), nullable=False)  # 'absence', 'lateness', 'other'
     reason = Column(String(500), nullable=False)
     override_status = Column(String(50), nullable=False)      # 'present', 'on_time'
+    document_path = Column(String(500), nullable=True)        # Ruta relativa a uploads/justifications/
     created_at = Column(DateTime, default=datetime.now)
 
     employee = relationship("Employee")

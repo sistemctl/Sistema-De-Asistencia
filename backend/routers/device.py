@@ -50,6 +50,9 @@ def update_config(data: DeviceConfigUpdate, db: Session = Depends(get_db), _=Dep
     if data.sync_interval_minutes:
         sched.update_sync_interval(data.sync_interval_minutes)
 
+    # Configurar dinámicamente el estado de las tareas del scheduler (pausar/reanudar)
+    sched.configure_scheduler_jobs(db)
+
     return cfg
 
 

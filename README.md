@@ -3,6 +3,7 @@
 Este es un sistema completo para el control y registro de asistencia usando el terminal biométrico facial **Hikvision DS‑K1T323MBWX**. Está desarrollado con **FastAPI** en el backend, **PostgreSQL** como base de datos y un frontend moderno con **HTML/CSS/JS** en Glassmorphism Premium.
 
 ### 🌟 Novedades de la Versión 2.5.0
+* **Rediseño del Módulo de Dispositivos:** Reestructuración de la interfaz del dispositivo dividiéndola en pestañas (Red y Conexión, Control Remoto, Ajustes de Seguridad e Historial de Sincronización) para una experiencia más limpia. Se eliminaron configuraciones redundantes (reglas de asistencia, sincronización periódica) centralizándolas en Ajustes del Sistema.
 * **Modularización CSS y Temas:** Nueva arquitectura modular de CSS (`main.css`, `tokens.css`, `components.css`, etc.), proporcionando un diseño más robusto y cohesivo.
 * **Modo Oscuro Integrado:** Soporte nativo para modo oscuro con una paleta de colores premium (colores oscuros profundos y detalles violeta/índigo) aplicando variables CSS.
 * **Corrección de Configuración SMTP:** Resolución de problemas de visualización en la pestaña de Configuración de Correo en dispositivos y ajustes, solucionando superposición del `toggle-switch`.

@@ -21,6 +21,9 @@ const SystemConfigPage = {
         <button class="tab-btn" data-tab="maintenance" onclick="SystemConfigPage.switchTab('maintenance')">
           Mantenimiento de Datos
         </button>
+        <button class="tab-btn" data-tab="scheduler_settings" onclick="SystemConfigPage.switchTab('scheduler_settings')">
+          Programador de Tareas
+        </button>
         <button class="tab-btn" data-tab="audit" onclick="SystemConfigPage.switchTab('audit')">
           Historial de Auditoría
         </button>
@@ -229,7 +232,7 @@ const SystemConfigPage = {
                   <span class="slider"></span>
                 </label>
                 <div>
-                  <div style="font-weight: 500; font-size: 0.85rem;">Enviar reporte diario (18:00) a administradores</div>
+                  <div style="font-weight: 500; font-size: 0.85rem;">Enviar reporte diario (19:00) a administradores</div>
                   <div style="font-size: 0.7rem; color: var(--text-3);">Resumen consolidado de asistencias, faltas y retardos del día.</div>
                 </div>
               </div>
@@ -436,7 +439,113 @@ const SystemConfigPage = {
       document.getElementById('btnManualCleanup')?.addEventListener('click', () => this.runManualCleanup());
       await this.loadCleanupSettings();
 
-      } else if (tab === 'audit') {
+    } else if (tab === 'scheduler_settings') {
+      contentEl.innerHTML = `
+        <div class="section-header" style="margin-top: 10px;">
+          <div class="section-title">Programador de Tareas en Segundo Plano</div>
+        </div>
+        
+        <div style="max-width: 700px; margin-top: 16px; display: grid; gap: 20px;">
+          
+          <!-- TAREA 1: Revisión de Ausencias -->
+          <div class="card">
+            <div style="display: flex; align-items: start; gap: 16px;">
+              <div style="background: rgba(0, 176, 255, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(0, 176, 255, 0.2); color: #00b0ff;">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-1); margin-bottom: 4px;">Revisión de Ausencias (check_daily_absences)</div>
+                <div style="font-size: 0.8rem; color: var(--text-3); margin-bottom: 16px; line-height: 1.4;">
+                  Escanea diariamente a la hora configurada buscando empleados que debían asistir y no tienen ningún registro de entrada. Envía una notificación de alerta al administrador.
+                </div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="schedAbsencesEnabled">
+                      <span class="slider"></span>
+                    </label>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-2);">Habilitar Revisión</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.8rem; color: var(--text-3);">Hora de revisión</span>
+                    <input type="time" id="schedAbsencesTime" style="padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1); font-family: 'JetBrains Mono', monospace;">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAREA 3: Reporte Diario -->
+          <div class="card">
+            <div style="display: flex; align-items: start; gap: 16px;">
+              <div style="background: rgba(124, 58, 237, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(124, 58, 237, 0.2); color: var(--accent-2);">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-1); margin-bottom: 4px;">Envío de Reporte Diario (send_daily_report)</div>
+                <div style="font-size: 0.8rem; color: var(--text-3); margin-bottom: 16px; line-height: 1.4;">
+                  Compila un reporte consolidado con las estadísticas de asistencia del día (asistencias, retardos, ausencias y justificaciones) y lo envía a los correos de administración.
+                </div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="schedReportEnabled">
+                      <span class="slider"></span>
+                    </label>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-2);">Habilitar Envío</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.8rem; color: var(--text-3);">Hora de envío</span>
+                    <input type="time" id="schedReportTime" style="padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1); font-family: 'JetBrains Mono', monospace;">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAREA 4: Limpieza Automática -->
+          <div class="card">
+            <div style="display: flex; align-items: start; gap: 16px;">
+              <div style="background: rgba(255, 59, 48, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(255, 59, 48, 0.2); color: var(--danger);">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path></svg>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-1); margin-bottom: 4px;">Limpieza de Datos (run_daily_cleanup)</div>
+                <div style="font-size: 0.8rem; color: var(--text-3); margin-bottom: 16px; line-height: 1.4;">
+                  Elimina los registros antiguos de asistencia, logs de auditoría y logs técnicos del biométrico que superen los límites de días de retención configurados para liberar espacio.
+                </div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="schedCleanupEnabled">
+                      <span class="slider"></span>
+                    </label>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-2);">Habilitar Limpieza</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.8rem; color: var(--text-3);">Hora de limpieza</span>
+                    <input type="time" id="schedCleanupTime" style="padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1); font-family: 'JetBrains Mono', monospace;">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div style="text-align: right; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 10px; display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary" id="btnSaveSchedulerSettings" style="width: 100%; max-width: 300px; padding: 12px; font-weight: bold;">
+              Guardar Configuración de Tareas
+            </button>
+          </div>
+
+        </div>
+      `;
+      document.getElementById('btnSaveSchedulerSettings')?.addEventListener('click', () => this.saveSchedulerSettings());
+      await this.loadSchedulerSettings();
+
+    } else if (tab === 'audit') {
         if (typeof AuditPage !== 'undefined') {
           AuditPage.render('systemTabContent');
         } else {
@@ -925,5 +1034,76 @@ const SystemConfigPage = {
       },
       'danger'
     );
+  },
+
+  async loadSchedulerSettings() {
+    try {
+      const sysData = await API.get('/api/settings');
+      this.settings = sysData;
+      
+      // Revisión de Ausencias (email_notifications_enabled y email_alerts_recipients de SystemConfig)
+      document.getElementById('schedAbsencesEnabled').checked = (sysData.email_notifications_enabled && sysData.email_alerts_recipients) ? true : false;
+      document.getElementById('schedAbsencesTime').value = (sysData.absences_check_time && sysData.absences_check_time.length >= 5) ? sysData.absences_check_time.slice(0, 5) : '11:00';
+      
+      // Envío de Reporte Diario (alert_admin_daily_report)
+      document.getElementById('schedReportEnabled').checked = (sysData.email_notifications_enabled && sysData.alert_admin_daily_report) ? true : false;
+      document.getElementById('schedReportTime').value = (sysData.daily_report_time && sysData.daily_report_time.length >= 5) ? sysData.daily_report_time.slice(0, 5) : '19:00';
+      
+      // Limpieza de datos
+      document.getElementById('schedCleanupEnabled').checked = sysData.cleanup_enabled ?? false;
+      document.getElementById('schedCleanupTime').value = (sysData.cleanup_time && sysData.cleanup_time.length >= 5) ? sysData.cleanup_time.slice(0, 5) : '02:00';
+      
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al cargar la configuración de tareas: ' + e.message, 'error');
+    }
+  },
+
+  async saveSchedulerSettings() {
+    try {
+      const absencesEnabled = document.getElementById('schedAbsencesEnabled').checked;
+      const absencesTime = document.getElementById('schedAbsencesTime').value || '11:00';
+      
+      const reportEnabled = document.getElementById('schedReportEnabled').checked;
+      const reportTime = document.getElementById('schedReportTime').value || '19:00';
+      
+      const cleanupEnabled = document.getElementById('schedCleanupEnabled').checked;
+      const cleanupTime = document.getElementById('schedCleanupTime').value || '02:00';
+      
+      // Si no tenemos cargada la configuración, la obtenemos para no pisar otros campos
+      if (!this.settings.work_days) {
+        this.settings = await API.get('/api/settings');
+      }
+      
+      // Actualizar el correo global maestro de notificaciones a True si cualquiera de las alertas se activa
+      let emailGlobalEnabled = this.settings.email_notifications_enabled;
+      if (absencesEnabled || reportEnabled) {
+        emailGlobalEnabled = true;
+      }
+      
+      await API.put('/api/settings', {
+        ...this.settings,
+        email_notifications_enabled: emailGlobalEnabled,
+        alert_admin_daily_report: reportEnabled,
+        absences_check_time: absencesTime,
+        daily_report_time: reportTime,
+        cleanup_enabled: cleanupEnabled,
+        cleanup_time: cleanupTime
+      });
+      
+      // Actualizar variables en memoria
+      this.settings.email_notifications_enabled = emailGlobalEnabled;
+      this.settings.alert_admin_daily_report = reportEnabled;
+      this.settings.absences_check_time = absencesTime;
+      this.settings.daily_report_time = reportTime;
+      this.settings.cleanup_enabled = cleanupEnabled;
+      this.settings.cleanup_time = cleanupTime;
+      
+      Toast.show('Programación de tareas guardada correctamente.', 'success');
+      
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al guardar la configuración de tareas: ' + e.message, 'error');
+    }
   }
 };

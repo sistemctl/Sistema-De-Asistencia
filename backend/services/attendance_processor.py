@@ -11,6 +11,24 @@ def parse_time(time_str: str) -> Optional[datetime.time]:
     except ValueError:
         return None
 
+def _apply_justification(summary: Dict, justification) -> Dict:
+    summary["justification"] = None
+    if justification:
+        summary["justification"] = {
+            "id": justification.id,
+            "justification_type": justification.justification_type,
+            "reason": justification.reason,
+            "override_status": justification.override_status,
+            "document_path": justification.document_path
+        }
+        if justification.override_status == "present":
+            summary["is_present"] = True
+            summary["missing_punches"] = False
+        elif justification.override_status == "on_time":
+            summary["is_present"] = True
+            summary["is_late"] = False
+    return summary
+
 def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord], target_date: date, config: SystemConfig, daily_schedule = None, is_holiday: bool = False, active_leave = None, justification = None) -> Dict:
     """
     Calculates the valid punches for an employee on a specific date, based on their schedule and system rules.
@@ -104,7 +122,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
                 summary["missing_punches"] = True
         if is_off:
             summary["schedule_type"] = "off"
-        return summary
+        return _apply_justification(summary, justification)
 
     summary["schedule_type"] = schedule.shift_type
     
@@ -148,7 +166,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         work_end = parse_time(schedule.work_end_time)
 
         if not work_start or not work_end:
-            return summary
+            return _apply_justification(summary, justification)
 
         if is_flexible_sched:
             # Flexible shift logic
@@ -283,7 +301,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         s_end = parse_time(schedule.work_end_time)
 
         if not (s_start and s_lunch_start and s_lunch_end and s_end):
-            return summary
+            return _apply_justification(summary, justification)
 
         t_start = datetime.combine(target_date, s_start)
         t_lunch_s = datetime.combine(target_date, s_lunch_start)
@@ -370,22 +388,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         except Exception:
             pass
 
-    summary["justification"] = None
-    if justification:
-        summary["justification"] = {
-            "id": justification.id,
-            "justification_type": justification.justification_type,
-            "reason": justification.reason,
-            "override_status": justification.override_status
-        }
-        if justification.override_status == "present":
-            summary["is_present"] = True
-            summary["missing_punches"] = False
-        elif justification.override_status == "on_time":
-            summary["is_present"] = True
-            summary["is_late"] = False
-
-    return summary
+    return _apply_justification(summary, justification)
 
 def process_daily_attendance_bulk(db: Session, target_date: date) -> List[Dict]:
     employees = db.query(Employee).filter(Employee.is_active == True).all()

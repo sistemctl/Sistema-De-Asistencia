@@ -2,8 +2,9 @@
 from datetime import datetime, date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Form, File, UploadFile
 from sqlalchemy.orm import Session
+from pathlib import Path
 
 from backend.auth import get_current_user, check_permission_or
 get_current_user = check_permission_or("perm_manage_attendance", "perm_export_reports")
@@ -244,8 +245,13 @@ def _serialize(r: AttendanceRecord) -> dict:
 
 
 @router.post("/justify", response_model=AttendanceJustificationOut, status_code=201)
-def create_or_update_justification(
-    data: AttendanceJustificationCreate,
+async def create_or_update_justification(
+    employee_id: int = Form(...),
+    date: date = Form(...),
+    justification_type: str = Form(...),
+    reason: str = Form(...),
+    override_status: str = Form(...),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -257,32 +263,76 @@ def create_or_update_justification(
         )
     
     # Check if employee exists
-    emp = db.query(Employee).filter(Employee.id == data.employee_id).first()
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
 
     # Find existing justification for employee and date
     just = db.query(AttendanceJustification).filter(
-        AttendanceJustification.employee_id == data.employee_id,
-        AttendanceJustification.date == data.date
+        AttendanceJustification.employee_id == employee_id,
+        AttendanceJustification.date == date
     ).first()
 
+    # Create justifications directory
+    from backend.config import BASE_DIR
+    just_dir = BASE_DIR / "uploads" / "justifications"
+    just_dir.mkdir(parents=True, exist_ok=True)
+
+    document_path = None
+    if file and file.filename:
+        # Validate size (max 5MB)
+        contents = await file.read()
+        if len(contents) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="El archivo excede el tamaño máximo permitido de 5MB")
+
+        # Validate extension
+        suffix = Path(file.filename).suffix.lower()
+        if suffix not in [".pdf", ".jpg", ".jpeg", ".png"]:
+            raise HTTPException(status_code=400, detail="Formato de archivo no permitido. Solo se aceptan PDFs e imágenes (JPG, PNG)")
+
+        # Unique file name
+        filename = f"just_{employee_id}_{date}{suffix}"
+        file_path = just_dir / filename
+        
+        # Save file to disk
+        with open(file_path, "wb") as f:
+            f.write(contents)
+            
+        document_path = f"justifications/{filename}"
+
     if just:
-        just.justification_type = data.justification_type
-        just.reason = data.reason
-        just.override_status = data.override_status
+        just.justification_type = justification_type
+        just.reason = reason
+        just.override_status = override_status
+        if document_path:
+            # Delete old file
+            if just.document_path:
+                old_file_path = BASE_DIR / "uploads" / just.document_path
+                if old_file_path.exists():
+                    try:
+                        old_file_path.unlink()
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).error(f"Error al eliminar justificante anterior: {e}")
+            just.document_path = document_path
     else:
         just = AttendanceJustification(
-            employee_id=data.employee_id,
-            date=data.date,
-            justification_type=data.justification_type,
-            reason=data.reason,
-            override_status=data.override_status
+            employee_id=employee_id,
+            date=date,
+            justification_type=justification_type,
+            reason=reason,
+            override_status=override_status,
+            document_path=document_path
         )
         db.add(just)
 
     db.commit()
     db.refresh(just)
+
+    from backend.services.audit import log_action
+    action_type = "UPDATE" if just.id else "CREATE"
+    log_action(db, current_user.id, action_type, "AttendanceJustification", str(just.id), f"Justificada inasistencia/retardo para {emp.full_name} el día {date}")
+
     return just
 
 
@@ -302,6 +352,23 @@ def delete_justification(
     just = db.query(AttendanceJustification).filter(AttendanceJustification.id == justification_id).first()
     if not just:
         raise HTTPException(status_code=404, detail="Justificación no encontrada")
+
+    # Delete file from disk if exists
+    if just.document_path:
+        from backend.config import BASE_DIR
+        file_path = BASE_DIR / "uploads" / just.document_path
+        if file_path.exists():
+            try:
+                file_path.unlink()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error al eliminar archivo físico de justificación {justification_id}: {e}")
+
+    # Log audit action
+    emp = just.employee
+    emp_name = emp.full_name if emp else "Desconocido"
+    from backend.services.audit import log_action
+    log_action(db, current_user.id, "DELETE", "AttendanceJustification", str(justification_id), f"Eliminada justificación para {emp_name} el día {just.date}")
 
     db.delete(just)
     db.commit()

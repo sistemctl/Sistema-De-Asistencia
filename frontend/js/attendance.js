@@ -94,11 +94,6 @@ const AttendancePage = {
           </div>
 
         </div>
-        
-        <!-- Contenedor de KPIs Dinámicos -->
-        <div id="attendanceKpisContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; width: 100%; box-sizing: border-box;">
-          <!-- KPIs dinámicos se inyectarán aquí -->
-        </div>
 
         <div class="double-bezel-outer">
           <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
@@ -234,78 +229,17 @@ const AttendancePage = {
     try {
       const data = await API.get(`/api/attendance/daily-summary?${p}`);
       const tbody = document.getElementById('attTable');
-      const kpisContainer = document.getElementById('attendanceKpisContainer');
       
       if (!data?.items?.length) {
         tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         </div><h3>Sin registros</h3><p>No se encontraron registros diarios para estos filtros.</p></div></td></tr>`;
         document.getElementById('attPag').innerHTML = '';
-        if (kpisContainer) kpisContainer.innerHTML = '';
         return;
       }
 
-      // Calcular KPIs dinámicos
-      const emps = data.items || [];
-      const total = emps.length;
-      let presentes = 0;
-      let tardanzas = 0;
-      let ausentes = 0;
-      let justificados = 0;
-
-      emps.forEach(r => {
-        if (r.is_present) {
-          presentes++;
-          if (r.is_late) tardanzas++;
-        } else {
-          ausentes++;
-        }
-        if (r.justification) {
-          justificados++;
-        }
-      });
-
-      const avgAttendance = total > 0 ? ((presentes / total) * 100).toFixed(1) : '0.0';
-
-      if (kpisContainer) {
-        kpisContainer.innerHTML = `
-          <div class="kpi-card" style="border-left: 4px solid var(--success, #10b981); background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Asistencia</span>
-              <span style="font-size: 1.25rem;">📈</span>
-            </div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${avgAttendance}%</div>
-            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Tasa de asistencia del listado</div>
-          </div>
-
-          <div class="kpi-card" style="border-left: 4px solid var(--warning, #f59e0b); background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Tardanzas</span>
-              <span style="font-size: 1.25rem;">⏰</span>
-            </div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${tardanzas}</div>
-            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Colaboradores con retardo</div>
-          </div>
-
-          <div class="kpi-card" style="border-left: 4px solid var(--danger, #ef4444); background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Ausencias</span>
-              <span style="font-size: 1.25rem;">⛔</span>
-            </div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${ausentes}</div>
-            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Inasistencias registradas</div>
-          </div>
-
-          <div class="kpi-card" style="border-left: 4px solid #8b5cf6; background: var(--surface-1); padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; box-shadow: var(--shadow); transition: transform 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em;">Justificados</span>
-              <span style="font-size: 1.25rem;">⚖️</span>
-            </div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-1); line-height: 1.25;">${justificados}</div>
-            <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">Marcaciones justificadas</div>
-          </div>
-        `;
-      }
+      // Guardar items cargados para justificaciones u otros modales
+      AttendancePage.currentItems = data.items || [];
       
       const formatTime = (isoString) => {
           if (!isoString) return '-';
@@ -327,6 +261,11 @@ const AttendancePage = {
               <span class="badge badge-purple" title="Razón: ${r.justification.reason.replace(/"/g, '&quot;')}" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; padding:4px 8px;" onclick="AttendancePage.openJustifyModal(${r.employee_id}, '${r.date}', '${r.employee_name.replace(/'/g, "\\'")}', '${r.justification.justification_type}')">
                 ⚖️ Justificado
               </span>
+              ${r.justification.document_path ? `
+                <a href="/uploads/${r.justification.document_path}" target="_blank" class="btn btn-icon btn-sm btn-secondary" title="Ver comprobante adjunto" style="padding:2px; display:inline-flex; align-items:center; justify-content:center; color: var(--accent); border-color: rgba(var(--accent-rgb), 0.2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                </a>
+              ` : ''}
               <button class="btn btn-icon btn-sm btn-danger" onclick="AttendancePage.removeJustification(${r.justification.id})" title="Eliminar justificación" style="padding:2px; display:inline-flex; align-items:center; justify-content:center;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
@@ -471,6 +410,12 @@ const AttendancePage = {
   },
 
   openJustifyModal(employeeId, dateStr, employeeName, defaultType) {
+    const item = (AttendancePage.currentItems || []).find(x => x.employee_id === employeeId && x.date === dateStr);
+    const existingJust = item ? item.justification : null;
+    const existingReason = existingJust ? existingJust.reason : '';
+    const existingOverride = existingJust ? existingJust.override_status : (defaultType === 'absence' ? 'present' : 'on_time');
+    const existingDocPath = existingJust ? existingJust.document_path : null;
+
     const html = `
       <form id="justifyForm" onsubmit="event.preventDefault(); AttendancePage.submitJustification(${employeeId}, '${dateStr}')">
         <div style="display:flex; flex-direction:column; gap:16px; padding: 4px 0;">
@@ -493,13 +438,26 @@ const AttendancePage = {
           <div>
             <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Estado a Forzar (Anulación)</label>
             <select id="justOverride" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1);">
-              <option value="present" ${defaultType === 'absence' ? 'selected' : ''}>Marcar como Asistido (Normal/Presente)</option>
-              <option value="on_time" ${defaultType === 'lateness' ? 'selected' : ''}>Marcar como A Tiempo (Quitar Retardo)</option>
+              <option value="present" ${existingOverride === 'present' ? 'selected' : ''}>Marcar como Asistido (Normal/Presente)</option>
+              <option value="on_time" ${existingOverride === 'on_time' ? 'selected' : ''}>Marcar como A Tiempo (Quitar Retardo)</option>
             </select>
           </div>
           <div>
             <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Motivo / Comentario</label>
-            <textarea id="justReason" placeholder="Describa el motivo de la justificación..." required style="width:100%; height:90px; resize:none; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-1); color:var(--text-1); font-family:inherit;"></textarea>
+            <textarea id="justReason" placeholder="Describa el motivo de la justificación..." required style="width:100%; height:90px; resize:none; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-1); color:var(--text-1); font-family:inherit;">${existingReason}</textarea>
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.85rem; color:var(--text-2);">Adjuntar Comprobante (PDF o Imagen)</label>
+            <input type="file" id="justFile" accept=".pdf,.png,.jpg,.jpeg" style="width:100%; border:1px solid var(--border); padding:8px 12px; border-radius:8px; background:var(--surface-1); color:var(--text-1); font-size:0.85rem;" />
+            ${existingDocPath ? `
+              <div id="justCurrentFile" style="display:flex; align-items:center; gap:8px; background:rgba(var(--accent-rgb),0.06); padding:8px 12px; border-radius:8px; border:1px solid rgba(var(--accent-rgb),0.15); margin-top:8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                <span style="font-size:0.8rem; font-weight:600; color:var(--text-2); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1;">
+                  Comprobante adjunto actual
+                </span>
+                <a href="/uploads/${existingDocPath}" target="_blank" class="btn btn-sm btn-secondary" style="padding: 3px 8px; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; text-transform:uppercase;">Ver</a>
+              </div>
+            ` : ''}
           </div>
         </div>
       </form>
@@ -514,18 +472,39 @@ const AttendancePage = {
   },
 
   async submitJustification(employeeId, dateStr) {
+    const saveBtn = document.querySelector('button[onclick="document.getElementById(\'justifyForm\').requestSubmit()"]');
+    if (saveBtn) saveBtn.classList.add('btn-loading');
+
     const type = document.getElementById('justType').value;
     const override = document.getElementById('justOverride').value;
-    const reason = document.getElementById('justReason').value;
+    const reason = document.getElementById('justReason').value.trim();
+    const fileInput = document.getElementById('justFile');
+
+    if (!reason) {
+      if (saveBtn) saveBtn.classList.remove('btn-loading');
+      Toast.show('El motivo es obligatorio', 'warning');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('employee_id', employeeId);
+    formData.append('date', dateStr);
+    formData.append('justification_type', type);
+    formData.append('override_status', override);
+    formData.append('reason', reason);
+
+    if (fileInput && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        if (saveBtn) saveBtn.classList.remove('btn-loading');
+        Toast.show('El archivo excede el tamaño máximo permitido de 5MB', 'error');
+        return;
+      }
+      formData.append('file', file);
+    }
 
     try {
-      const res = await API.post('/api/attendance/justify', {
-        employee_id: employeeId,
-        date: dateStr,
-        justification_type: type,
-        reason: reason,
-        override_status: override
-      });
+      const res = await API.postForm('/api/attendance/justify', formData);
       if (res && res.id) {
         Toast.show('Justificación guardada correctamente', 'success');
         Modal.close();
@@ -535,6 +514,8 @@ const AttendancePage = {
       }
     } catch (e) {
       Toast.show(e.message || 'Error de conexión', 'error');
+    } finally {
+      if (saveBtn) saveBtn.classList.remove('btn-loading');
     }
   },
 

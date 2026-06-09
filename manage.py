@@ -20,6 +20,7 @@ def run_script(script_path):
     """Ejecuta un script de Python en un subproceso con el PYTHONPATH correcto."""
     env = os.environ.copy()
     env["PYTHONPATH"] = os.getcwd()
+    env["PYTHONIOENCODING"] = "utf-8"
     cmd = [sys.executable, script_path]
     try:
         result = subprocess.run(cmd, env=env)
@@ -69,7 +70,10 @@ def run_migrations():
         "migrations/migration_schedule_workdays.py",
         "migrations/migration_split_shifts.py",
         "migrations/migration_attendance_rules.py",
-        "migrations/add_columns.py"
+        "migrations/add_columns.py",
+        "migrations/migration_justification_docs.py",
+        "migrations/migration_automatic_sync_toggle.py",
+        "migrations/migration_scheduler_times.py"
     ]
     for m in migrations:
         print(f"\n──────────────────────────────────────────────────")
@@ -87,7 +91,11 @@ def run_tests():
         "tests/test_time.py",
         "tests/test_analytics.py",
         "tests/test_events.py",
-        "tests/test_payload.py"
+        "tests/test_payload.py",
+        "tests/test_justification_docs.py",
+        "tests/test_daily_report_mail.py",
+        "tests/test_scheduler_toggle.py",
+        "tests/test_scheduler_reschedule.py"
     ]
     failed = 0
     for t in tests:

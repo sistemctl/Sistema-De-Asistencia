@@ -113,12 +113,18 @@ def notify_attendance_alert(db: Session, employee_name: str, record_time: str, s
         except Exception as err:
             logger.error(f"Fallo al enviar alerta de asistencia asíncrona: {err}")
 
-    # Enviar el email en una tarea asíncrona
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
         loop.create_task(task())
     else:
-        asyncio.run(task())
+        try:
+            send_smtp_email(config, subject, html_content, recipients)
+        except Exception as err:
+            logger.error(f"Fallo al enviar alerta de asistencia síncrona: {err}")
 
 def notify_employee_lateness(db: Session, employee_name: str, employee_email: str, record_time: str, minutes_late: float):
     config = db.query(SystemConfig).first()
@@ -154,13 +160,20 @@ def notify_employee_lateness(db: Session, employee_name: str, employee_email: st
         try:
             await run_in_threadpool(send_smtp_email, config, subject, html_content, [employee_email.strip()])
         except Exception as err:
-            logger.error(f"Fallo al enviar correo a empleado {{employee_email}}: {{err}}")
+            logger.error(f"Fallo al enviar correo a empleado {employee_email}: {err}")
 
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
         loop.create_task(task())
     else:
-        asyncio.run(task())
+        try:
+            send_smtp_email(config, subject, html_content, [employee_email.strip()])
+        except Exception as err:
+            logger.error(f"Fallo al enviar correo síncrono a empleado {employee_email}: {err}")
 
 def notify_daily_report(db: Session, target_date: str, summaries: list):
     config = db.query(SystemConfig).first()
@@ -236,10 +249,17 @@ def notify_daily_report(db: Session, target_date: str, summaries: list):
         try:
             await run_in_threadpool(send_smtp_email, config, subject, html_content, recipients)
         except Exception as err:
-            logger.error(f"Fallo al enviar reporte diario: {{err}}")
+            logger.error(f"Fallo al enviar reporte diario: {err}")
 
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
         loop.create_task(task())
     else:
-        asyncio.run(task())
+        try:
+            send_smtp_email(config, subject, html_content, recipients)
+        except Exception as err:
+            logger.error(f"Fallo al enviar reporte diario síncrono: {err}")

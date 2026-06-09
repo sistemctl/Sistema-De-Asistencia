@@ -26,8 +26,15 @@
 }
 
 /* ── Tables ── */
-.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: .88rem; }
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+table { width: 100%; min-width: 1200px; border-collapse: collapse; font-size: .88rem; }
 thead th {
   background: var(--surface-2);
   color: var(--text-2);

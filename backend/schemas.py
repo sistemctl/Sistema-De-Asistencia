@@ -299,6 +299,7 @@ class DeviceConfigUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     sync_interval_minutes: Optional[int] = None
+    automatic_sync_enabled: Optional[bool] = None
     entry_tolerance_minutes: Optional[int] = None
     exit_tolerance_minutes: Optional[int] = None
 
@@ -308,6 +309,7 @@ class DeviceConfigOut(BaseModel):
     port: int
     username: str
     sync_interval_minutes: int
+    automatic_sync_enabled: bool
     is_online: bool
     last_check: Optional[datetime]
     last_successful_sync: Optional[datetime]
@@ -443,6 +445,7 @@ class AttendanceJustificationOut(BaseModel):
     justification_type: str
     reason: str
     override_status: str
+    document_path: Optional[str] = None
     created_at: datetime
 
     class Config:
