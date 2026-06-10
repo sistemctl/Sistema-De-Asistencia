@@ -127,6 +127,11 @@ const DevicePage = {
               <strong>Abrir Puerta</strong>
               <span style="font-size: 0.75rem; color: var(--text-3); text-align: center; margin-top: 4px;">Accionar relé de salida para apertura temporal</span>
             </button>
+            <button class="btn btn-secondary" onclick="DevicePage.remoteCloseDoor()" style="display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 12px; height: auto; border-color: rgba(239,68,68,0.2);">
+              <svg viewBox="0 0 24 24" width="32" height="32" stroke="var(--danger)" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <strong>Cerrar Puerta</strong>
+              <span style="font-size: 0.75rem; color: var(--text-3); text-align: center; margin-top: 4px;">Forzar el cierre y bloqueo inmediato del cerrojo</span>
+            </button>
             <button class="btn btn-secondary" onclick="DevicePage.remoteSyncTime()" style="display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 12px; height: auto;">
               <svg viewBox="0 0 24 24" width="32" height="32" stroke="#00b0ff" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
               <strong>Sincronizar Hora</strong>
@@ -181,6 +186,7 @@ const DevicePage = {
           </div>
         </div>
       `;
+      await this.loadSecuritySettings();
 
     } else if (tab === 'sync_history') {
       contentEl.innerHTML = `
@@ -547,6 +553,17 @@ const DevicePage = {
     }
   },
 
+  async remoteCloseDoor() {
+    Toast.show('Enviando comando de cierre...', 'info');
+    try {
+      const res = await API.post('/api/device/close-door');
+      Toast.show(res.message || 'Puerta cerrada', 'success');
+    } catch (e) {
+      console.error(e);
+      Toast.show(e.message || 'Error cerrando puerta', 'error');
+    }
+  },
+
   async remoteSyncTime() {
     Toast.show('Sincronizando hora...', 'info');
     try {
@@ -574,6 +591,31 @@ const DevicePage = {
       },
       'danger'
     );
+  },
+
+  async loadSecuritySettings() {
+    try {
+      const res = await API.get('/api/device/security');
+      const verifySelect = document.getElementById('secVerifyMode');
+      const volumeRange = document.getElementById('secVolumeRange');
+      const volumeText = document.getElementById('secVolumeText');
+      
+      if (verifySelect && res.mode) {
+        verifySelect.value = res.mode;
+      }
+      if (volumeRange && res.volume !== undefined) {
+        volumeRange.value = res.volume;
+        if (volumeText) {
+          volumeText.textContent = res.volume + '%';
+        }
+      }
+      if (res.offline) {
+        Toast.show('Biométrico fuera de línea. Mostrando configuración simulada.', 'warning');
+      }
+    } catch (e) {
+      console.error(e);
+      Toast.show('Error al obtener configuraciones del dispositivo.', 'error');
+    }
   },
 
   async setVerifyMode() {

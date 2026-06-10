@@ -953,27 +953,31 @@ const EmployeesPage = {
           <!-- CONTENEDOR A IMPRIMIR (Tamaño CR80 - Tarjeta de PVC) -->
           <div id="printBadgeContainer" style="width: 213px; height: 338px; background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; position: relative; font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0; margin-bottom: 20px;">
             <!-- Fondo Superior -->
-            <div style="height: 120px; background: linear-gradient(135deg, ${primaryColor}, #312e81); position: relative; text-align: center; padding-top: 15px;">
-              ${logoPath ? `<img src="${logoPath}" style="max-height:35px; max-width:80%; object-fit:contain; filter: brightness(0) invert(1);" />` : `<div style="color:#fff; font-weight:800; font-size:1.1rem; letter-spacing:-0.5px;">${companyName}</div>`}
-              <div style="position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%); width: 70px; height: 70px; border-radius: 50%; background: #fff; border: 3px solid #fff; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                ${photoSrc ? `<img src="${photoSrc}" style="width:100%; height:100%; object-fit:cover;" />` : `<div style="width:100%; height:100%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:bold; color:var(--text-3);">${initial}</div>`}
+            <div style="height: 110px; background: linear-gradient(135deg, ${primaryColor}, #312e81); position: relative; text-align: center; padding-top: 15px;">
+              ${logoPath ? `<img src="${logoPath}" style="max-height:30px; max-width:80%; object-fit:contain; filter: brightness(0) invert(1);" />` : `<div style="color:#fff; font-weight:800; font-size:1.0rem; letter-spacing:-0.5px; line-height: 1.2;">${companyName}</div>`}
+              <div style="position: absolute; bottom: -33px; left: 50%; transform: translateX(-50%); width: 66px; height: 66px; border-radius: 50%; background: #fff; border: 2px solid #fff; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                ${photoSrc ? `<img src="${photoSrc}" style="width:100%; height:100%; object-fit:cover;" />` : `<div style="width:100%; height:100%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:bold; color:var(--text-3);">${initial}</div>`}
               </div>
             </div>
             
             <!-- Datos del empleado -->
-            <div style="margin-top: 45px; text-align: center; padding: 0 15px;">
-              <div style="font-weight: 800; font-size: 1.1rem; color: #0f172a; line-height: 1.1; margin-bottom: 4px;">${emp.first_name}<br/>${emp.last_name}</div>
-              <div style="font-size: 0.75rem; font-weight: 600; color: ${primaryColor}; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">${emp.position?.name || 'EMPLEADO'}</div>
+            <div style="margin-top: 38px; text-align: center; padding: 0 12px;">
+              <div style="font-weight: 800; font-size: 0.95rem; color: #0f172a; line-height: 1.2; margin-bottom: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; max-height: 36px;">${emp.first_name}<br/>${emp.last_name}</div>
+              <div style="font-size: 0.65rem; font-weight: 700; color: ${primaryColor}; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">${emp.position?.name || 'EMPLEADO'}</div>
               
-              ${settings.qr_badge_show_department && emp.department?.name ? `<div style="font-size: 0.65rem; color: #64748b; font-weight: 600; margin-bottom: 4px; line-height:1;">${emp.department.name}</div>` : ''}
-              ${settings.qr_badge_show_blood_type ? `<div style="font-size: 0.65rem; color: #ef4444; font-weight: 800; margin-bottom: 10px; line-height:1; letter-spacing: 0.5px;">O+</div>` : ''}
-              
-              <!-- Contenedor del QR -->
-              <div style="display:flex; justify-content:center; margin-bottom:8px;">
-                <div id="qrcodeBadge" style="padding:4px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;"></div>
+              <!-- Línea única para Departamento y Tipo de Sangre -->
+              <div style="display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.62rem; color: #64748b; font-weight: 600; margin-bottom: 8px; line-height: 1;">
+                ${settings.qr_badge_show_department && emp.department?.name ? `<span>${emp.department.name}</span>` : ''}
+                ${settings.qr_badge_show_department && emp.department?.name && settings.qr_badge_show_blood_type ? `<span style="opacity: 0.4;">|</span>` : ''}
+                ${settings.qr_badge_show_blood_type ? `<span style="color: #ef4444; font-weight: 800;">O+</span>` : ''}
               </div>
               
-              <div style="font-size: 0.65rem; color: #64748b; font-family: monospace; font-weight: 600; letter-spacing:1px;">ID: ${emp.employee_code}</div>
+              <!-- Contenedor del QR -->
+              <div style="display:flex; justify-content:center; margin-bottom:4px;">
+                <div id="qrcodeBadge" style="padding:3px; background:#fff; border-radius:6px; border:1px solid #e2e8f0; display: inline-flex;"></div>
+              </div>
+              
+              <div style="font-size: 0.62rem; color: #64748b; font-family: monospace; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px;">ID: ${emp.employee_code}</div>
             </div>
             
             <!-- Franja inferior -->
@@ -990,8 +994,8 @@ const EmployeesPage = {
       setTimeout(() => {
         new QRCode(document.getElementById("qrcodeBadge"), {
           text: emp.card_number,
-          width: 70,
-          height: 70,
+          width: 65,
+          height: 65,
           colorDark: "#000000",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H

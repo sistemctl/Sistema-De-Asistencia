@@ -124,6 +124,46 @@ class HikvisionClient:
             timeout=self.timeout,
         )
         r.raise_for_status()
+
+        # Primero, eliminar cualquier tarjeta anterior vinculada a este empleado en el biométrico
+        try:
+            del_payload = {
+                "CardInfoDelCond": {
+                    "EmployeeNoList": [
+                        {
+                            "employeeNo": user_id
+                        }
+                    ]
+                }
+            }
+            r_del = self.session.put(
+                f"{self.base_url}/AccessControl/CardInfo/Delete?format=json",
+                json=del_payload,
+                timeout=self.timeout,
+            )
+            r_del.raise_for_status()
+        except Exception as del_err:
+            logger.warning(f"No se pudieron eliminar tarjetas previas para {user_id}: {del_err}")
+
+        # Asegurar el registro de la tarjeta/QR de forma explícita en el biométrico
+        if card_number:
+            try:
+                card_payload = {
+                    "CardInfo": {
+                        "employeeNo": user_id,
+                        "cardNo": card_number,
+                        "cardType": "normalCard"
+                    }
+                }
+                r_card = self.session.put(
+                    f"{self.base_url}/AccessControl/CardInfo/SetUp?format=json",
+                    json=card_payload,
+                    timeout=self.timeout,
+                )
+                r_card.raise_for_status()
+            except Exception as card_err:
+                logger.error(f"Error al registrar tarjeta {card_number} por separado para {user_id}: {card_err}")
+
         return r.json()
 
     def delete_user(self, user_id: str) -> dict:
@@ -291,18 +331,104 @@ class HikvisionClient:
             return {"status": "success", "message": "Reboot command sent"}
 
     def open_door(self, door_no: int = 1) -> dict:
-        payload = {
-            "RemoteControlDoor": {
-                "cmd": "open"
-            }
-        }
+        xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<RemoteControlDoor version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">
+    <cmd>open</cmd>
+</RemoteControlDoor>"""
+        headers = {"Content-Type": "application/xml"}
         r = self.session.put(
-            f"{self.base_url}/AccessControl/RemoteControl/door/{door_no}?format=json",
-            json=payload,
+            f"{self.base_url}/AccessControl/RemoteControl/door/{door_no}",
+            data=xml_payload,
+            headers=headers,
             timeout=self.timeout,
         )
         r.raise_for_status()
-        return r.json()
+        try:
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(r.content)
+            status_code = 1
+            status_string = "OK"
+            sub_status_code = "ok"
+            for child in root:
+                tag = child.tag.split('}')[-1]
+                if tag == "statusCode":
+                    status_code = int(child.text)
+                elif tag == "statusString":
+                    status_string = child.text
+                elif tag == "subStatusCode":
+                    sub_status_code = child.text
+            return {
+                "statusCode": status_code,
+                "statusString": status_string,
+                "subStatusCode": sub_status_code
+            }
+        except Exception:
+            return {"statusCode": 1, "statusString": "OK", "subStatusCode": "ok"}
+
+    def close_door(self, door_no: int = 1) -> dict:
+        xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<RemoteControlDoor version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">
+    <cmd>close</cmd>
+</RemoteControlDoor>"""
+        headers = {"Content-Type": "application/xml"}
+        r = self.session.put(
+            f"{self.base_url}/AccessControl/RemoteControl/door/{door_no}",
+            data=xml_payload,
+            headers=headers,
+            timeout=self.timeout,
+        )
+        r.raise_for_status()
+        try:
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(r.content)
+            status_code = 1
+            status_string = "OK"
+            sub_status_code = "ok"
+            for child in root:
+                tag = child.tag.split('}')[-1]
+                if tag == "statusCode":
+                    status_code = int(child.text)
+                elif tag == "statusString":
+                    status_string = child.text
+                elif tag == "subStatusCode":
+                    sub_status_code = child.text
+            return {
+                "statusCode": status_code,
+                "statusString": status_string,
+                "subStatusCode": sub_status_code
+            }
+        except Exception:
+            return {"statusCode": 1, "statusString": "OK", "subStatusCode": "ok"}
+
+    def set_verify_mode(self, mode: str) -> dict:
+        # Mapeo de valores del frontend a valores soportados por el biométrico
+        mapping = {
+            "faceOnly": "face",
+            "faceAndCard": "faceAndCard",
+            "faceOrCard": "cardOrFace",
+            "faceOrFp": "faceOrFp"
+        }
+        device_mode = mapping.get(mode, mode)
+        
+        # 1. Obtener la configuración actual del lector
+        r_get = self.session.get(
+            f"{self.base_url}/AccessControl/CardReaderCfg/1?format=json",
+            timeout=self.timeout
+        )
+        r_get.raise_for_status()
+        config_data = r_get.json()
+        
+        # 2. Modificar el modo de verificación por defecto
+        config_data["CardReaderCfg"]["defaultVerifyMode"] = device_mode
+        
+        # 3. Guardar la configuración completa de vuelta
+        r_put = self.session.put(
+            f"{self.base_url}/AccessControl/CardReaderCfg/1?format=json",
+            json=config_data,
+            timeout=self.timeout
+        )
+        r_put.raise_for_status()
+        return r_put.json()
         
     def sync_time(self) -> dict:
         """Sincroniza la hora del dispositivo con la del servidor."""
@@ -340,3 +466,50 @@ class HikvisionClient:
                 return {"status": "success", "message": "Time synced via XML"}
             raise e
 
+    def get_verify_mode(self) -> str:
+        """Obtiene el modo de verificación configurado por defecto en el lector."""
+        r = self.session.get(
+            f"{self.base_url}/AccessControl/CardReaderCfg/1?format=json",
+            timeout=self.timeout
+        )
+        r.raise_for_status()
+        config_data = r.json()
+        device_mode = config_data.get("CardReaderCfg", {}).get("defaultVerifyMode")
+        
+        # Mapeo reverso
+        reverse_mapping = {
+            "face": "faceOnly",
+            "faceAndCard": "faceAndCard",
+            "cardOrFace": "faceOrCard",
+            "faceOrFp": "faceOrFp"
+        }
+        return reverse_mapping.get(device_mode, "faceOrCard")
+
+    def get_voice_prompt(self) -> bool:
+        """Obtiene el estado de la configuración de avisos de voz."""
+        r = self.session.get(
+            f"{self.base_url}/AccessControl/AcsCfg?format=json",
+            timeout=self.timeout
+        )
+        r.raise_for_status()
+        config_data = r.json()
+        return config_data.get("AcsCfg", {}).get("voicePrompt", True)
+
+    def set_voice_prompt(self, enabled: bool) -> dict:
+        """Establece si están activos los avisos de voz."""
+        r_get = self.session.get(
+            f"{self.base_url}/AccessControl/AcsCfg?format=json",
+            timeout=self.timeout
+        )
+        r_get.raise_for_status()
+        config_data = r_get.json()
+        
+        config_data["AcsCfg"]["voicePrompt"] = enabled
+        
+        r_put = self.session.put(
+            f"{self.base_url}/AccessControl/AcsCfg?format=json",
+            json=config_data,
+            timeout=self.timeout
+        )
+        r_put.raise_for_status()
+        return r_put.json()

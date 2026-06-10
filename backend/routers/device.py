@@ -140,6 +140,23 @@ def open_door(db: Session = Depends(get_db), current_user = Depends(check_permis
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error abriendo puerta: {str(e)}")
 
+@router.post("/close-door")
+def close_door(db: Session = Depends(get_db), current_user = Depends(check_permission("perm_manage_device"))):
+    from backend.services.hikvision import HikvisionClient
+    from backend.services.audit import log_action
+    
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="No hay configuración")
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    try:
+        res = client.close_door()
+        log_action(db, current_user.id, "DEVICE_CONTROL", "Device", "N/A", "Cierre remoto de puerta")
+        return {"ok": True, "message": "Comando de cierre enviado correctamente.", "details": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cerrando puerta: {str(e)}")
+
 @router.post("/sync-time")
 def sync_device_time(db: Session = Depends(get_db), current_user = Depends(check_permission("perm_manage_device"))):
     from backend.services.hikvision import HikvisionClient
@@ -157,28 +174,76 @@ def sync_device_time(db: Session = Depends(get_db), current_user = Depends(check
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error sincronizando hora: {str(e)}")
 
+@router.get("/security")
+def get_security_settings(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    from backend.services.hikvision import HikvisionClient
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="No hay configuración")
+
+    if not cfg.is_online:
+        return {
+            "mode": "faceOrCard",
+            "voice_prompt": True,
+            "volume": 50,
+            "offline": True
+        }
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    try:
+        mode = client.get_verify_mode()
+        voice_prompt = client.get_voice_prompt()
+        return {
+            "mode": mode,
+            "voice_prompt": voice_prompt,
+            "volume": 50 if voice_prompt else 0,
+            "offline": False
+        }
+    except Exception as e:
+        return {
+            "mode": "faceOrCard",
+            "voice_prompt": True,
+            "volume": 50,
+            "offline": True,
+            "error": str(e)
+        }
+
 @router.post("/security/verify-mode")
 def set_verify_mode(payload: dict, db: Session = Depends(get_db), current_user = Depends(check_permission("perm_manage_device"))):
     mode = payload.get("mode", "faceOnly")
+    from backend.services.hikvision import HikvisionClient
     from backend.services.audit import log_action
     
     cfg = db.query(DeviceConfig).first()
     if not cfg:
         raise HTTPException(status_code=404, detail="No hay configuración")
 
-    # Si implementamos esto requerimos un método en HikvisionClient, 
-    # pero como es solo recomendación y prueba lo loggeamos.
-    log_action(db, current_user.id, "DEVICE_CONTROL", "Device", "N/A", f"Modo de verificación cambiado a {mode}")
-    return {"ok": True, "message": f"Modo de verificación {mode} simulado para ds-k1t323mbwx."}
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    try:
+        res = client.set_verify_mode(mode)
+        log_action(db, current_user.id, "DEVICE_CONTROL", "Device", "N/A", f"Modo de verificación cambiado a {mode}")
+        return {"ok": True, "message": f"Modo de verificación cambiado a {mode} exitosamente.", "details": res}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error configurando nivel de verificación: {str(e)}")
 
 @router.post("/security/volume")
 def set_volume(payload: dict, db: Session = Depends(get_db), current_user = Depends(check_permission("perm_manage_device"))):
     volume = payload.get("volume", 50)
+    from backend.services.hikvision import HikvisionClient
     from backend.services.audit import log_action
     
     cfg = db.query(DeviceConfig).first()
     if not cfg:
         raise HTTPException(status_code=404, detail="No hay configuración")
 
-    log_action(db, current_user.id, "DEVICE_CONTROL", "Device", "N/A", f"Volumen de dispositivo cambiado a {volume}")
-    return {"ok": True, "message": f"Volumen configurado a {volume}%."}
+    enabled = volume > 0
+    if cfg.is_online:
+        client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+        try:
+            client.set_voice_prompt(enabled)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al configurar avisos de voz: {str(e)}")
+
+    log_action(db, current_user.id, "DEVICE_CONTROL", "Device", "N/A", f"Avisos de voz de dispositivo {'activados' if enabled else 'silenciados'} (Volumen: {volume}%)")
+    return {"ok": True, "message": f"Avisos de voz {'activados' if enabled else 'silenciados'} con éxito."}
+
