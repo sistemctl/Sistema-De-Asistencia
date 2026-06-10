@@ -234,8 +234,37 @@ class HikvisionClient:
             files=files,
             timeout=self.timeout,
         )
-        r.raise_for_status()
-        return r.json()
+        try:
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.HTTPError as e:
+            try:
+                err_data = r.json()
+                sub_code = err_data.get("subStatusCode") or err_data.get("ResponseStatus", {}).get("subStatusCode")
+                status_str = err_data.get("statusString") or err_data.get("ResponseStatus", {}).get("statusString")
+                
+                # Mapeo de errores comunes de Hikvision
+                error_mappings = {
+                    "noFaceDetected": "No se detectó ningún rostro en la foto. Asegúrese de que el rostro esté descubierto y de frente.",
+                    "faceQualityBad": "La calidad de la imagen es insuficiente (puede estar borrosa, mal iluminada o de lado).",
+                    "faceSizeTooSmall": "El rostro en la imagen es demasiado pequeño.",
+                    "faceSizeTooLarge": "El rostro en la imagen es demasiado grande.",
+                    "imageSizeLimit": "El tamaño de la imagen supera el límite permitido por el dispositivo.",
+                    "photoSizeError": "El tamaño de la imagen supera el límite permitido por el dispositivo.",
+                    "invalidPhotoFormat": "El formato del archivo no es compatible. Suba una foto en formato JPG/JPEG estándar.",
+                    "faceSubjectAlreadyExist": "Este rostro ya está registrado en el dispositivo."
+                }
+                
+                msg = error_mappings.get(sub_code)
+                if msg:
+                    raise Exception(f"El dispositivo rechazó la foto: {msg} (código: {sub_code})")
+                elif status_str:
+                    raise Exception(f"El dispositivo rechazó la foto: {status_str} (código: {sub_code or 'N/A'})")
+            except Exception as json_err:
+                if "El dispositivo rechazó" in str(json_err):
+                    raise json_err
+            # Si no pudimos parsear el JSON o no coincide, lanzar el error genérico
+            raise Exception(f"Error HTTP {r.status_code} al subir la foto al biométrico: {r.text or str(e)}")
 
     # ── Eventos de acceso / asistencia ────────────────────────────────────────
 
