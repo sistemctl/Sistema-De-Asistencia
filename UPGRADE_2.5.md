@@ -10,6 +10,7 @@ Esta guía contiene los pasos necesarios para actualizar el **Sistema de Asisten
 - **Soporte Nativo de Modo Oscuro:** Integración de un modo oscuro unificado y cohesivo, que puede activarse sin dependencias de terceros gracias al uso intensivo de variables CSS (`dark_mode.css`).
 - **Correcciones Visuales (SMTP y Toggles):** Solucionados los problemas de superposición y layout de los selectores tipo interruptor (`toggle-switch`) en el módulo de configuración de SMTP y ajustes del sistema.
 - **Mejoras de Íconos:** Renovación y optimización en la carga de íconos para mejorar su aspecto en toda la plataforma.
+- **Configuración de Seguridad y Audio en Hardware (Biométrico):** Añadido soporte para leer y cambiar en tiempo real el modo de autenticación física (Rostro/Tarjeta) en el lector del biométrico Hikvision, y la capacidad de silenciar los avisos de voz de la terminal (desactivando el mensaje "Gracias") al configurar el volumen a 0% en la interfaz web.
 
 ---
 
