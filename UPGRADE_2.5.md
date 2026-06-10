@@ -11,6 +11,7 @@ Esta guía contiene los pasos necesarios para actualizar el **Sistema de Asisten
 - **Correcciones Visuales (SMTP y Toggles):** Solucionados los problemas de superposición y layout de los selectores tipo interruptor (`toggle-switch`) en el módulo de configuración de SMTP y ajustes del sistema.
 - **Mejoras de Íconos:** Renovación y optimización en la carga de íconos para mejorar su aspecto en toda la plataforma.
 - **Configuración de Seguridad y Audio en Hardware (Biométrico):** Añadido soporte para leer y cambiar en tiempo real el modo de autenticación física (Rostro/Tarjeta) en el lector del biométrico Hikvision, y la capacidad de silenciar los avisos de voz de la terminal (desactivando el mensaje "Gracias") al configurar el volumen a 0% en la interfaz web.
+- **Validación Avanzada de Fotos en Lector:** El backend ahora captura e interpreta los códigos de error específicos del firmware de Hikvision (`subStatusCode` de la respuesta ISAPI 400 Bad Request) al subir fotos de empleados. Si el dispositivo rechaza una foto (ej. "Rostro no detectado", "Calidad insuficiente", "Imagen demasiado grande"), el sistema mostrará un mensaje de alerta en español claro y conciso en lugar de un error genérico `400 Client Error`.
 
 ---
 
