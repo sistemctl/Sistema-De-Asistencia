@@ -67,3 +67,7 @@ CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 APP_NAME    = "Sistema de Asistencia — Hikvision DS-K1T323MBWX"
 APP_VERSION = "1.9.0"
 TIMEZONE    = os.getenv("TIMEZONE", "America/Bogota")
+
+# ── Copias de Seguridad Automáticas ───────────────────────────────────────────
+BACKUP_DIR = os.getenv("BACKUP_DIR", "backups")
+BACKUP_RETENTION_DAYS = int(os.getenv("BACKUP_RETENTION_DAYS", "7"))

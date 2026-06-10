@@ -96,6 +96,26 @@ def start_scheduler():
         replace_existing=True,
     )
     
+    # Agregar tarea diaria para sincronizar hora del biométrico a las 03:00 AM
+    _scheduler.add_job(
+        sync_device_time_job,
+        trigger="cron",
+        hour=3,
+        minute=0,
+        id="sync_device_time",
+        replace_existing=True,
+    )
+
+    # Agregar tarea diaria para backup automático a las 04:00 AM
+    _scheduler.add_job(
+        auto_backup_job,
+        trigger="cron",
+        hour=4,
+        minute=0,
+        id="auto_backup",
+        replace_existing=True,
+    )
+    
     _scheduler.start()
     logger.info(f"✅ Scheduler iniciado — sincronización cada {interval} minutos, ausencias a las {absences_hour:02d}:{absences_minute:02d}, reporte a las {report_hour:02d}:{report_minute:02d}, limpieza a las {cleanup_hour:02d}:{cleanup_minute:02d}")
     
@@ -193,13 +213,26 @@ def check_daily_absences():
         today = get_local_now().replace(tzinfo=None).date()
         summaries = process_daily_attendance_bulk(db, target_date=today)
         
+        absences = []
         for summary in summaries:
             if not summary.get("is_present") and not summary.get("is_off"):
                 # No llegó y no es su día libre ni feriado
                 emp_name = summary.get("employee_name", "Desconocido")
+                emp_code = summary.get("employee_code", "-")
+                dept_name = summary.get("department", "-")
                 details = f"El empleado no ha registrado entrada el día de hoy ({today.isoformat()})."
-                notify_attendance_alert(db, emp_name, str(today), "Ausencia Detectada", details)
-                logger.info(f"⚠️ Alerta de ausencia enviada para {emp_name}")
+                absences.append({
+                    "employee_name": emp_name,
+                    "employee_code": emp_code,
+                    "department": dept_name,
+                    "status": "Ausencia Detectada",
+                    "details": details
+                })
+                
+        if absences:
+            from backend.services.email import notify_grouped_absences
+            notify_grouped_absences(db, absences, str(today))
+            logger.info(f"⚠️ Alerta agrupada de ausencias enviada con {len(absences)} empleados.")
     except Exception as e:
         logger.error(f"❌ Error al revisar ausencias diarias: {e}")
     finally:
@@ -740,3 +773,59 @@ def _finish_log(db, log, status, fetched=0, new=0, error=None, is_mock=False):
     log.error_message = error
     log.is_mock = is_mock
     db.commit()
+
+def sync_device_time_job():
+    """Sincroniza la hora del biométrico con la hora local del servidor para evitar desfases."""
+    logger.info("📟 Ejecutando sincronización de hora del biométrico...")
+    db = SessionLocal()
+    try:
+        cfg = db.query(DeviceConfig).first()
+        if not cfg:
+            logger.warning("No hay configuración de dispositivo para sincronizar hora.")
+            return
+            
+        client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+        if client.check_online():
+            res = client.sync_time()
+            logger.info(f"✅ Sincronización de hora exitosa: {res}")
+        else:
+            logger.warning("⚠️ Dispositivo fuera de línea. Omitiendo sincronización horaria.")
+    except Exception as e:
+        logger.error(f"❌ Error al sincronizar hora del biométrico: {e}")
+    finally:
+        db.close()
+
+def auto_backup_job():
+    """Ejecuta la copia de seguridad automática y limpia respaldos obsoletos."""
+    logger.info("💾 Iniciando copia de seguridad automática de base de datos e imágenes...")
+    from backend.config import BACKUP_DIR, BACKUP_RETENTION_DAYS
+    from backend.services.backup_service import create_backup_zip, cleanup_old_backups
+    from backend.database import SessionLocal
+    from backend.models import SystemConfig
+    
+    db = SessionLocal()
+    backup_dir = BACKUP_DIR
+    retention_days = BACKUP_RETENTION_DAYS
+    
+    try:
+        config = db.query(SystemConfig).first()
+        if config:
+            if config.backup_dir:
+                backup_dir = config.backup_dir
+            if config.backup_retention_days is not None:
+                retention_days = config.backup_retention_days
+    except Exception as db_err:
+        logger.error(f"⚠️ Error al obtener configuración de backups de la BD: {db_err}")
+    finally:
+        db.close()
+        
+    try:
+        # Generar el respaldo
+        backup_zip_path = create_backup_zip(backup_dir)
+        logger.info(f"✅ Copia de seguridad automática creada: {backup_zip_path}")
+        
+        # Realizar limpieza rodante
+        cleanup_old_backups(backup_dir, retention_days)
+    except Exception as e:
+        logger.error(f"❌ Error en la tarea de respaldo automático: {e}")
+

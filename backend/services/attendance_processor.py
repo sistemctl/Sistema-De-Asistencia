@@ -58,6 +58,9 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
     if active_leave is not None:
         is_off = True
 
+    if is_off:
+        schedule = None
+
     # Filter records, checking if it is a night shift crossing midnight
     is_night_shift = False
     if schedule and schedule.shift_type == "continuous":

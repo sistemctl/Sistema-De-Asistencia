@@ -767,7 +767,7 @@ const ReportsPage = {
     const isRecordsActive = btnRecords?.classList.contains('active');
     
     if (tabName === 'analytics') {
-      if (isAnalyticsActive) return;
+      if (isAnalyticsActive && this.loadedTabs.analytics) return;
       btnAnalytics?.classList.add('active');
       btnRecords?.classList.remove('active');
       if (contentAnalytics) contentAnalytics.style.display = 'block';
@@ -780,7 +780,7 @@ const ReportsPage = {
         this.onFilterChange('an');
       }
     } else {
-      if (isRecordsActive) return;
+      if (isRecordsActive && this.loadedTabs.records) return;
       btnAnalytics?.classList.remove('active');
       btnRecords?.classList.add('active');
       if (contentAnalytics) contentAnalytics.style.display = 'none';

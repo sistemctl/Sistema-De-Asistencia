@@ -73,7 +73,8 @@ def run_migrations():
         "migrations/add_columns.py",
         "migrations/migration_justification_docs.py",
         "migrations/migration_automatic_sync_toggle.py",
-        "migrations/migration_scheduler_times.py"
+        "migrations/migration_scheduler_times.py",
+        "migrations/migration_backup_dir_retention.py"
     ]
     for m in migrations:
         print(f"\n──────────────────────────────────────────────────")

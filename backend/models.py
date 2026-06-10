@@ -190,6 +190,10 @@ class SystemConfig(Base):
     cleanup_enabled = Column(Boolean, default=False)
     cleanup_time = Column(String(10), default="02:00")
     
+    # Configuración de backups automáticos
+    backup_dir = Column(String(255), default="backups", nullable=True)
+    backup_retention_days = Column(Integer, default=7, nullable=True)
+    
     # Tiempos de programación de tareas en segundo plano
     daily_report_time = Column(String(10), default="19:00")
     absences_check_time = Column(String(10), default="11:00")

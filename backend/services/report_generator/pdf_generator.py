@@ -832,3 +832,73 @@ def _generate_grouped_pdf(summaries: list, granularity: str, progress_callback =
 def generate_attendance_pdf(summaries: list, granularity: str, progress_callback = None, columns: Optional[list] = None) -> bytes:
     """Genera un reporte de asistencia unificado en PDF (agrupado por persona si hay varios)."""
     return _generate_grouped_pdf(summaries, granularity, progress_callback=progress_callback, columns=columns)
+
+def generate_absences_pdf(absences: list, date_str: str) -> bytes:
+    """Genera un reporte PDF vertical (A4) con las ausencias del día."""
+    cfg = _get_system_config()
+    primary_color_hex = cfg.get("primary_color") or "#1e3a5f"
+    primary_color = colors.HexColor(primary_color_hex)
+    
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        topMargin=1.5*cm, bottomMargin=1.5*cm, leftMargin=1.5*cm, rightMargin=1.5*cm
+    )
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "AbsenceTitle", parent=styles["Title"],
+        fontSize=18, leading=22, textColor=primary_color, alignment=0, fontName="Helvetica-Bold"
+    )
+    sub_style = ParagraphStyle(
+        "AbsenceSub", parent=styles["Normal"],
+        fontSize=10, leading=14, textColor=colors.HexColor("#64748b")
+    )
+    cell_style = ParagraphStyle(
+        "AbsenceCell", parent=styles["Normal"],
+        fontSize=9, leading=11, textColor=colors.HexColor("#1e293b")
+    )
+    cell_bold = ParagraphStyle(
+        "AbsenceCellBold", parent=cell_style, fontName="Helvetica-Bold"
+    )
+    header_style = ParagraphStyle(
+        "AbsenceHeader", parent=cell_bold, textColor=colors.white
+    )
+    
+    elements = [
+        Paragraph("REPORTE DIARIO DE AUSENCIAS DETECTADAS", title_style),
+        Paragraph(f"Fecha de reporte: <b>{date_str}</b> — Total ausencias: <b>{len(absences)}</b>", sub_style),
+        Spacer(1, 0.2*cm),
+        Paragraph(f"Sistema: {cfg.get('system_name')} | Empresa: {cfg.get('company_name')}", sub_style),
+        Spacer(1, 0.8*cm),
+    ]
+    
+    # Tabla de Ausentes
+    data = [[
+        Paragraph("Código", header_style),
+        Paragraph("Empleado", header_style),
+        Paragraph("Departamento", header_style),
+        Paragraph("Detalles", header_style)
+    ]]
+    
+    for a in absences:
+        data.append([
+            Paragraph(a.get("employee_code", "-"), cell_style),
+            Paragraph(a.get("employee_name", "Desconocido"), cell_bold),
+            Paragraph(a.get("department", "-"), cell_style),
+            Paragraph(a.get("details", "-"), cell_style)
+        ])
+        
+    table = Table(data, colWidths=[3.0*cm, 5.0*cm, 4.0*cm, 6.0*cm], repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), primary_color),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(table)
+    
+    doc.build(elements)
+    return buf.getvalue()

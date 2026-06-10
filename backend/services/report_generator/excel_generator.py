@@ -344,6 +344,8 @@ def generate_attendance_excel(summaries: list, granularity: str, columns: Option
             elif not s["is_present"]:
                 if s.get("is_holiday"):
                     status = "Festivo"
+                elif s.get("is_off"):
+                    status = "Descanso"
                 else:
                     status = "Ausente"
             elif s["missing_punches"]:

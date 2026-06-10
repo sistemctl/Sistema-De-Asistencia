@@ -7,7 +7,9 @@ import logging
 
 logger = logging.getLogger("attendance_email")
 
-def send_smtp_email(config: SystemConfig, subject: str, html_content: str, recipients: list):
+from email.mime.application import MIMEApplication
+
+def send_smtp_email(config: SystemConfig, subject: str, html_content: str, recipients: list, attachment_data: bytes = None, attachment_filename: str = None):
     if not config.smtp_host or not config.smtp_port or not config.smtp_username or not config.smtp_password:
         raise Exception("Falta configurar los parámetros SMTP del servidor.")
     
@@ -15,12 +17,19 @@ def send_smtp_email(config: SystemConfig, subject: str, html_content: str, recip
         raise Exception("No hay destinatarios configurados para recibir alertas.")
 
     # Formar el mensaje
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = f"{config.system_name} <{config.smtp_username}>"
     msg["To"] = ", ".join(recipients)
 
-    msg.attach(MIMEText(html_content, "html", "utf-8"))
+    body = MIMEMultipart("alternative")
+    body.attach(MIMEText(html_content, "html", "utf-8"))
+    msg.attach(body)
+
+    if attachment_data and attachment_filename:
+        part = MIMEApplication(attachment_data, Name=attachment_filename)
+        part['Content-Disposition'] = f'attachment; filename="{attachment_filename}"'
+        msg.attach(part)
 
     # Conectar y enviar
     try:
@@ -263,3 +272,96 @@ def notify_daily_report(db: Session, target_date: str, summaries: list):
             send_smtp_email(config, subject, html_content, recipients)
         except Exception as err:
             logger.error(f"Fallo al enviar reporte diario síncrono: {err}")
+
+def notify_grouped_absences(db: Session, absences: list, date_str: str):
+    config = db.query(SystemConfig).first()
+    if not config or not config.email_notifications_enabled or not config.email_alerts_recipients:
+        return
+
+    recipients = [r.strip() for r in config.email_alerts_recipients.split(",") if r.strip()]
+    if not recipients:
+        return
+
+    subject = f"⚠️ Reporte Consolidado de Ausencias - {date_str} ({len(absences)} incidencias)"
+    
+    # Generar PDF
+    from backend.services.report_generator.pdf_generator import generate_absences_pdf
+    try:
+        pdf_data = generate_absences_pdf(absences, date_str)
+    except Exception as pdf_err:
+        logger.error(f"Error generando PDF de ausencias agrupadas: {pdf_err}")
+        pdf_data = None
+
+    # HTML content
+    rows = ""
+    for a in absences:
+        rows += f"""
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px; font-weight: bold;">{a.get('employee_code')}</td>
+            <td style="padding: 10px;">{a.get('employee_name')}</td>
+            <td style="padding: 10px;">{a.get('department')}</td>
+            <td style="padding: 10px; color: #b91c1c;">{a.get('status')}</td>
+        </tr>
+        """
+
+    html_content = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b;">
+            <div style="max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <h2 style="color: #dc2626; margin-bottom: 10px;">⚠️ Resumen de Ausencias Detectadas</h2>
+                <p style="color: #64748b; margin-bottom: 20px;">Se adjunta el reporte oficial en PDF con las ausencias del día: <strong>{date_str}</strong>.</p>
+                
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9em; margin-bottom: 20px;">
+                    <thead>
+                        <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 10px;">Código</th>
+                            <th style="padding: 10px;">Empleado</th>
+                            <th style="padding: 10px;">Departamento</th>
+                            <th style="padding: 10px;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+
+                <p style="font-size: 0.9em; color: #475569; background-color: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                    ℹ️ <strong>Información:</strong> Se ha generado un documento PDF consolidado con los detalles de cada incidencia y se ha adjuntado a este correo para evitar el envío de múltiples notificaciones individuales.
+                </p>
+
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <p style="font-size: 0.85em; color: #64748b; text-align: center;">Este es un mensaje automático del Sistema de Asistencia de Personal.</p>
+            </div>
+        </body>
+    </html>
+    """
+
+    from fastapi.concurrency import run_in_threadpool
+    import asyncio
+    
+    async def task():
+        try:
+            await run_in_threadpool(
+                send_smtp_email, 
+                config, 
+                subject, 
+                html_content, 
+                recipients, 
+                pdf_data, 
+                f"reporte_ausencias_{date_str}.pdf"
+            )
+        except Exception as err:
+            logger.error(f"Fallo al enviar reporte de ausencias agrupadas: {err}")
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        loop.create_task(task())
+    else:
+        try:
+            send_smtp_email(config, subject, html_content, recipients, pdf_data, f"reporte_ausencias_{date_str}.pdf")
+        except Exception as err:
+            logger.error(f"Fallo al enviar reporte de ausencias agrupadas síncrono: {err}")

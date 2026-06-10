@@ -64,6 +64,9 @@ class SettingsUpdateSchema(BaseModel):
     mobile_qr_portal_enabled: Optional[bool] = False
     daily_report_time: Optional[str] = "19:00"
     absences_check_time: Optional[str] = "11:00"
+    backup_dir: Optional[str] = "backups"
+    backup_retention_days: Optional[int] = 7
+
 
 
 class SettingsPatchSchema(BaseModel):
@@ -118,6 +121,9 @@ class SettingsPatchSchema(BaseModel):
     mobile_qr_portal_enabled: Optional[bool] = None
     daily_report_time: Optional[str] = None
     absences_check_time: Optional[str] = None
+    backup_dir: Optional[str] = None
+    backup_retention_days: Optional[int] = None
+
 
 
 @router.get("/public")
@@ -200,7 +206,9 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
             "qr_badge_show_department": True,
             "mobile_qr_portal_enabled": False,
             "daily_report_time": "19:00",
-            "absences_check_time": "11:00"
+            "absences_check_time": "11:00",
+            "backup_dir": "backups",
+            "backup_retention_days": 7
         }
     return {
         "system_name": config.system_name,
@@ -254,7 +262,9 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "qr_badge_show_department": config.qr_badge_show_department,
         "mobile_qr_portal_enabled": config.mobile_qr_portal_enabled,
         "daily_report_time": config.daily_report_time or "19:00",
-        "absences_check_time": config.absences_check_time or "11:00"
+        "absences_check_time": config.absences_check_time or "11:00",
+        "backup_dir": config.backup_dir or "backups",
+        "backup_retention_days": config.backup_retention_days if config.backup_retention_days is not None else 7
     }
 
 @router.put("")
@@ -324,6 +334,8 @@ def update_settings(
     config.mobile_qr_portal_enabled = data.mobile_qr_portal_enabled
     config.daily_report_time = data.daily_report_time
     config.absences_check_time = data.absences_check_time
+    config.backup_dir = data.backup_dir
+    config.backup_retention_days = data.backup_retention_days
     
     db.commit()
     db.refresh(config)

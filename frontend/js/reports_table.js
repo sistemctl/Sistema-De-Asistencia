@@ -1,5 +1,10 @@
 /* reports_table.js — Records Table sub-module (Detailed Table, Pagination, Row Statuses) */
 
+const titleCase = (str) => {
+  if (!str) return '';
+  return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
 const ReportsTable = {
   reportPage: 1,
 
@@ -39,34 +44,34 @@ const ReportsTable = {
       const thead = document.getElementById('repTableHead');
       if (!thead) return;
       
-      // Adaptar el encabezado de la tabla según la Granularidad
+      // Adaptar el encabezado de la tabla según la Granularidad con alineación estructurada
       if (repGranularity === 'daily') {
         thead.innerHTML = `
           <tr>
-            <th>Empleado</th>
-            <th>Código</th>
-            <th>Departamento</th>
-            <th>Fecha</th>
-            <th>Horario</th>
-            <th>Entrada</th>
-            <th>Sal. Alm.</th>
-            <th>Ret. Alm.</th>
-            <th>Salida</th>
-            <th>Estado</th>
+            <th style="text-align: left; padding: 12px 16px;">Empleado</th>
+            <th style="text-align: left; padding: 12px 16px;">Código</th>
+            <th style="text-align: left; padding: 12px 16px;">Departamento</th>
+            <th style="text-align: left; padding: 12px 16px;">Fecha</th>
+            <th style="text-align: left; padding: 12px 16px;">Horario</th>
+            <th style="text-align: center; padding: 12px 16px;">Entrada</th>
+            <th style="text-align: center; padding: 12px 16px;">Sal. Alm.</th>
+            <th style="text-align: center; padding: 12px 16px;">Ret. Alm.</th>
+            <th style="text-align: center; padding: 12px 16px;">Salida</th>
+            <th style="text-align: center; padding: 12px 16px;">Estado</th>
           </tr>
         `;
       } else {
         thead.innerHTML = `
           <tr>
-            <th>Empleado</th>
-            <th>Código</th>
-            <th>Departamento</th>
-            <th>Período</th>
-            <th>Horario</th>
-            <th>Asistió</th>
-            <th>Tardanzas</th>
-            <th>Incompletos</th>
-            <th>Eventos Totales</th>
+            <th style="text-align: left; padding: 12px 16px;">Empleado</th>
+            <th style="text-align: left; padding: 12px 16px;">Código</th>
+            <th style="text-align: left; padding: 12px 16px;">Departamento</th>
+            <th style="text-align: left; padding: 12px 16px;">Período</th>
+            <th style="text-align: left; padding: 12px 16px;">Horario</th>
+            <th style="text-align: center; padding: 12px 16px;">Asistió</th>
+            <th style="text-align: center; padding: 12px 16px;">Tardanzas</th>
+            <th style="text-align: center; padding: 12px 16px;">Incompletos</th>
+            <th style="text-align: center; padding: 12px 16px;">Eventos Totales</th>
           </tr>
         `;
       }
@@ -79,41 +84,55 @@ const ReportsTable = {
       }
 
       const formatTime = (isoString) => {
-        if (!isoString) return '-';
-        return new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'});
+        if (!isoString) return '<span style="color: var(--text-3); font-weight: normal;">—</span>';
+        return `<span style="color: var(--text-1); font-weight: 600;">${new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'})}</span>`;
       };
 
       tbody.innerHTML = data.items.map(r => {
+        const formattedName = titleCase(r.employee_name);
+        const deptVal = (r.department && r.department.trim() !== '-' && r.department.trim() !== '') 
+          ? r.department 
+          : '<span style="color:var(--text-3); font-style:italic;">Sin departamento</span>';
+
         if (repGranularity === 'daily') {
           let statusBadge = '<span class="corp-badge corp-badge-present">OK</span>';
           if (!r.is_present) {
-            statusBadge = r.is_holiday 
-              ? '<span class="corp-badge corp-badge-holiday">Festivo</span>' 
-              : '<span class="corp-badge corp-badge-absent">Ausente</span>';
+            if (r.is_holiday) {
+              statusBadge = '<span class="corp-badge corp-badge-holiday">Festivo</span>';
+            } else if (r.is_off) {
+              statusBadge = '<span class="corp-badge corp-badge-rest">Descanso</span>';
+            } else {
+              statusBadge = '<span class="corp-badge corp-badge-absent">Ausente</span>';
+            }
           }
           else if (r.missing_punches) statusBadge = '<span class="corp-badge corp-badge-late">Incompleto</span>';
           else if (r.is_late) statusBadge = '<span class="corp-badge corp-badge-late">Tardanza</span>';
 
           const isSplit = r.schedule_type === 'split';
-          const typeBadge = isSplit ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continua</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>');
+          const typeBadge = isSplit 
+            ? '<span class="corp-badge corp-badge-rest">Partido</span>' 
+            : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continua</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>');
+
+          // Formatear fecha más legible (ej: 10 Jun 2026)
+          const formattedDate = new Date(r.date + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'short', year:'numeric'});
 
           return `
             <tr>
               <td>
                 <div style="display:flex;align-items:center;gap:10px">
                   ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
-                  <span style="font-weight:600">${r.employee_name}</span>
+                  <span style="font-weight:600">${formattedName}</span>
                 </div>
               </td>
-              <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
-              <td style="color:var(--text-2)">${r.department}</td>
-              <td style="color:var(--text-2)">${new Date(r.date + "T00:00:00").toLocaleDateString('es')}</td>
+              <td><code style="background:var(--bg-base); border: 1px solid var(--border); padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace; color: var(--text-2);">${r.employee_code}</code></td>
+              <td style="color:var(--text-2)">${deptVal}</td>
+              <td style="color:var(--text-2); font-family:'JetBrains Mono',monospace;">${formattedDate}</td>
               <td>${typeBadge}</td>
-              <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${formatTime(r.punches.entry_1)}</td>
-              <td style="color:var(--text-3);font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.exit_1) : '—'}</td>
-              <td style="color:var(--text-3);font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.entry_2) : '—'}</td>
-              <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${isSplit ? formatTime(r.punches.exit_2) : formatTime(r.punches.exit_1)}</td>
-              <td>${statusBadge}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${formatTime(r.punches.entry_1)}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${isSplit ? formatTime(r.punches.exit_1) : '<span style="color:var(--text-3)">—</span>'}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${isSplit ? formatTime(r.punches.entry_2) : '<span style="color:var(--text-3)">—</span>'}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${isSplit ? formatTime(r.punches.exit_2) : formatTime(r.punches.exit_1)}</td>
+              <td style="text-align:center;">${statusBadge}</td>
             </tr>
           `;
         } else {
@@ -125,16 +144,16 @@ const ReportsTable = {
               <td>
                 <div style="display:flex;align-items:center;gap:10px">
                   ${r.photo_path ? `<div class="emp-avatar"><img src="/uploads/${r.photo_path}?t=${new Date().getTime()}" alt=""></div>` : avatarHtml(r.employee_name)}
-                  <span style="font-weight:600">${r.employee_name}</span>
+                  <span style="font-weight:600">${formattedName}</span>
                 </div>
               </td>
-              <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
-              <td style="color:var(--text-2)">${r.department}</td>
+              <td><code style="background:var(--bg-base); border: 1px solid var(--border); padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace; color: var(--text-2);">${r.employee_code}</code></td>
+              <td style="color:var(--text-2)">${deptVal}</td>
               <td style="color:var(--text-2); font-weight:500;">${pStart} - ${pEnd}</td>
               <td>${r.schedule_type === 'split' ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continuo</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>')}</td>
-              <td>${r.is_present ? '<span class="corp-badge corp-badge-present">Sí</span>' : '<span class="corp-badge corp-badge-absent">No</span>'}</td>
-              <td>${r.is_late ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
-              <td>${r.missing_punches ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
+              <td style="text-align:center;">${r.is_present ? '<span class="corp-badge corp-badge-present">Sí</span>' : '<span class="corp-badge corp-badge-absent">No</span>'}</td>
+              <td style="text-align:center;">${r.is_late ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
+              <td style="text-align:center;">${r.missing_punches ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
               <td style="font-weight:600; font-family:'JetBrains Mono',monospace; text-align:center;">${r.total_raw_events}</td>
             </tr>
           `;

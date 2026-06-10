@@ -296,51 +296,89 @@ const SystemConfigPage = {
           <div class="section-title">Copias de Seguridad (Backup & Restore)</div>
         </div>
         
-        <div style="max-width: 600px; margin-top: 16px;">
-          <div class="card" style="margin-bottom: 24px;">
-            <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Exportar Copia de Seguridad
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-top: 16px; max-width: 1000px;">
+          <!-- Columna de Operaciones Manuales -->
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="card">
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Exportar Copia de Seguridad
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
+                Descarga un archivo comprimido que contiene la base de datos PostgreSQL y todas las imágenes del sistema (logotipo y fotos de empleados).
+              </p>
+              <button class="btn btn-primary" id="btnExportBackup" style="width: 100%; padding: 12px; font-weight: bold;">
+                Generar y Descargar Backup (.zip)
+              </button>
+              <div id="exportProgress" style="display:none; margin-top:16px;">
+                <div style="font-size:0.85rem; color:var(--text-3); margin-bottom:8px;">Generando y descargando archivo, por favor espera...</div>
+                <div style="width: 100%; height: 4px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
+                  <div style="width: 100%; height: 100%; background-color: var(--accent); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+                </div>
+              </div>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
-              Descarga un archivo comprimido que contiene la base de datos PostgreSQL y todas las imágenes del sistema (logotipo y fotos de empleados).
-            </p>
-            <button class="btn btn-primary" id="btnExportBackup" style="width: 100%; padding: 12px; font-weight: bold;">
-              Generar y Descargar Backup (.zip)
-            </button>
-            <div id="exportProgress" style="display:none; margin-top:16px;">
-              <div style="font-size:0.85rem; color:var(--text-3); margin-bottom:8px;">Generando y descargando archivo, por favor espera...</div>
-              <div style="width: 100%; height: 4px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
-                <div style="width: 100%; height: 100%; background-color: var(--accent); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+
+            <div class="card">
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--danger); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Restaurar Copia de Seguridad
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
+                Selecciona un archivo de copia de seguridad para restaurar. Si es un archivo .zip, se restaurarán también las imágenes.
+                <br><strong style="color: var(--danger);">ADVERTENCIA: Esto sobrescribirá todos los datos actuales.</strong>
+              </p>
+              
+              <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px dashed var(--border); margin-bottom: 16px;">
+                <input id="restoreFileInput" type="file" accept=".zip,.sql,.backup" style="display: none;" />
+                <button class="btn btn-secondary" onclick="document.getElementById('restoreFileInput').click()" style="white-space: nowrap;">Seleccionar archivo</button>
+                <span id="restoreFileName" style="font-size: 0.85rem; color: var(--text-3); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Ningún archivo seleccionado</span>
+              </div>
+
+              <button class="btn btn-primary" id="btnRestoreBackup" style="width: 100%; padding: 12px; font-weight: bold; background: var(--danger); border-color: var(--danger);">
+                Restaurar Base de Datos
+              </button>
+              <div id="restoreProgress" style="display:none; margin-top:16px;">
+                <div style="font-size:0.85rem; color:var(--text-3); margin-bottom:8px;">Subiendo y restaurando datos, por favor espera...</div>
+                <div style="width: 100%; height: 4px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
+                  <div style="width: 100%; height: 100%; background-color: var(--danger); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="card">
-            <div style="font-size: 1.05rem; font-weight: 700; color: var(--danger); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-              Restaurar Copia de Seguridad
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
-              Selecciona un archivo de copia de seguridad para restaurar. Si es un archivo .zip, se restaurarán también las imágenes.
-              <br><strong style="color: var(--danger);">ADVERTENCIA: Esto sobrescribirá todos los datos actuales.</strong>
-            </p>
-            
-            <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px dashed var(--border);">
-              <input id="restoreFileInput" type="file" accept=".zip,.sql,.backup" style="display: none;" />
-              <button class="btn btn-secondary" onclick="document.getElementById('restoreFileInput').click()">Seleccionar archivo</button>
-              <span id="restoreFileName" style="font-size: 0.85rem; color: var(--text-3);">Ningún archivo seleccionado</span>
-            </div>
+          <!-- Columna de Configuración Automática -->
+          <div style="display: flex; flex-direction: column;">
+            <div class="card" style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+              <div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                  Configuración de Backups Automáticos
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-2); line-height: 1.5; margin-bottom: 20px;">
+                  Configura la carpeta de destino local y el tiempo de retención para las copias automáticas diarias (ejecutadas a las 04:00 AM).
+                  <br><strong style="color: var(--accent);">Tip:</strong> Si configuras una ruta sincronizada con Google Drive (ej. <code>C:/GoogleDrive/Backups</code>), las copias de seguridad se subirán automáticamente a la nube.
+                </p>
+                
+                <div class="field" style="margin-bottom: 16px;">
+                  <label>Carpeta de Destino (Ruta física o nombre de carpeta)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input id="sysBackupDir" type="text" placeholder="Ej. backups" style="flex: 1; box-sizing: border-box;" />
+                    <button class="btn btn-secondary" id="btnBrowseBackupDir" style="padding: 0 16px; font-weight: bold; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                      Seleccionar
+                    </button>
+                  </div>
+                </div>
 
-            <button class="btn btn-primary" id="btnRestoreBackup" style="width: 100%; padding: 12px; font-weight: bold; margin-top: 20px; background: var(--danger); border-color: var(--danger);">
-              Restaurar Base de Datos
-            </button>
-            <div id="restoreProgress" style="display:none; margin-top:16px;">
-              <div style="font-size:0.85rem; color:var(--text-3); margin-bottom:8px;">Subiendo y restaurando datos, por favor espera...</div>
-              <div style="width: 100%; height: 4px; background-color: var(--surface-3); border-radius: 99px; overflow: hidden;">
-                <div style="width: 100%; height: 100%; background-color: var(--danger); animation: progressIndeterminate 1.5s infinite linear; transform-origin: left; border-radius: 99px;"></div>
+                <div class="field" style="margin-bottom: 20px;">
+                  <label>Días de Retención (Plan de rotación de backups)</label>
+                  <input id="sysBackupRetentionDays" type="number" placeholder="Ej. 7" style="width: 100%; box-sizing: border-box;" min="1" max="365" />
+                </div>
               </div>
-            </div>
+
+              <button class="btn btn-primary" id="btnSaveBackupSettings" style="width: 100%; padding: 12px; font-weight: bold; margin-top: auto;">
+                Guardar Configuración de Backups
+              </button>
             </div>
           </div>
         </div>
@@ -354,6 +392,11 @@ const SystemConfigPage = {
       }
       document.getElementById('btnExportBackup')?.addEventListener('click', () => this.exportBackup());
       document.getElementById('btnRestoreBackup')?.addEventListener('click', () => this.restoreBackup());
+      document.getElementById('btnBrowseBackupDir')?.addEventListener('click', () => this.selectBackupDirectory());
+      document.getElementById('btnSaveBackupSettings')?.addEventListener('click', () => this.saveBackupSettings());
+      await this.loadBackupSettings();
+
+
 
     } else if (tab === 'maintenance') {
       contentEl.innerHTML = `
@@ -907,6 +950,176 @@ const SystemConfigPage = {
       },
       'danger'
     );
+  },
+
+  async loadBackupSettings() {
+    try {
+      const data = await API.get('/api/settings');
+      this.settings = data;
+      
+      document.getElementById('sysBackupDir').value = data.backup_dir || 'backups';
+      document.getElementById('sysBackupRetentionDays').value = data.backup_retention_days ?? 7;
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al cargar la configuración de backups automáticos', 'error');
+    }
+  },
+
+  async saveBackupSettings() {
+    const backupDir = document.getElementById('sysBackupDir').value.trim();
+    const retentionDays = parseInt(document.getElementById('sysBackupRetentionDays').value) || 7;
+    
+    try {
+      if (!this.settings || !this.settings.work_days) {
+        const currentData = await API.get('/api/settings');
+        this.settings = currentData;
+      }
+      
+      await API.put('/api/settings', {
+        ...this.settings,
+        backup_dir: backupDir,
+        backup_retention_days: retentionDays
+      });
+      
+      Toast.show('Configuración de copias de seguridad guardada correctamente', 'success');
+      this.settings.backup_dir = backupDir;
+      this.settings.backup_retention_days = retentionDays;
+    } catch(e) {
+      console.error(e);
+      Toast.show('Error al guardar la configuración de backups: ' + e.message, 'error');
+    }
+  },
+
+  async selectBackupDirectory() {
+    const inputVal = document.getElementById('sysBackupDir').value.trim() || '/';
+    
+    // Función para renderizar el explorador de carpetas en el modal
+    const renderBrowser = async (targetPath) => {
+      const modalBody = document.getElementById('dirBrowserBody');
+      if (!modalBody) return;
+      
+      modalBody.innerHTML = `
+        <div style="display:flex; justify-content:center; align-items:center; padding: 20px; color: var(--text-2); gap: 10px;">
+          <div class="spinner"></div> Cargando directorios...
+        </div>
+      `;
+      
+      try {
+        let url = '/api/backup/browse-directories';
+        if (targetPath) {
+          url += `?path=${encodeURIComponent(targetPath)}`;
+        }
+        
+        const token = API.token();
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || 'Error al listar carpetas');
+        }
+        
+        const data = await response.json();
+        const currentPath = data.current_path;
+        const parentPath = data.parent_path;
+        const subdirs = data.subdirectories || [];
+        
+        // Guardar la ruta actual en un atributo para recuperarla al confirmar
+        modalBody.dataset.currentPath = currentPath;
+        
+        // Actualizar la barra de dirección en la UI del modal
+        const pathInput = document.getElementById('dirBrowserPath');
+        if (pathInput) pathInput.value = currentPath;
+        
+        let htmlList = '';
+        
+        // Mostrar botón de retroceso si no estamos en la raíz absoluta
+        if (parentPath) {
+          htmlList += `
+            <div class="dir-item" data-path="${parentPath}" style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; background: var(--surface-2); margin-bottom: 8px; border: 1px dashed var(--border); transition: all 0.2s;" onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background='var(--surface-2)'">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-1);">.. (Subir un nivel)</span>
+            </div>
+          `;
+        }
+        
+        if (subdirs.length === 0) {
+          htmlList += `
+            <div style="text-align: center; color: var(--text-3); padding: 30px; font-size: 0.85rem;">
+              No hay subcarpetas en este directorio.
+            </div>
+          `;
+        } else {
+          htmlList += `<div style="max-height: 250px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 4px;">`;
+          subdirs.forEach(dir => {
+            const isDrive = dir.name.endsWith(':\\') || dir.name.endsWith(':/') || (dir.name.length === 3 && dir.name.includes(':'));
+            const iconSvg = isDrive 
+              ? `<svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2" fill="none"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>`
+              : `<svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--accent)" stroke-width="2" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+            
+            htmlList += `
+              <div class="dir-item" data-path="${dir.path}" style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;" onmouseover="this.style.background='var(--surface-3)'; this.style.borderColor='var(--border)'" onmouseout="this.style.background='transparent'; this.style.borderColor='transparent'">
+                ${iconSvg}
+                <span style="font-size: 0.85rem; color: var(--text-2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${dir.name}</span>
+              </div>
+            `;
+          });
+          htmlList += `</div>`;
+        }
+        
+        modalBody.innerHTML = htmlList;
+        
+        // Asignar los eventos de click a los elementos de la lista
+        modalBody.querySelectorAll('.dir-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const newPath = el.getAttribute('data-path');
+            renderBrowser(newPath);
+          });
+        });
+        
+      } catch (err) {
+        modalBody.innerHTML = `
+          <div style="text-align: center; color: var(--danger); padding: 25px; font-size: 0.85rem; font-weight: bold;">
+            Error: ${err.message}
+          </div>
+        `;
+      }
+    };
+    
+    // Contenido del modal
+    const html = `
+      <div style="padding: 5px 0;">
+        <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 12px; line-height: 1.4;">
+          Navega por las carpetas del servidor y selecciona dónde se almacenarán los backups.
+        </p>
+        <div class="field" style="margin-bottom: 12px;">
+          <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-1);">Ruta Seleccionada</label>
+          <input type="text" id="dirBrowserPath" readonly style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-1); font-family: monospace; font-size: 0.8rem;" />
+        </div>
+        <div id="dirBrowserBody" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px; min-height: 200px;">
+        </div>
+      </div>
+    `;
+    
+    const footer = `
+      <button class="btn btn-secondary" onclick="Modal.close()" style="margin-right: 8px;">Cancelar</button>
+      <button class="btn btn-primary" id="btnSelectDirSubmit" style="font-weight: bold;">Seleccionar Esta Carpeta</button>
+    `;
+    
+    Modal.open("Seleccionar Carpeta", html, footer);
+    
+    // Cargar explorador
+    renderBrowser(inputVal);
+    
+    document.getElementById('btnSelectDirSubmit')?.addEventListener('click', () => {
+      const modalBody = document.getElementById('dirBrowserBody');
+      const selectedPath = modalBody?.dataset.currentPath;
+      if (selectedPath) {
+        document.getElementById('sysBackupDir').value = selectedPath;
+        Modal.close();
+      }
+    });
   },
 
   // ── Maintenance/Cleanup ──────────────────────────────────────────────────────

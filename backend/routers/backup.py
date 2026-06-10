@@ -3,10 +3,11 @@ import subprocess
 import datetime
 import zipfile
 import shutil
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from backend.database import get_db
+from backend.database import get_db, engine
 from backend.auth import get_current_user, check_permission
 from backend.models import User
 from backend.config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
@@ -39,65 +40,19 @@ def export_backup(
     db: Session = Depends(get_db),
     current_user: User = Depends(check_permission("perm_manage_settings"))
 ):
-    host = DB_HOST
-    port = DB_PORT
-    name = DB_NAME
-    user = DB_USER
-    password = DB_PASSWORD
-    
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_sql = f"database_{timestamp}.sql"
-    backup_zip = f"backup_full_{timestamp}.zip"
-    
-    env = os.environ.copy()
-    env["PGPASSWORD"] = password
-    
-    cmd = [
-        find_pg_binary("pg_dump"),
-        "-h", host,
-        "-p", port,
-        "-U", user,
-        "-d", name,
-        "-F", "c",
-        "-b",
-        "-v",
-        "-f", backup_sql
-    ]
-    
     try:
-        result = subprocess.run(cmd, env=env, capture_output=True, text=True)
-        if result.returncode != 0:
-            # Fallback a texto plano
-            cmd_plain = [
-                find_pg_binary("pg_dump"),
-                "-h", host,
-                "-p", port,
-                "-U", user,
-                "-d", name,
-                "-f", backup_sql
-            ]
-            result_plain = subprocess.run(cmd_plain, env=env, capture_output=True, text=True)
-            if result_plain.returncode != 0:
-                raise Exception(result_plain.stderr or "Error al ejecutar pg_dump")
-                
-        # Empaquetar SQL y la carpeta uploads
-        with zipfile.ZipFile(backup_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            zipf.write(backup_sql, arcname=backup_sql)
-            
-            uploads_dir = os.path.abspath("uploads")
-            if os.path.exists(uploads_dir):
-                for root, _, files in os.walk(uploads_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.join("uploads", os.path.relpath(file_path, uploads_dir))
-                        zipf.write(file_path, arcname=arcname)
-                
+        from backend.services.backup_service import create_backup_zip
+        temp_dir = "temp_export_dir"
+        os.makedirs(temp_dir, exist_ok=True)
+        backup_zip_path = create_backup_zip(temp_dir)
+        filename = os.path.basename(backup_zip_path)
+        
         def iterfile():
-            with open(backup_zip, mode="rb") as f:
+            with open(backup_zip_path, mode="rb") as f:
                 yield from f
             try:
-                os.remove(backup_sql)
-                os.remove(backup_zip)
+                os.remove(backup_zip_path)
+                os.rmdir(temp_dir)
             except Exception:
                 pass
                 
@@ -107,18 +62,15 @@ def export_backup(
         return StreamingResponse(
             iterfile(), 
             media_type="application/zip", 
-            headers={"Content-Disposition": f"attachment; filename={backup_zip}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
-        for f in [backup_sql, backup_zip]:
-            if os.path.exists(f):
-                try: os.remove(f)
-                except Exception: pass
         raise HTTPException(status_code=500, detail=f"Error al generar backup: {str(e)}")
 
 @router.post("/restore")
 async def restore_backup(
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     current_user: User = Depends(check_permission("perm_manage_settings"))
 ):
     host = DB_HOST
@@ -160,6 +112,17 @@ async def restore_backup(
                         os.makedirs(d_dir, exist_ok=True)
                         shutil.copy2(s, os.path.join(d_dir, name_file))
 
+        # Detener el planificador de tareas en segundo plano para evitar nuevas conexiones concurrentes
+        from backend.services.scheduler import stop_scheduler
+        try:
+            stop_scheduler()
+        except Exception:
+            pass
+
+        # Cerrar la sesión de la petición actual y liberar el pool para evitar bloqueos (deadlocks) con pg_restore
+        db.close()
+        engine.dispose()
+
         env = os.environ.copy()
         env["PGPASSWORD"] = password
         
@@ -192,17 +155,91 @@ async def restore_backup(
                 
         # Auditoría
         from backend.database import SessionLocal
-        db = SessionLocal()
+        db_audit = SessionLocal()
         from backend.services.audit import log_action
-        log_action(db, current_user.id, "RESTORE", "Database", "0", "Base de datos e imágenes restauradas desde copia de seguridad")
-        db.close()
+        log_action(db_audit, current_user.id, "RESTORE", "Database", "0", "Base de datos e imágenes restauradas desde copia de seguridad")
+        db_audit.close()
         
         return {"status": "success", "message": "Sistema restaurado correctamente (Base de datos e imágenes)."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al restaurar: {str(e)}")
     finally:
+        # Volver a iniciar el planificador de tareas
+        try:
+            from backend.services.scheduler import start_scheduler
+            start_scheduler()
+        except Exception:
+            pass
+
         if os.path.exists(temp_dir):
             try:
                 shutil.rmtree(temp_dir)
             except Exception:
                 pass
+
+
+@router.get("/browse-directories")
+def browse_directories(
+    path: Optional[str] = None,
+    current_user: User = Depends(check_permission("perm_manage_settings"))
+):
+    import string
+    
+    # 1. Obtener unidades en Windows si no hay ruta o es '/'
+    drives = []
+    if os.name == 'nt':
+        for letter in string.ascii_uppercase:
+            drive = f"{letter}:\\"
+            if os.path.exists(drive):
+                drives.append(drive)
+                
+    # Determinar la ruta actual a listar
+    current_path = ""
+    if not path or path.strip() == "" or path.strip() == "/":
+        # Por defecto, listar las unidades en Windows o directorio de trabajo
+        if os.name == 'nt' and drives:
+            # Mandar información de las unidades
+            return {
+                "current_path": "/",
+                "parent_path": "",
+                "subdirectories": [{"name": drive, "path": drive} for drive in drives],
+                "is_root": True
+            }
+        else:
+            # En Linux o si no hay unidades, listar el CWD
+            current_path = os.path.abspath(os.getcwd())
+    else:
+        current_path = os.path.abspath(path)
+        
+    if not os.path.exists(current_path):
+        raise HTTPException(status_code=404, detail="La ruta especificada no existe.")
+        
+    if not os.path.isdir(current_path):
+        raise HTTPException(status_code=400, detail="La ruta especificada no es una carpeta.")
+        
+    # Obtener subcarpetas
+    subdirs = []
+    try:
+        for item in os.listdir(current_path):
+            item_path = os.path.join(current_path, item)
+            # Omitir archivos, carpetas ocultas/sistema que empiezan con '.' o '$'
+            if os.path.isdir(item_path) and not item.startswith('.') and not item.startswith('$'):
+                subdirs.append({
+                    "name": item,
+                    "path": item_path.replace("\\", "/") # Normalizar a forward slashes para evitar problemas de escape en JS
+                })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo acceder a la carpeta: {str(e)}")
+        
+    # Determinar el padre
+    parent_path = os.path.dirname(current_path)
+    if parent_path == current_path: # Llegamos a la raíz
+        parent_path = ""
+        
+    return {
+        "current_path": current_path.replace("\\", "/"),
+        "parent_path": parent_path.replace("\\", "/") if parent_path else ("/" if os.name == 'nt' else ""),
+        "subdirectories": sorted(subdirs, key=lambda x: x["name"].lower()),
+        "is_root": False
+    }
+
