@@ -40,20 +40,32 @@ def generate_daily_schedules(
     _=Depends(require_manage_schedules)
 ):
     """Genera horarios cíclicos rotativos en lote para uno o más empleados."""
-    total_length = data.cycle_days_work + data.cycle_nights_work + data.cycle_days_off
-    if total_length <= 0:
-        raise HTTPException(status_code=400, detail="La longitud total del ciclo debe ser mayor a 0")
+    if data.sequence:
+        total_length = sum(step.days for step in data.sequence)
+        if total_length <= 0:
+            raise HTTPException(status_code=400, detail="La longitud total del ciclo debe ser mayor a 0")
+        
+        # Verify schedule IDs in the sequence
+        for step in data.sequence:
+            if not step.is_off and step.schedule_id:
+                sched = db.query(Schedule).filter(Schedule.id == step.schedule_id).first()
+                if not sched:
+                    raise HTTPException(status_code=404, detail=f"Horario {step.schedule_id} no encontrado")
+    else:
+        total_length = (data.cycle_days_work or 0) + (data.cycle_nights_work or 0) + (data.cycle_days_off or 0)
+        if total_length <= 0:
+            raise HTTPException(status_code=400, detail="La longitud total del ciclo debe ser mayor a 0")
 
-    # Verificar existencia de horarios
-    if data.day_schedule_id:
-        day_sched = db.query(Schedule).filter(Schedule.id == data.day_schedule_id).first()
-        if not day_sched:
-            raise HTTPException(status_code=404, detail=f"Horario de día {data.day_schedule_id} no encontrado")
+        # Verificar existencia de horarios
+        if data.day_schedule_id:
+            day_sched = db.query(Schedule).filter(Schedule.id == data.day_schedule_id).first()
+            if not day_sched:
+                raise HTTPException(status_code=404, detail=f"Horario de día {data.day_schedule_id} no encontrado")
 
-    if data.night_schedule_id:
-        night_sched = db.query(Schedule).filter(Schedule.id == data.night_schedule_id).first()
-        if not night_sched:
-            raise HTTPException(status_code=404, detail=f"Horario de noche {data.night_schedule_id} no encontrado")
+        if data.night_schedule_id:
+            night_sched = db.query(Schedule).filter(Schedule.id == data.night_schedule_id).first()
+            if not night_sched:
+                raise HTTPException(status_code=404, detail=f"Horario de noche {data.night_schedule_id} no encontrado")
 
     # Generar rango de fechas
     date_list = []
@@ -81,15 +93,30 @@ def generate_daily_schedules(
         for day_idx, current_date in enumerate(date_list):
             cycle_idx = day_idx % total_length
 
-            if cycle_idx < data.cycle_days_work:
-                sched_id = data.day_schedule_id
-                is_off = False
-            elif cycle_idx < (data.cycle_days_work + data.cycle_nights_work):
-                sched_id = data.night_schedule_id
-                is_off = False
-            else:
+            if data.sequence:
+                acc_days = 0
                 sched_id = None
                 is_off = True
+                for step in data.sequence:
+                    if cycle_idx < (acc_days + step.days):
+                        sched_id = step.schedule_id if not step.is_off else None
+                        is_off = step.is_off
+                        break
+                    acc_days += step.days
+            else:
+                if cycle_idx < data.cycle_days_work:
+                    sched_id = data.day_schedule_id
+                    is_off = False
+                elif cycle_idx < (data.cycle_days_work + data.cycle_nights_work):
+                    sched_id = data.night_schedule_id
+                    is_off = False
+                else:
+                    sched_id = None
+                    is_off = True
+
+            if sched_id is None and not is_off:
+                # Do not write any daily schedule override record, leaving it unmarked
+                continue
 
             daily_sched = EmployeeDailySchedule(
                 employee_id=emp_id,

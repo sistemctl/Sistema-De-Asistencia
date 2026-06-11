@@ -767,8 +767,8 @@ const EmployeesPage = {
       <div class="form-row">
         <div class="field">
           <label>Horario de Trabajo</label>
-          <select id="fScheduleId" onchange="EmployeesPage.onScheduleChange(this)">
-            <option value="">Sin Horario / Personalizado (Definir abajo)</option>
+          <select id="fScheduleId">
+            <option value="">-- Sin Horario Asignado --</option>
             ${schedOpts}
           </select>
         </div>
@@ -779,28 +779,9 @@ const EmployeesPage = {
             <option value="false" ${emp ? (!emp.is_active ? 'selected' : '') : ''}>⛔ Inactivo</option>
           </select>
         </div>
-      </div>
-      <div class="form-row collapse-section" id="manualHoursRow" style="${emp?.schedule_id ? '' : 'max-height: 100px; opacity: 1; margin-bottom: 16px;'}">
-        <div class="field"><label>Hora de Entrada</label><input id="fStart" type="time" value="${emp?.work_start_time||'07:00'}" /></div>
-        <div class="field"><label>Hora de Salida</label><input id="fEnd" type="time" value="${emp?.work_end_time||'18:00'}" /></div>
       </div>`,
       `<button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
        <button class="btn btn-primary" onclick="EmployeesPage.saveEmployee(${id||'null'})">Guardar</button>`);
-  },
-
-  onScheduleChange(selectEl) {
-    const manualRow = document.getElementById('manualHoursRow');
-    if (manualRow) {
-      if (selectEl.value === "") {
-        manualRow.style.maxHeight = '100px';
-        manualRow.style.opacity = '1';
-        manualRow.style.marginBottom = '16px';
-      } else {
-        manualRow.style.maxHeight = '0';
-        manualRow.style.opacity = '0';
-        manualRow.style.marginBottom = '0';
-      }
-    }
   },
 
   async saveEmployee(id) {
@@ -831,18 +812,6 @@ const EmployeesPage = {
       }
 
       const schedId = document.getElementById('fScheduleId').value || null;
-      let startTime = "07:00";
-      let endTime = "18:00";
-      
-      if (schedId === null) {
-        startTime = document.getElementById('fStart').value;
-        endTime = document.getElementById('fEnd').value;
-        if (startTime >= endTime) {
-          if (saveBtn) saveBtn.classList.remove('btn-loading');
-          Toast.show('La hora de entrada debe ser anterior a la hora de salida', 'warning');
-          return;
-        }
-      }
 
       const empCode = document.getElementById('fCode').value.trim();
       if (!empCode) {
@@ -867,8 +836,6 @@ const EmployeesPage = {
         schedule_id: schedId ? parseInt(schedId) : null,
         card_number: document.getElementById('fCard').value.trim() || null,
         qr_enabled: document.getElementById('fQrEnabled')?.checked || false,
-        work_start_time: startTime,
-        work_end_time: endTime,
         is_active: document.getElementById('fIsActive').value === 'true',
       };
 

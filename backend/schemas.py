@@ -189,15 +189,22 @@ class DailyScheduleOut(BaseModel):
         from_attributes = True
 
 
+class CycleStepInput(BaseModel):
+    days: int
+    schedule_id: Optional[int] = None
+    is_off: bool = False
+
+
 class DailyScheduleGenerateInput(BaseModel):
     employee_ids: List[int]
     start_date: date
     end_date: date
-    cycle_days_work: int
-    cycle_nights_work: int
-    cycle_days_off: int
-    day_schedule_id: int
-    night_schedule_id: int
+    cycle_days_work: Optional[int] = 0
+    cycle_nights_work: Optional[int] = 0
+    cycle_days_off: Optional[int] = 0
+    day_schedule_id: Optional[int] = None
+    night_schedule_id: Optional[int] = None
+    sequence: Optional[List[CycleStepInput]] = None
 
 
 class DailyScheduleAssignInput(BaseModel):

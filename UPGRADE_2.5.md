@@ -12,6 +12,8 @@ Esta guía contiene los pasos necesarios para actualizar el **Sistema de Asisten
 - **Mejoras de Íconos:** Renovación y optimización en la carga de íconos para mejorar su aspecto en toda la plataforma.
 - **Configuración de Seguridad y Audio en Hardware (Biométrico):** Añadido soporte para leer y cambiar en tiempo real el modo de autenticación física (Rostro/Tarjeta) en el lector del biométrico Hikvision, y la capacidad de silenciar los avisos de voz de la terminal (desactivando el mensaje "Gracias") al configurar el volumen a 0% en la interfaz web.
 - **Validación Avanzada de Fotos en Lector:** El backend ahora captura e interpreta los códigos de error específicos del firmware de Hikvision (`subStatusCode` de la respuesta ISAPI 400 Bad Request) al subir fotos de empleados. Si el dispositivo rechaza una foto (ej. "Rostro no detectado", "Calidad insuficiente", "Imagen demasiado grande"), el sistema mostrará un mensaje de alerta en español claro y conciso en lugar de un error genérico `400 Client Error`.
+- **Ciclo Rotativo Secuencial de 6 Pasos:** Implementación de un generador de horarios rotativos altamente flexible soportando hasta 6 pasos personalizables. Por defecto pre-carga el ciclo habitual (4 Mañana, 4 Noche, 4 Descanso) e incluye la capacidad de dejar días libres completamente sin marcar (sin registrar registros de anulación en la base de datos) al seleccionar `-- Sin Turno / Desactivado --`.
+- **Simplificación de Formularios de Personal:** Remoción completa de los campos redundantes **Hora de Entrada** y **Hora de Salida** en los modales de creación y edición de empleados. El sistema ahora enlaza al colaborador directamente a su horario de trabajo seleccionado eliminando registros de datos paralelos.
 
 ---
 

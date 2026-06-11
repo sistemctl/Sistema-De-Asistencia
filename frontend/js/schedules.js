@@ -578,76 +578,166 @@ const SchedulesPage = {
       const schedList = schedules || [];
 
       const empCheckboxesHtml = empList.map(e => `
-        <label class="gen-emp-label" style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:0.88rem; cursor:pointer; color:var(--text-2);">
+        <label class="gen-emp-label">
           <input type="checkbox" class="gen-emp-checkbox" value="${e.id}">
-          ${e.full_name} (${e.employee_code})
+          <span class="gen-emp-name">${e.full_name}</span>
+          <span class="gen-emp-code">#${e.employee_code}</span>
         </label>
       `).join('');
 
-      const schedOptionsHtml = schedList.map(s => 
-        `<option value="${s.id}">${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`
-      ).join('');
+      // We generate the 6 rows
+      let stepsHtml = '';
+      for (let i = 1; i <= 6; i++) {
+        let defaultDays = 0;
+        let defaultVal = '';
+        if (i === 1) {
+          defaultDays = 4;
+          const found = schedList.find(s => s.name.toLowerCase().includes('dia') || s.name.toLowerCase().includes('diurno') || s.name.toLowerCase().includes('mañana'));
+          if (found) defaultVal = found.id.toString();
+        } else if (i === 2) {
+          defaultDays = 4;
+          const found = schedList.find(s => s.name.toLowerCase().includes('noche') || s.name.toLowerCase().includes('nocturno'));
+          if (found) defaultVal = found.id.toString();
+        } else if (i === 3) {
+          defaultDays = 4;
+          defaultVal = 'off';
+        }
+
+        const optionsHtmlForStep = `
+          <option value="" ${defaultVal === '' ? 'selected' : ''}>-- Sin Turno / Desactivado --</option>
+          <option value="off" ${defaultVal === 'off' ? 'selected' : ''}>-- Descanso / Libre --</option>
+          ${schedList.map(s => 
+            `<option value="${s.id}" ${defaultVal === s.id.toString() ? 'selected' : ''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`
+          ).join('')}
+        `;
+
+        stepsHtml += `
+          <div class="rot-row">
+            <span style="font-size:0.8rem; font-weight:700; color:var(--text-3);">Paso ${i}:</span>
+            <div class="field">
+              <input type="number" class="gen-step-days" data-step="${i}" min="0" value="${defaultDays}" style="text-align:center;" placeholder="Días">
+            </div>
+            <div style="font-size:0.82rem; color:var(--text-2); font-weight:500;">días con:</div>
+            <div class="field">
+              <select class="gen-step-sched" data-step="${i}">
+                ${optionsHtmlForStep}
+              </select>
+            </div>
+          </div>
+        `;
+      }
 
       Modal.open('Generador de Turnos Rotativos', `
+        <style>
+          .gen-emp-list::-webkit-scrollbar {
+            width: 6px;
+          }
+          .gen-emp-list::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .gen-emp-list::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 10px;
+          }
+          .gen-emp-list::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+          }
+          .gen-emp-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+          }
+          .gen-emp-label:hover {
+            background: var(--surface-3);
+          }
+          .gen-emp-label input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            margin: 0;
+          }
+          .gen-emp-name {
+            font-weight: 550;
+            color: var(--text-1);
+            font-size: 0.85rem;
+          }
+          .gen-emp-code {
+            font-size: 0.78rem;
+            color: var(--text-3);
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+          }
+          .rot-row {
+            display: grid;
+            grid-template-columns: 60px 80px 80px 1fr;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+          }
+          .rot-row .field {
+            margin-bottom: 0 !important;
+          }
+          .rot-row .field input, .rot-row .field select {
+            margin: 0 !important;
+          }
+          #fGenSearchEmp:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+            background: var(--bg-raised);
+          }
+          @media (max-width: 500px) {
+            .rot-row {
+              grid-template-columns: 1fr;
+              gap: 6px;
+            }
+          }
+        </style>
+
         <div style="max-height: 480px; overflow-y: auto; padding: 10px 15px; text-align: left;">
-          <p style="font-size:0.85rem; color:var(--text-3); margin-bottom:14px;">
+          <p style="font-size:0.85rem; color:var(--text-3); margin-bottom:18px; line-height:1.5;">
             Define un patrón cíclico de turnos (ej. 4 días de día, 4 de noche, 4 de descanso) y aplícalo a múltiples colaboradores en un rango de fechas.
           </p>
           
-          <div class="field" style="margin-bottom:14px;">
-            <label style="font-weight:600; display:block; margin-bottom:6px;">1. Seleccionar Colaboradores</label>
-            <div style="margin-bottom:8px;">
-              <input type="text" id="fGenSearchEmp" placeholder="🔍 Buscar por nombre o código..." oninput="SchedulesPage.filterGenEmployees(this.value)" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text-1); outline:none; font-size:0.88rem;">
+          <div class="field" style="margin-bottom:18px;">
+            <label style="font-weight:700; font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:10px;">1. Seleccionar Colaboradores</label>
+            <div style="margin-bottom:10px; position:relative;">
+              <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.85rem; pointer-events:none;">🔍</span>
+              <input type="text" id="fGenSearchEmp" placeholder="Buscar por nombre o código..." oninput="SchedulesPage.filterGenEmployees(this.value)" style="width:100%; padding: 10px 16px 10px 36px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-1); outline:none; font-size:0.85rem; transition: all 0.3s ease;">
             </div>
-            <div style="margin-bottom:6px;">
-              <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                <input type="checkbox" onchange="document.querySelectorAll('.gen-emp-checkbox').forEach(cb => { if(cb.closest('label').style.display !== 'none') cb.checked = this.checked })">
-                <strong>Seleccionar Visibles</strong>
+            <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.72rem; color:var(--text-3); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Lista de Personal</span>
+              <label style="font-size:0.82rem; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text-2); user-select:none; transition: color 0.2s ease;">
+                <input type="checkbox" style="width:15px; height:15px;" onchange="document.querySelectorAll('.gen-emp-checkbox').forEach(cb => { if(cb.closest('label').style.display !== 'none') cb.checked = this.checked })">
+                <span style="font-weight:600;">Seleccionar Visibles</span>
               </label>
             </div>
-            <div style="max-height: 180px; overflow-y: auto; border:1px solid var(--border); padding:8px; border-radius:6px; background:rgba(0,0,0,0.1);">
+            <div class="gen-emp-list" style="max-height: 160px; overflow-y: auto; border:1px solid var(--border); padding:6px; border-radius:10px; background:var(--surface-2); display:flex; flex-direction:column; gap:2px;">
               ${empCheckboxesHtml}
             </div>
           </div>
 
-          <div class="form-row" style="display:flex; gap:12px; margin-bottom:14px;">
-            <div class="field" style="flex:1;">
-              <label style="font-weight:600;">Fecha de Inicio</label>
-              <input type="date" id="fGenStartDate" value="${new Date().toISOString().split('T')[0]}">
+          <div class="form-row" style="margin-bottom:18px;">
+            <div class="field">
+              <label for="fGenStartDate" style="font-weight:700; font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:6px;">Fecha de Inicio</label>
+              <input type="date" id="fGenStartDate" value="${new Date().toISOString().split('T')[0]}" style="width:100%;">
             </div>
-            <div class="field" style="flex:1;">
-              <label style="font-weight:600;">Fecha de Fin</label>
-              <input type="date" id="fGenEndDate" value="${new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]}">
+            <div class="field">
+              <label for="fGenEndDate" style="font-weight:700; font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:6px;">Fecha de Fin</label>
+              <input type="date" id="fGenEndDate" value="${new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]}" style="width:100%;">
             </div>
           </div>
 
-          <label style="font-weight:600; display:block; margin-bottom:6px;">2. Definición del Ciclo Rotativo</label>
+          <div style="margin-top:20px; margin-bottom:14px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center;">
+            <span style="font-weight:700; font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em;">2. Definición del Ciclo Rotativo</span>
+          </div>
           
-          <div class="form-row" style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
-            <div class="field" style="width:70px;"><input type="number" id="fGenDaysWork" min="0" value="4" style="text-align:center;"></div>
-            <div style="font-size:0.88rem; color:var(--text-2);">días de <strong>Día</strong> con turno:</div>
-            <div class="field" style="flex:1;">
-              <select id="fGenDaySchedId">
-                <option value="">-- Sin Turno (No aplica) --</option>
-                ${schedOptionsHtml}
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row" style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
-            <div class="field" style="width:70px;"><input type="number" id="fGenNightsWork" min="0" value="4" style="text-align:center;"></div>
-            <div style="font-size:0.88rem; color:var(--text-2);">días de <strong>Noche</strong> con turno:</div>
-            <div class="field" style="flex:1;">
-              <select id="fGenNightSchedId">
-                <option value="">-- Sin Turno (No aplica) --</option>
-                ${schedOptionsHtml}
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row" style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
-            <div class="field" style="width:70px;"><input type="number" id="fGenDaysOff" min="0" value="4" style="text-align:center;"></div>
-            <div style="font-size:0.88rem; color:var(--text-2); flex:1;">días de <strong>Descanso</strong> (Libres) consecutivas</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            ${stepsHtml}
           </div>
         </div>
       `, `
@@ -670,14 +760,26 @@ const SchedulesPage = {
 
     const start_date = document.getElementById('fGenStartDate').value;
     const end_date = document.getElementById('fGenEndDate').value;
-    const cycle_days_work = parseInt(document.getElementById('fGenDaysWork').value) || 0;
-    const cycle_nights_work = parseInt(document.getElementById('fGenNightsWork').value) || 0;
-    const cycle_days_off = parseInt(document.getElementById('fGenDaysOff').value) || 0;
-    
-    const daySchedVal = document.getElementById('fGenDaySchedId').value;
-    const nightSchedVal = document.getElementById('fGenNightSchedId').value;
-    const day_schedule_id = daySchedVal ? parseInt(daySchedVal) : null;
-    const night_schedule_id = nightSchedVal ? parseInt(nightSchedVal) : null;
+
+    const sequence = [];
+    const dayInputs = document.querySelectorAll('.gen-step-days');
+    const schedSelects = document.querySelectorAll('.gen-step-sched');
+
+    let totalDays = 0;
+    for (let i = 0; i < dayInputs.length; i++) {
+      const days = parseInt(dayInputs[i].value) || 0;
+      if (days > 0) {
+        const val = schedSelects[i].value;
+        const is_off = val === 'off';
+        const schedule_id = (val && val !== 'off') ? parseInt(val) : null;
+        sequence.push({
+          days: days,
+          schedule_id: schedule_id,
+          is_off: is_off
+        });
+        totalDays += days;
+      }
+    }
 
     if (!start_date || !end_date) {
       Toast.show('Por favor, ingresa las fechas de inicio y fin', 'warning');
@@ -689,7 +791,7 @@ const SchedulesPage = {
       return;
     }
 
-    if ((cycle_days_work + cycle_nights_work + cycle_days_off) <= 0) {
+    if (totalDays <= 0) {
       Toast.show('La suma de días del ciclo debe ser mayor a 0', 'warning');
       return;
     }
@@ -699,11 +801,7 @@ const SchedulesPage = {
         employee_ids: employeeIds,
         start_date: start_date,
         end_date: end_date,
-        cycle_days_work: cycle_days_work,
-        cycle_nights_work: cycle_nights_work,
-        cycle_days_off: cycle_days_off,
-        day_schedule_id: day_schedule_id,
-        night_schedule_id: night_schedule_id
+        sequence: sequence
       });
       Modal.close();
       Toast.show(`¡Horarios rotativos generados! (${response.total_records || 0} registros)`, 'success');
