@@ -4,8 +4,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user, check_permission
-require_admin = check_permission("perm_manage_schedules")
+from backend.auth import get_current_user, check_permission, check_permission_or
+require_manage_schedules = check_permission("perm_manage_schedules")
+require_view_schedules = check_permission_or("perm_manage_schedules", "perm_view_employees")
 
 from backend.database import get_db
 from backend.models import EmployeeDailySchedule, Schedule, Employee
@@ -20,7 +21,7 @@ def get_daily_schedules(
     end_date: date,
     employee_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    _=Depends(get_current_user)
+    _=Depends(require_view_schedules)
 ):
     """Obtiene los horarios diarios para un rango de fechas."""
     query = db.query(EmployeeDailySchedule).filter(
@@ -36,7 +37,7 @@ def get_daily_schedules(
 def generate_daily_schedules(
     data: DailyScheduleGenerateInput,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    _=Depends(require_manage_schedules)
 ):
     """Genera horarios cíclicos rotativos en lote para uno o más empleados."""
     total_length = data.cycle_days_work + data.cycle_nights_work + data.cycle_days_off
@@ -107,7 +108,7 @@ def generate_daily_schedules(
 def assign_daily_schedule(
     data: DailyScheduleAssignInput,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    _=Depends(require_manage_schedules)
 ):
     """Asigna manualmente un horario para un día específico (excepción/modificación individual)."""
     # Buscar si ya existe

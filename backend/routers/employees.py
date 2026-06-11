@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.auth import get_current_user, check_permission, check_permission_or
 require_admin = check_permission("perm_manage_employees")
-get_current_user = check_permission_or("perm_manage_employees", "perm_view_employees")
+require_view_employees = check_permission_or("perm_manage_employees", "perm_view_employees")
 from backend.config import UPLOADS_DIR
 
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/employees", tags=["employees"])
 # ── Departamentos ─────────────────────────────────────────────────────────────
 
 @router.get("/departments", response_model=list[DepartmentOut])
-def list_departments(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def list_departments(db: Session = Depends(get_db), _=Depends(require_view_employees)):
     return db.query(Department).order_by(Department.name).all()
 
 
@@ -88,7 +88,7 @@ def delete_department(dept_id: int, db: Session = Depends(get_db), current_user=
 # ── Cargos (Positions) ────────────────────────────────────────────────────────
 
 @router.get("/positions", response_model=list[PositionOut])
-def list_positions(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def list_positions(db: Session = Depends(get_db), _=Depends(require_view_employees)):
     return db.query(Position).order_by(Position.name).all()
 
 
@@ -153,7 +153,7 @@ def list_employees(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(require_view_employees),
 ):
     from sqlalchemy.orm import joinedload
     q = db.query(Employee).options(
@@ -205,7 +205,7 @@ def capture_photo_from_device(db: Session = Depends(get_db), _=Depends(require_a
 
 
 @router.get("/{emp_id}", response_model=EmployeeOut)
-def get_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_employee(emp_id: int, db: Session = Depends(get_db), _=Depends(require_view_employees)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -557,7 +557,7 @@ async def upload_photo(
 
 
 @router.get("/{emp_id}/photo")
-def get_photo(emp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_photo(emp_id: int, db: Session = Depends(get_db), _=Depends(require_view_employees)):
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp or not emp.photo_path:
         raise HTTPException(status_code=404, detail="Sin foto")
@@ -845,7 +845,7 @@ def bulk_delete_employees(
 def get_employee_attendance_summary(
     employee_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_current_user)
+    _=Depends(require_view_employees)
 ):
     """Retorna resumen de asistencia de los últimos 30 días y los últimos 20 registros para el modal de perfil."""
     from datetime import date, timedelta

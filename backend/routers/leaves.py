@@ -6,10 +6,11 @@ from datetime import date
 from backend.database import get_db
 from backend.models import EmployeeLeave, Employee
 from backend.schemas import LeaveOut, LeaveCreate, LeaveUpdate
-from backend.auth import get_current_user, check_permission
+from backend.auth import get_current_user, check_permission, check_permission_or
 
 # Permitimos a los gestores de empleados administrar novedades (vacaciones/incapacidades)
-require_admin = check_permission("perm_manage_employees")
+require_manage_leaves = check_permission("perm_manage_employees")
+require_view_leaves = check_permission_or("perm_manage_employees", "perm_view_employees")
 
 router = APIRouter(prefix="/api/leaves", tags=["leaves"])
 
@@ -20,7 +21,7 @@ def get_leaves(
     date_to: Optional[date] = Query(None),
     leave_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _=Depends(get_current_user)
+    _=Depends(require_view_leaves)
 ):
     """Obtiene el listado de novedades (vacaciones, incapacidades, licencias, etc.)."""
     query = db.query(EmployeeLeave)
@@ -41,7 +42,7 @@ def get_leaves(
 def create_leave(
     data: LeaveCreate,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    _=Depends(require_manage_leaves)
 ):
     """Registra una nueva novedad (vacaciones, incapacidad, etc.) con validación de traslapes."""
     # Verificar si el empleado existe
@@ -86,7 +87,7 @@ def update_leave(
     leave_id: int,
     data: LeaveUpdate,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    _=Depends(require_manage_leaves)
 ):
     """Actualiza una novedad existente, validando posibles traslapes."""
     leave = db.query(EmployeeLeave).filter(EmployeeLeave.id == leave_id).first()
@@ -131,7 +132,7 @@ def update_leave(
 def delete_leave(
     leave_id: int,
     db: Session = Depends(get_db),
-    _=Depends(require_admin)
+    _=Depends(require_manage_leaves)
 ):
     """Elimina una novedad del sistema."""
     leave = db.query(EmployeeLeave).filter(EmployeeLeave.id == leave_id).first()

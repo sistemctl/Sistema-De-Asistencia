@@ -4,8 +4,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.auth import get_current_user, check_permission
-require_admin = check_permission("perm_manage_schedules")
+from backend.auth import get_current_user, check_permission, check_permission_or
+require_manage_schedules = check_permission("perm_manage_schedules")
+require_view_schedules = check_permission_or("perm_manage_schedules", "perm_view_employees")
 
 from backend.database import get_db
 from backend.models import Schedule, Employee
@@ -15,13 +16,13 @@ router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 
 
 @router.get("", response_model=list[ScheduleOut])
-def list_schedules(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def list_schedules(db: Session = Depends(get_db), _=Depends(require_view_schedules)):
     """Lista todos los horarios disponibles en el sistema."""
     return db.query(Schedule).order_by(Schedule.name).all()
 
 
 @router.get("/{schedule_id}", response_model=ScheduleOut)
-def get_schedule(schedule_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_schedule(schedule_id: int, db: Session = Depends(get_db), _=Depends(require_view_schedules)):
     """Obtiene los detalles de un horario específico."""
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not schedule:
@@ -30,7 +31,7 @@ def get_schedule(schedule_id: int, db: Session = Depends(get_db), _=Depends(get_
 
 
 @router.post("", response_model=ScheduleOut, status_code=201)
-def create_schedule(data: ScheduleCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def create_schedule(data: ScheduleCreate, db: Session = Depends(get_db), _=Depends(require_manage_schedules)):
     """Crea un nuevo horario (solo administrador)."""
     # Verificar si ya existe un horario con el mismo nombre
     if db.query(Schedule).filter(Schedule.name == data.name).first():
@@ -44,7 +45,7 @@ def create_schedule(data: ScheduleCreate, db: Session = Depends(get_db), _=Depen
 
 
 @router.put("/{schedule_id}", response_model=ScheduleOut)
-def update_schedule(schedule_id: int, data: ScheduleUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def update_schedule(schedule_id: int, data: ScheduleUpdate, db: Session = Depends(get_db), _=Depends(require_manage_schedules)):
     """Actualiza un horario existente (solo administrador)."""
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not schedule:
@@ -64,7 +65,7 @@ def update_schedule(schedule_id: int, data: ScheduleUpdate, db: Session = Depend
 
 
 @router.delete("/{schedule_id}", status_code=204)
-def delete_schedule(schedule_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_schedule(schedule_id: int, db: Session = Depends(get_db), _=Depends(require_manage_schedules)):
     """Elimina un horario (solo administrador)."""
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not schedule:

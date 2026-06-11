@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status, Form, File
 from sqlalchemy.orm import Session
 from pathlib import Path
 
-from backend.auth import get_current_user, check_permission_or
-get_current_user = check_permission_or("perm_manage_attendance", "perm_export_reports")
+from backend.auth import get_current_user, check_permission, check_permission_or
+
+require_view_attendance = check_permission_or("perm_manage_attendance", "perm_export_reports")
+require_manage_attendance = check_permission("perm_manage_attendance")
 
 from backend.database import get_db
 from backend.models import AttendanceRecord, Employee, AttendanceJustification
@@ -27,15 +29,8 @@ router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 def create_manual_punch(
     data: ManualPunchCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_manage_attendance)
 ):
-    # Enforce perm_manage_attendance
-    if not (current_user.role == "admin" or getattr(current_user, "perm_manage_attendance", False)):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tiene permisos para registrar asistencias manualmente"
-        )
-
     # Check employee
     emp = db.query(Employee).filter(Employee.id == data.employee_id).first()
     if not emp:
@@ -119,7 +114,7 @@ def list_attendance(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(require_view_attendance),
 ):
     q = db.query(AttendanceRecord)
 
@@ -162,7 +157,7 @@ def get_daily_summary(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(require_view_attendance),
 ):
     from backend.services.attendance_processor import process_daily_attendance_bulk
     from datetime import timedelta
@@ -209,7 +204,7 @@ def get_daily_summary(
 
 
 @router.get("/today")
-def today_records(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def today_records(db: Session = Depends(get_db), _=Depends(require_view_attendance)):
     from backend.utils import get_local_now
     today = get_local_now().date()
     records = db.query(AttendanceRecord).filter(
@@ -220,7 +215,7 @@ def today_records(db: Session = Depends(get_db), _=Depends(get_current_user)):
 
 
 @router.get("/recent")
-def recent_events(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db), _=Depends(get_current_user)):
+def recent_events(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db), _=Depends(require_view_attendance)):
     records = db.query(AttendanceRecord) \
                 .order_by(AttendanceRecord.event_time.desc()) \
                 .limit(limit).all()
@@ -253,15 +248,8 @@ async def create_or_update_justification(
     override_status: str = Form(...),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_manage_attendance)
 ):
-    # Enforce perm_manage_attendance
-    if not (current_user.role == "admin" or getattr(current_user, "perm_manage_attendance", False)):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tiene permisos para gestionar asistencias"
-        )
-    
     # Check if employee exists
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
@@ -340,15 +328,8 @@ async def create_or_update_justification(
 def delete_justification(
     justification_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_manage_attendance)
 ):
-    # Enforce perm_manage_attendance
-    if not (current_user.role == "admin" or getattr(current_user, "perm_manage_attendance", False)):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tiene permisos para gestionar asistencias"
-        )
-
     just = db.query(AttendanceJustification).filter(AttendanceJustification.id == justification_id).first()
     if not just:
         raise HTTPException(status_code=404, detail="Justificación no encontrada")
