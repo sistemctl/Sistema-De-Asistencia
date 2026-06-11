@@ -580,8 +580,10 @@ const SchedulesPage = {
       const empCheckboxesHtml = empList.map(e => `
         <label class="gen-emp-label">
           <input type="checkbox" class="gen-emp-checkbox" value="${e.id}">
-          <span class="gen-emp-name">${e.full_name}</span>
-          <span class="gen-emp-code">#${e.employee_code}</span>
+          <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; text-align:left;">
+            <span class="gen-emp-name">${e.full_name}</span>
+            <span class="gen-emp-code">#${e.employee_code}</span>
+          </div>
         </label>
       `).join('');
 
@@ -617,7 +619,7 @@ const SchedulesPage = {
             <div class="field">
               <input type="number" class="gen-step-days" data-step="${i}" min="0" value="${defaultDays}" style="text-align:center;" placeholder="Días">
             </div>
-            <div style="font-size:0.82rem; color:var(--text-2); font-weight:500;">días con:</div>
+            <div style="font-size:0.8rem; color:var(--text-2); font-weight:600;">días con:</div>
             <div class="field">
               <select class="gen-step-sched" data-step="${i}">
                 ${optionsHtmlForStep}
@@ -644,8 +646,8 @@ const SchedulesPage = {
           }
           .gen-emp-label {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            align-items: flex-start;
+            gap: 12px;
             padding: 8px 12px;
             border-radius: 8px;
             cursor: pointer;
@@ -659,22 +661,24 @@ const SchedulesPage = {
             width: 15px;
             height: 15px;
             margin: 0;
+            margin-top: 3px;
           }
           .gen-emp-name {
-            font-weight: 550;
+            font-weight: 600;
             color: var(--text-1);
-            font-size: 0.85rem;
+            font-size: 0.82rem;
+            line-height: 1.3;
           }
           .gen-emp-code {
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             color: var(--text-3);
-            margin-left: auto;
             font-family: 'JetBrains Mono', monospace;
             font-weight: 500;
+            line-height: 1.1;
           }
           .rot-row {
             display: grid;
-            grid-template-columns: 60px 80px 80px 1fr;
+            grid-template-columns: 60px 75px 85px 1fr;
             gap: 12px;
             align-items: center;
             margin-bottom: 12px;
@@ -684,6 +688,16 @@ const SchedulesPage = {
           }
           .rot-row .field input, .rot-row .field select {
             margin: 0 !important;
+          }
+          .gen-step-sched {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 14px;
+            padding-right: 32px !important;
           }
           #fGenSearchEmp:focus {
             border-color: var(--accent);
@@ -704,19 +718,18 @@ const SchedulesPage = {
           </p>
           
           <div class="field" style="margin-bottom:18px;">
-            <label style="font-weight:700; font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:10px;">1. Seleccionar Colaboradores</label>
-            <div style="margin-bottom:10px; position:relative;">
-              <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.85rem; pointer-events:none;">🔍</span>
-              <input type="text" id="fGenSearchEmp" placeholder="Buscar por nombre o código..." oninput="SchedulesPage.filterGenEmployees(this.value)" style="width:100%; padding: 10px 16px 10px 36px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-1); outline:none; font-size:0.85rem; transition: all 0.3s ease;">
-            </div>
-            <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:0.72rem; color:var(--text-3); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Lista de Personal</span>
-              <label style="font-size:0.82rem; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text-2); user-select:none; transition: color 0.2s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <label style="font-weight:700; font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; margin:0;">1. Seleccionar Colaboradores</label>
+              <label style="font-size:0.82rem; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text-2); user-select:none; transition: color 0.2s ease; margin:0;">
                 <input type="checkbox" style="width:15px; height:15px;" onchange="document.querySelectorAll('.gen-emp-checkbox').forEach(cb => { if(cb.closest('label').style.display !== 'none') cb.checked = this.checked })">
                 <span style="font-weight:600;">Seleccionar Visibles</span>
               </label>
             </div>
-            <div class="gen-emp-list" style="max-height: 160px; overflow-y: auto; border:1px solid var(--border); padding:6px; border-radius:10px; background:var(--surface-2); display:flex; flex-direction:column; gap:2px;">
+            <div style="margin-bottom:10px; position:relative;">
+              <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.85rem; pointer-events:none;">🔍</span>
+              <input type="text" id="fGenSearchEmp" placeholder="Buscar por nombre o código..." oninput="SchedulesPage.filterGenEmployees(this.value)" style="width:100%; padding: 10px 16px 10px 36px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-1); outline:none; font-size:0.85rem; transition: all 0.3s ease;">
+            </div>
+            <div class="gen-emp-list" style="max-height: 200px; overflow-y: auto; border:1px solid var(--border); padding:6px; border-radius:10px; background:var(--surface-2); display:flex; flex-direction:column; gap:2px;">
               ${empCheckboxesHtml}
             </div>
           </div>
