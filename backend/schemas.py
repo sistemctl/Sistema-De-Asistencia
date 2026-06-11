@@ -126,6 +126,12 @@ class ReportPunches(BaseModel):
     entry_2: Optional[datetime] = None
     exit_2: Optional[datetime] = None
 
+class ReportAuthMethods(BaseModel):
+    entry_1: Optional[str] = None
+    exit_1: Optional[str] = None
+    entry_2: Optional[str] = None
+    exit_2: Optional[str] = None
+
 class ReportItem(BaseModel):
     employee_id: int
     employee_name: str
@@ -134,6 +140,7 @@ class ReportItem(BaseModel):
     date: date
     schedule_type: str
     punches: ReportPunches
+    auth_methods: Optional[ReportAuthMethods] = None
     total_raw_events: int
     is_present: bool
     is_late: bool

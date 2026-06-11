@@ -96,6 +96,12 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             "entry_2": None,
             "exit_2": None
         },
+        "auth_methods": {
+            "entry_1": None,
+            "exit_1": None,
+            "entry_2": None,
+            "exit_2": None
+        },
         "total_raw_events": len(day_records),
         "is_present": False,
         "is_late": False,
@@ -113,9 +119,11 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         # If no schedule, fallback to simply first and last punch of the day
         if day_records:
             summary["punches"]["entry_1"] = day_records[0].event_time.isoformat()
+            summary["auth_methods"]["entry_1"] = day_records[0].auth_method
             summary["is_present"] = True
             if len(day_records) > 1:
                 summary["punches"]["exit_1"] = day_records[-1].event_time.isoformat()
+                summary["auth_methods"]["exit_1"] = day_records[-1].auth_method
                 # Calculate hours worked
                 worked_secs = (day_records[-1].event_time - day_records[0].event_time).total_seconds()
                 summary["hours_worked"] = round(worked_secs / 3600, 2)
@@ -195,6 +203,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             if entries:
                 best_entry = min(entries, key=lambda r: r.event_time)
                 summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
+                summary["auth_methods"]["entry_1"] = best_entry.auth_method
                 summary["is_present"] = True
                 entry_time_dt = best_entry.event_time
                 
@@ -218,6 +227,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             if exits:
                 best_exit = max(exits, key=lambda r: r.event_time)
                 summary["punches"]["exit_1"] = best_exit.event_time.isoformat()
+                summary["auth_methods"]["exit_1"] = best_exit.auth_method
                 
                 # Check early exit relative to entry_time_dt + duration_secs
                 if entry_time_dt:
@@ -248,6 +258,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             if entries:
                 best_entry = min(entries, key=lambda r: abs((r.event_time - target_start).total_seconds()))
                 summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
+                summary["auth_methods"]["entry_1"] = best_entry.auth_method
                 summary["is_present"] = True
                 
                 # Check late/absent based on delay
@@ -269,6 +280,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             if exits:
                 best_exit = min(exits, key=lambda r: abs((r.event_time - target_end).total_seconds()))
                 summary["punches"]["exit_1"] = best_exit.event_time.isoformat()
+                summary["auth_methods"]["exit_1"] = best_exit.auth_method
                 
                 # Check early checkout
                 diff_minutes = (target_end - best_exit.event_time).total_seconds() / 60.0
@@ -324,6 +336,7 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         if w1_events:
             best = min(w1_events, key=lambda r: abs((r.event_time - t_start).total_seconds()))
             summary["punches"]["entry_1"] = best.event_time.isoformat()
+            summary["auth_methods"]["entry_1"] = best.auth_method
             summary["is_present"] = True
             
             diff_minutes = (best.event_time - t_start).total_seconds() / 60.0
@@ -345,16 +358,19 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
         if w2_events:
             best = min(w2_events, key=lambda r: abs((r.event_time - t_lunch_s).total_seconds()))
             summary["punches"]["exit_1"] = best.event_time.isoformat()
+            summary["auth_methods"]["exit_1"] = best.auth_method
 
         # Entry 2 (Lunch return)
         if w3_events:
             best = min(w3_events, key=lambda r: abs((r.event_time - t_lunch_e).total_seconds()))
             summary["punches"]["entry_2"] = best.event_time.isoformat()
+            summary["auth_methods"]["entry_2"] = best.auth_method
 
         # Exit 2
         if w4_events:
             best = min(w4_events, key=lambda r: abs((r.event_time - t_end).total_seconds()))
             summary["punches"]["exit_2"] = best.event_time.isoformat()
+            summary["auth_methods"]["exit_2"] = best.auth_method
             
             diff_minutes = (t_end - best.event_time).total_seconds() / 60.0
             if diff_minutes > 0: # Left early
@@ -614,6 +630,12 @@ def process_attendance_report(
                     "entry_2": None,
                     "exit_2": None
                 },
+                "auth_methods": {
+                    "entry_1": None,
+                    "exit_1": None,
+                    "entry_2": None,
+                    "exit_2": None
+                },
                 "total_raw_events": total_raw,
                 "is_present": is_present,
                 "is_late": is_late,
@@ -655,6 +677,12 @@ def process_attendance_report(
                 "date": p_start.isoformat(),
                 "schedule_type": first["schedule_type"],
                 "punches": {
+                    "entry_1": None,
+                    "exit_1": None,
+                    "entry_2": None,
+                    "exit_2": None
+                },
+                "auth_methods": {
                     "entry_1": None,
                     "exit_1": None,
                     "entry_2": None,

@@ -83,9 +83,22 @@ const ReportsTable = {
         return;
       }
 
-      const formatTime = (isoString) => {
+      const formatTime = (isoString, method) => {
         if (!isoString) return '<span style="color: var(--text-3); font-weight: normal;">—</span>';
-        return `<span style="color: var(--text-1); font-weight: 600;">${new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'})}</span>`;
+        let methodTag = '';
+        if (method) {
+          const m = method.toLowerCase();
+          if (m.includes('face') || m.includes('facial')) {
+            methodTag = '<div style="font-size:0.6rem; color:var(--success); font-weight:700; margin-top:2px;">👤 Facial</div>';
+          } else if (m.includes('card') || m.includes('tarjeta') || m.includes('qr')) {
+            methodTag = '<div style="font-size:0.6rem; color:var(--accent); font-weight:700; margin-top:2px;">💳 Tarjeta</div>';
+          } else if (m === 'manual') {
+            methodTag = '<div style="font-size:0.6rem; color:var(--text-3); font-weight:700; margin-top:2px;">✍️ Manual</div>';
+          } else {
+            methodTag = `<div style="font-size:0.6rem; color:var(--text-3); font-weight:700; margin-top:2px;">${method}</div>`;
+          }
+        }
+        return `<span style="color: var(--text-1); font-weight: 600;">${new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'})}</span>${methodTag}`;
       };
 
       tbody.innerHTML = data.items.map(r => {
@@ -116,6 +129,8 @@ const ReportsTable = {
           // Formatear fecha más legible (ej: 10 Jun 2026)
           const formattedDate = new Date(r.date + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'short', year:'numeric'});
 
+          const methods = r.auth_methods || {};
+
           return `
             <tr>
               <td>
@@ -128,11 +143,11 @@ const ReportsTable = {
               <td style="color:var(--text-2)">${deptVal}</td>
               <td style="color:var(--text-2); font-family:'JetBrains Mono',monospace;">${formattedDate}</td>
               <td>${typeBadge}</td>
-              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${formatTime(r.punches.entry_1)}</td>
-              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${isSplit ? formatTime(r.punches.exit_1) : '<span style="color:var(--text-3)">—</span>'}</td>
-              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${isSplit ? formatTime(r.punches.entry_2) : '<span style="color:var(--text-3)">—</span>'}</td>
-              <td style="font-family:'JetBrains Mono',monospace; text-align:center;">${isSplit ? formatTime(r.punches.exit_2) : formatTime(r.punches.exit_1)}</td>
-              <td style="text-align:center;">${statusBadge}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center; vertical-align:middle;">${formatTime(r.punches.entry_1, methods.entry_1)}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center; vertical-align:middle;">${isSplit ? formatTime(r.punches.exit_1, methods.exit_1) : '<span style="color:var(--text-3)">—</span>'}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center; vertical-align:middle;">${isSplit ? formatTime(r.punches.entry_2, methods.entry_2) : '<span style="color:var(--text-3)">—</span>'}</td>
+              <td style="font-family:'JetBrains Mono',monospace; text-align:center; vertical-align:middle;">${isSplit ? formatTime(r.punches.exit_2, methods.exit_2) : formatTime(r.punches.exit_1, methods.exit_1)}</td>
+              <td style="text-align:center; vertical-align:middle;">${statusBadge}</td>
             </tr>
           `;
         } else {
