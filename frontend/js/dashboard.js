@@ -87,15 +87,31 @@ const DashboardPage = {
           </div>
         </div>
 
-        <!-- Info del Sistema -->
-        <div class="card" style="display:flex; flex-direction:column; justify-content:center; padding:28px 32px; background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.02) 0%, rgba(var(--accent-2-rgb), 0.01) 100%); border: 1px solid var(--border);">
-          <div style="font-size:1.5rem; margin-bottom:12px;">⚡</div>
-          <h3 style="font-family:'Hanken Grotesk',sans-serif; font-size:1.15rem; font-weight:800; color:var(--text-1); margin:0 0 8px 0;">Control de Asistencia Activo</h3>
-          <p style="font-size:0.86rem; color:var(--text-3); margin:0 0 16px 0; line-height:1.5;">El sistema monitoriza y sincroniza automáticamente los eventos del lector biométrico en intervalos planificados. Recuerde registrar todas las novedades (vacaciones, incapacidades) para evitar reportar inasistencias injustificadas.</p>
-          <div style="display:flex; gap:10px;">
-            <button class="btn btn-primary btn-sm" onclick="location.hash='#attendance'" style="border-radius:20px;">Ver Registros</button>
-            <button class="btn btn-secondary btn-sm" onclick="location.hash='#parameters'" style="border-radius:20px;">Configurar Parámetros</button>
+        <!-- Actividad en Vivo (Tiempo Real) -->
+        <div class="card" style="display:flex; flex-direction:column; justify-content:flex-start; padding: 20px; border: 1px solid var(--border); min-height: 340px; max-height: 380px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <span class="live-pulse" style="width: 8px; height: 8px; background: #00e676; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px #00e676; animation: pulseGlow 1.5s infinite;"></span>
+                Actividad en Vivo
+              </div>
+              <div class="card-sub">Monitoreo en tiempo real</div>
+            </div>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--accent); background: rgba(var(--accent-rgb), 0.1); padding: 4px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Lector</span>
           </div>
+          <div id="liveFeedBody" style="display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; padding-right: 2px;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-3); text-align: center; gap: 8px; margin-top: 20px;">
+              <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" stroke-width="2" fill="none" style="opacity: 0.6; animation: spin 4s infinite linear;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span style="font-size: 0.8rem; font-weight: 600;">Esperando marcas en vivo...</span>
+            </div>
+          </div>
+          <style>
+            @keyframes pulseGlow {
+              0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+              70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); }
+              100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+            }
+          </style>
         </div>
       </div>`;
 
@@ -154,7 +170,8 @@ const DashboardPage = {
       this.loadKPIs(),
       this.loadWeekly(),
       this.loadStatusCard(),
-      this.loadLeaderboard()
+      this.loadLeaderboard(),
+      this.loadLiveFeed()
     ]);
   },
 
@@ -470,6 +487,124 @@ const DashboardPage = {
     return new Date(iso).toLocaleDateString('es');
   },
 
+  async loadLiveFeed() {
+    try {
+      const data = await API.get('/api/dashboard/recent-events?limit=5');
+      const body = document.getElementById('liveFeedBody');
+      if (!body) return;
+      
+      if (!data || data.length === 0) {
+        body.innerHTML = `
+          <div class="live-feed-empty" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-3); text-align: center; gap: 8px; margin-top: 20px;">
+            <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" stroke-width="2" fill="none" style="opacity: 0.6;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span style="font-size: 0.8rem; font-weight: 600;">No hay actividad hoy</span>
+          </div>
+        `;
+        return;
+      }
+      
+      body.innerHTML = '';
+      data.forEach(rec => {
+        const photo = rec.photo_path ? `/${rec.photo_path}` : null;
+        const initial = rec.employee_name.charAt(0).toUpperCase();
+        const statusColor = rec.is_late ? 'var(--warning)' : 'var(--success)';
+        const statusText = rec.is_late ? 'Tarde' : 'A Tiempo';
+        const bgStatus = rec.is_late ? 'rgba(255,179,0,0.1)' : 'rgba(0,230,118,0.1)';
+        const rawTime = new Date(rec.event_time);
+        const timeStr = rawTime.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        
+        const row = document.createElement('div');
+        row.id = `live-rec-${rec.employee_code}-${timeStr}`;
+        row.className = 'live-feed-row';
+        row.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+              <div style="width: 38px; height: 38px; border-radius: 50%; overflow: hidden; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; border: 2px solid ${statusColor};">
+                ${photo ? `<img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<span style="font-size: 1rem; color: var(--text-2);">${initial}</span>`}
+              </div>
+              <div style="min-width: 0;">
+                <div style="font-weight: 700; font-size: 0.82rem; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rec.employee_name}</div>
+                <div style="font-size: 0.72rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rec.department || 'N/A'} • ${rec.employee_code}</div>
+              </div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 700; color: var(--text-1);">${timeStr}</span>
+              <span style="font-size: 0.65rem; font-weight: 700; color: ${statusColor}; background: ${bgStatus}; padding: 2px 8px; border-radius: 20px;">${statusText}</span>
+            </div>
+          </div>
+        `;
+        body.appendChild(row);
+      });
+    } catch (e) {
+      console.error('Error cargando live activity feed:', e);
+    }
+  },
+
+  addLiveFeedRecord(rec) {
+    const body = document.getElementById('liveFeedBody');
+    if (!body) return;
+    
+    // Remove empty state if present
+    const emptyState = body.querySelector('.live-feed-empty');
+    if (emptyState || body.innerText.includes('Esperando marcas') || body.innerText.includes('No hay actividad')) {
+      body.innerHTML = '';
+    }
+    
+    // Check if we already have this record to prevent duplicates
+    const existing = document.getElementById(`live-rec-${rec.employee_code}-${rec.timestamp}`);
+    if (existing) return;
+    
+    // Create new element
+    const el = document.createElement('div');
+    el.id = `live-rec-${rec.employee_code}-${rec.timestamp}`;
+    el.className = 'live-feed-row';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-10px)';
+    el.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    
+    const photo = rec.photo_path ? `/${rec.photo_path}` : null;
+    const initial = rec.full_name.charAt(0).toUpperCase();
+    const statusColor = rec.is_late ? 'var(--warning)' : 'var(--success)';
+    const statusText = rec.is_late ? 'Tarde' : 'A Tiempo';
+    const bgStatus = rec.is_late ? 'rgba(255,179,0,0.1)' : 'rgba(0,230,118,0.1)';
+    
+    el.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); width: 100%;">
+        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div style="width: 38px; height: 38px; border-radius: 50%; overflow: hidden; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; border: 2px solid ${statusColor};">
+            ${photo ? `<img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<span style="font-size: 1rem; color: var(--text-2);">${initial}</span>`}
+          </div>
+          <div style="min-width: 0;">
+            <div style="font-weight: 700; font-size: 0.82rem; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rec.full_name}</div>
+            <div style="font-size: 0.72rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rec.department} • ${rec.employee_code}</div>
+          </div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 700; color: var(--text-1);">${rec.timestamp}</span>
+          <span style="font-size: 0.65rem; font-weight: 700; color: ${statusColor}; background: ${bgStatus}; padding: 2px 8px; border-radius: 20px;">${statusText}</span>
+        </div>
+      </div>
+    `;
+    
+    // Prepend to body
+    body.insertBefore(el, body.firstChild);
+    
+    // Trigger animation
+    setTimeout(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }, 50);
+    
+    // Limit to last 5 items
+    const items = body.querySelectorAll('.live-feed-row');
+    if (items.length > 5) {
+      const last = items[items.length - 1];
+      last.style.opacity = '0';
+      last.style.transform = 'translateY(10px)';
+      setTimeout(() => last.remove(), 400);
+    }
+  },
+
   initWebSocket() {
     if (this.ws) return;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -481,8 +616,13 @@ const DashboardPage = {
         if (data.type === 'NEW_ATTENDANCE') {
           const todayISO = new Date().toISOString().slice(0, 10);
           if (this.selectedDate === todayISO) {
-             Toast.show(`⚡ ¡Nuevo registro biométrico sincronizado!`, 'info');
+             Toast.show(`⚡ ¡Nuevos registros sincronizados!`, 'info');
              this.reload();
+          }
+        } else if (data.type === 'NEW_ATTENDANCE_RECORD') {
+          const todayISO = new Date().toISOString().slice(0, 10);
+          if (this.selectedDate === todayISO) {
+             this.addLiveFeedRecord(data);
           }
         }
       } catch (e) {

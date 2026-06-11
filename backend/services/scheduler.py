@@ -577,18 +577,24 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
                 existing_ids.add(r[0])
 
     # 3. Batch query employees to match device_uids
+    # 3. Batch query employees to match device_uids
     employee_map = {}
     if device_uids:
         uids_list = list(device_uids)
         for i in range(0, len(uids_list), 500):
             chunk = uids_list[i:i+500]
-            emps = db.query(Employee).options(joinedload(Employee.schedule)).filter(
+            emps = db.query(Employee).options(
+                joinedload(Employee.schedule),
+                joinedload(Employee.department)
+            ).filter(
                 Employee.device_user_id.in_(chunk)
             ).all()
             for emp in emps:
                 employee_map[emp.device_user_id] = emp
 
     new_count = 0
+    new_records_data = []
+    
     for event_id, device_uid, event in valid_events:
         if str(event_id) in existing_ids:
             continue
@@ -742,6 +748,18 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
         db.add(record)
         new_count += 1
         
+        # Guardar para broadcast de websocket
+        new_records_data.append({
+            "type": "NEW_ATTENDANCE_RECORD",
+            "employee_code": employee.employee_code,
+            "full_name": employee.full_name,
+            "photo_path": employee.photo_path,
+            "timestamp": event_time.strftime('%H:%M:%S'),
+            "event_type": event_type,
+            "is_late": is_late,
+            "department": employee.department.name if employee.department else "N/A"
+        })
+        
         # Disparar alerta si es tardanza del día actual
         today_date = get_local_now().replace(tzinfo=None).date()
         if is_late and event_type == "entry" and event_time.date() == today_date:
@@ -754,6 +772,18 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
             notify_employee_lateness(db, employee.full_name, employee.email, str(event_time.strftime('%H:%M:%S')), float(diff_formatted))
 
     db.commit()
+    
+    # Broadcast de websocket
+    if new_count > 0:
+        from backend.routers import ws
+        import asyncio
+        if ws.main_loop:
+            for rec in new_records_data:
+                asyncio.run_coroutine_threadsafe(
+                    ws.manager.broadcast(rec),
+                    ws.main_loop
+                )
+                
     return new_count
 
 

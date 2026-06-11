@@ -123,8 +123,10 @@ def get_recent_events(limit: int = 8, db: Session = Depends(get_db), _=Depends(g
             "auth_method": r.auth_method,
             "photo_path": emp.photo_path if emp else None,
             "is_late": r.is_late,
+            "department": emp.department.name if (emp and emp.department) else "N/A"
         })
     return result
+
 
 
 @router.get("/kpis/details")
