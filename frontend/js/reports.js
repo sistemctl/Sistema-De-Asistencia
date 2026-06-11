@@ -254,7 +254,7 @@ const ReportsPage = {
               <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Inasistencias injustificadas</span>
             </div>
 
-            <div class="corp-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('hours_worked')">
               <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Horas Trabajadas</span>
               <div style="display: flex; align-items: baseline; justify-content: center;">
                 <span class="corp-display-lg" id="anHorasTrabajadas" style="color: var(--success);">-</span>
@@ -263,7 +263,7 @@ const ReportsPage = {
               <span class="corp-body-sm" style="margin-top: 8px; display: block; color: var(--text-3);">Tiempo total laborado</span>
             </div>
 
-            <div class="corp-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('early_exits')">
               <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Salidas Tempranas</span>
               <div style="display: flex; align-items: baseline; justify-content: center;">
                 <span class="corp-display-lg" id="anSalidasTempranas" style="color: var(--warning);">-</span>

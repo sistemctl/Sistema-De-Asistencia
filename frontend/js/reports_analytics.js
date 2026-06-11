@@ -87,7 +87,24 @@ const ReportsAnalytics = {
                 }
               }
             },
-            cutout: '72%'
+            cutout: '72%',
+            onClick: (e, activeElements) => {
+              if (activeElements && activeElements.length > 0) {
+                const index = activeElements[0].index;
+                const label = this.doughnutChart.data.labels[index];
+                if (label === 'A tiempo') {
+                  this.showMetricDetails('punctuality');
+                } else if (label === 'Tardanza') {
+                  this.showMetricDetails('lates');
+                } else if (label === 'Ausente') {
+                  this.showMetricDetails('absences');
+                } else if (label === 'Licencia') {
+                  Toast.show('Detalles de Licencia: se gestionan en la sección de Justificaciones.', 'info');
+                }
+              } else {
+                this.openChartFullscreen('doughnut');
+              }
+            }
           }
         });
       }
@@ -151,19 +168,26 @@ const ReportsAnalytics = {
                 ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 9, weight: 500 }, stepSize: 1 }, 
                 grid: { color: 'rgba(255,255,255,.015)' } 
               }
+            },
+            onClick: (e, activeElements) => {
+              if (activeElements && activeElements.length > 0) {
+                const index = activeElements[0].index;
+                const dateLabel = this.lineChart.data.labels[index];
+                this.showDayDetails(dateLabel);
+              } else {
+                this.openChartFullscreen('line');
+              }
             }
           }
         });
-        // Make canvases click-to-fullscreen
+        // Make canvases click-to-fullscreen / interact
         if (dCanvas) {
           dCanvas.style.cursor = 'pointer';
-          dCanvas.title = 'Hacer clic para pantalla completa';
-          dCanvas.onclick = () => this.openChartFullscreen('doughnut');
+          dCanvas.title = 'Hacer clic en segmentos para ver detalles o fuera para pantalla completa';
         }
         if (lCanvas) {
           lCanvas.style.cursor = 'pointer';
-          lCanvas.title = 'Hacer clic para pantalla completa';
-          lCanvas.onclick = () => this.openChartFullscreen('line');
+          lCanvas.title = 'Hacer clic en puntos para ver detalles del día o fuera para pantalla completa';
         }
       }
     } catch(e) {
@@ -401,7 +425,10 @@ const ReportsAnalytics = {
       punctuality: 'Ranking de Puntualidad en el Período',
       lates: 'Detalle de Tardanzas en el Período',
       avg_entry: 'Promedio de Hora de Entrada en el Período',
-      critical_day: 'Tasa de Asistencia por Día de la Semana'
+      critical_day: 'Tasa de Asistencia por Día de la Semana',
+      hours_worked: 'Ranking de Horas Trabajadas en el Período',
+      early_exits: 'Detalle de Salidas Tempranas en el Período',
+      absences: 'Detalle de Inasistencias en el Período'
     };
 
     Toast.show('Cargando detalles de analítica...', 'info');
@@ -555,6 +582,79 @@ const ReportsAnalytics = {
             </table>
           </div>
           `;
+        } else if (type === 'hours_worked') {
+          html += `
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px; text-align: center;">Días Trabajados</th>
+                  <th style="padding: 12px 16px; text-align: center;">Total Horas</th>
+                  <th style="padding: 12px 16px; text-align: center;">Promedio Diario</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--text-1);">${row.days_worked}</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--accent); font-weight: 600;">${row.total_hours} h</td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--text-1);">${row.avg_daily_hours} h</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else if (type === 'early_exits') {
+          html += `
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px;">Fecha</th>
+                  <th style="padding: 12px 16px;">H. Salida Real</th>
+                  <th style="padding: 12px 16px;">H. Salida Prog.</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
+                    <td style="padding: 12px 16px; color: var(--text-1); font-weight: 500;">${row.date}</td>
+                    <td style="padding: 12px 16px; color: var(--warning); font-weight: 600;">${row.exit_time}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.schedule_time}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else if (type === 'absences') {
+          html += `
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px;">Fecha Inasistencia</th>
+                  <th style="padding: 12px 16px;">Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
+                    <td style="padding: 12px 16px; color: var(--danger); font-weight: 600;">${row.date}</td>
+                    <td style="padding: 12px 16px; color: var(--text-3); font-style: italic;">${row.detail}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          `;
         }
       }
 
@@ -624,6 +724,63 @@ const ReportsAnalytics = {
       } else {
         el.classList.add('trend-down');
       }
+    }
+  },
+
+  async showDayDetails(dateLabel) {
+    const { date_from } = ReportsPage.getDates('anDateRange');
+    const year = date_from ? date_from.split('-')[0] : new Date().getFullYear();
+    const [day, month] = dateLabel.split('/');
+    const targetDate = `${year}-${month}-${day}`;
+    
+    Toast.show(`Cargando tardanzas del día ${dateLabel}...`, 'info');
+    try {
+      const data = await API.get(`/api/reports/analytics/details?type=lates&date_from=${targetDate}&date_to=${targetDate}`);
+      let html = '';
+      if (!data || data.length === 0) {
+        html = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-3);">
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No se registraron tardanzas el día ${dateLabel}.</p>
+          </div>
+        `;
+      } else {
+        html = `
+          <div style="max-height: 450px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+            <table style="width: 100%; min-width: auto; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+              <thead>
+                <tr style="background: var(--surface-2); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-1); position: sticky; top: 0; z-index: 10;">
+                  <th style="padding: 12px 16px;">Código</th>
+                  <th style="padding: 12px 16px;">Nombre</th>
+                  <th style="padding: 12px 16px;">Departamento</th>
+                  <th style="padding: 12px 16px;">H. Entrada Prog.</th>
+                  <th style="padding: 12px 16px;">H. Entrada Real</th>
+                  <th style="padding: 12px 16px;">Retraso</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(row => `
+                  <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-2);">${row.employee_code}</td>
+                    <td style="padding: 12px 16px; font-weight: 500; color: var(--text-1);">${row.full_name}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.department}</td>
+                    <td style="padding: 12px 16px; color: var(--text-2);">${row.schedule_time}</td>
+                    <td style="padding: 12px 16px; color: var(--text-1);">${row.entry_time}</td>
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--warning);">${row.delay}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+      Modal.open(`Tardanzas del día ${dateLabel}`, html, `<button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>`);
+      
+      const modalEl = document.querySelector('#modalOverlay .modal');
+      if (modalEl) {
+        modalEl.style.maxWidth = '780px';
+      }
+    } catch (err) {
+      Toast.show('Error al cargar detalles del día: ' + err.message, 'error');
     }
   }
 };

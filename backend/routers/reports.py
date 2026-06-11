@@ -944,4 +944,102 @@ def get_analytics_details(
             })
         return result
 
+    elif type == "hours_worked":
+        daily_sums = process_attendance_report(
+            db,
+            date_from=date_from,
+            date_to=date_to,
+            search=search,
+            department_id=department_id,
+            position_id=position_id,
+            schedule_id=schedule_id
+        )
+        emp_hours = {}
+        for emp in employees:
+            emp_hours[emp.id] = {"emp": emp, "days_worked": 0, "total_hours": 0.0}
+
+        for s in daily_sums:
+            eid = s["employee_id"]
+            if eid in emp_hours:
+                if s["is_present"] and s["hours_worked"] is not None:
+                    emp_hours[eid]["days_worked"] += 1
+                    emp_hours[eid]["total_hours"] += s["hours_worked"]
+
+        for eid, data_emp in emp_hours.items():
+            emp = data_emp["emp"]
+            days = data_emp["days_worked"]
+            total = round(data_emp["total_hours"], 1)
+            avg_daily = round((total / days), 1) if days > 0 else 0.0
+            result.append({
+                "employee_code": emp.employee_code,
+                "full_name": emp.full_name,
+                "department": emp.department.name if emp.department else "-",
+                "days_worked": days,
+                "total_hours": total,
+                "avg_daily_hours": avg_daily
+            })
+        result.sort(key=lambda x: x["total_hours"], reverse=True)
+        return result
+
+    elif type == "early_exits":
+        daily_sums = process_attendance_report(
+            db,
+            date_from=date_from,
+            date_to=date_to,
+            search=search,
+            department_id=department_id,
+            position_id=position_id,
+            schedule_id=schedule_id
+        )
+        for s in daily_sums:
+            if s.get("is_early_exit") and s["is_present"]:
+                exit_time_str = "-"
+                p1 = s["punches"].get("exit_1")
+                p2 = s["punches"].get("exit_2")
+                exit_val = p2 or p1
+                if exit_val:
+                    try:
+                        exit_dt = datetime.fromisoformat(exit_val)
+                        exit_time_str = exit_dt.strftime("%I:%M %p")
+                    except Exception:
+                        pass
+                
+                emp = next((e for e in employees if e.id == s["employee_id"]), None)
+                sched_time = "-"
+                if emp and emp.schedule:
+                    sched_time = emp.schedule.work_end_time or "-"
+                
+                result.append({
+                    "employee_code": s["employee_code"],
+                    "full_name": s["employee_name"],
+                    "department": s["department"],
+                    "date": s["date"],
+                    "exit_time": exit_time_str,
+                    "schedule_time": sched_time
+                })
+        result.sort(key=lambda x: x["date"], reverse=True)
+        return result
+
+    elif type == "absences":
+        daily_sums = process_attendance_report(
+            db,
+            date_from=date_from,
+            date_to=date_to,
+            search=search,
+            department_id=department_id,
+            position_id=position_id,
+            schedule_id=schedule_id
+        )
+        for s in daily_sums:
+            if not s["is_present"] and not s["is_off"] and not s["leave_type"]:
+                result.append({
+                    "employee_code": s["employee_code"],
+                    "full_name": s["employee_name"],
+                    "department": s["department"],
+                    "date": s["date"],
+                    "detail": "Inasistencia Injustificada"
+                })
+        result.sort(key=lambda x: x["date"], reverse=True)
+        return result
+
     return []
