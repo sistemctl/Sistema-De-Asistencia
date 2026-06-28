@@ -220,6 +220,7 @@ const EmployeesPage = {
     if (posSel) posSel.innerHTML = '<option value="">💼 Cargo</option>' +
       this.positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
     if (schedSel) schedSel.innerHTML = '<option value="">📅 Horario</option>' +
+      '<option value="none">-- Sin Horario --</option>' +
       this.schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
     // Restaurar valores previos de filtros

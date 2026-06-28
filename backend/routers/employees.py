@@ -149,7 +149,7 @@ def list_employees(
     search: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),
     position_id: Optional[int] = Query(None),
-    schedule_id: Optional[int] = Query(None),
+    schedule_id: Optional[str] = Query(None),
     shift_type: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     skip: int = 0,
@@ -175,7 +175,13 @@ def list_employees(
     if position_id:
         q = q.filter(Employee.position_id == position_id)
     if schedule_id:
-        q = q.filter(Employee.schedule_id == schedule_id)
+        if schedule_id == "none":
+            q = q.filter(Employee.schedule_id == None)
+        else:
+            try:
+                q = q.filter(Employee.schedule_id == int(schedule_id))
+            except ValueError:
+                pass
     if shift_type:
         from backend.models import Schedule
         q = q.join(Employee.schedule).filter(Schedule.shift_type == shift_type)
