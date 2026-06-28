@@ -1,7 +1,7 @@
 /* employees.js — Gestión de empleados */
 const EmployeesPage = {
   page: 1, limit: 50, search: '', depts: [], positions: [], schedules: [],
-  filterDept: '', filterPosition: '', filterStatus: '',
+  filterDept: '', filterPosition: '', filterStatus: '', filterSchedule: '', filterScheduleType: '',
   visibleColumns: { code: true, position: true, dept: true, schedule: true, device: true, creds: true, status: true },
   currentView: localStorage.getItem('employees_view') || 'table',
 
@@ -39,6 +39,14 @@ const EmployeesPage = {
                   </select>
                   <select id="filterPosition" class="form-control" style="width:100%;">
                     <option value="">💼 Cargo</option>
+                  </select>
+                  <select id="filterSchedule" class="form-control" style="width:100%;">
+                    <option value="">📅 Horario</option>
+                  </select>
+                  <select id="filterScheduleType" class="form-control" style="width:100%;">
+                    <option value="">🔄 Tipo de Horario</option>
+                    <option value="continuous">🕒 Jornada Continua</option>
+                    <option value="split">🌗 Jornada Partida</option>
                   </select>
                   <select id="filterStatus" class="form-control" style="width:100%;">
                     <option value="">👤 Estado</option>
@@ -204,14 +212,21 @@ const EmployeesPage = {
     // Llenar dropdowns de filtro
     const deptSel = document.getElementById('filterDept');
     const posSel  = document.getElementById('filterPosition');
+    const schedSel = document.getElementById('filterSchedule');
+    const schedTypeSel = document.getElementById('filterScheduleType');
+
     if (deptSel) deptSel.innerHTML = '<option value="">🏢 Departamento</option>' +
       this.depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
     if (posSel) posSel.innerHTML = '<option value="">💼 Cargo</option>' +
       this.positions.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    if (schedSel) schedSel.innerHTML = '<option value="">📅 Horario</option>' +
+      this.schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
     // Restaurar valores previos de filtros
     if (this.filterDept)     deptSel.value = this.filterDept;
     if (this.filterPosition) posSel.value  = this.filterPosition;
+    if (this.filterSchedule) schedSel.value = this.filterSchedule;
+    if (this.filterScheduleType) schedTypeSel.value = this.filterScheduleType;
     const statusSel = document.getElementById('filterStatus');
     if (this.filterStatus && statusSel) statusSel.value = this.filterStatus;
     const sizeSel = document.getElementById('pageSize');
@@ -241,6 +256,12 @@ const EmployeesPage = {
     document.getElementById('filterPosition').addEventListener('change', (e) => {
       this.filterPosition = e.target.value; this.page = 1; this.loadTable();
     });
+    document.getElementById('filterSchedule').addEventListener('change', (e) => {
+      this.filterSchedule = e.target.value; this.page = 1; this.loadTable();
+    });
+    document.getElementById('filterScheduleType').addEventListener('change', (e) => {
+      this.filterScheduleType = e.target.value; this.page = 1; this.loadTable();
+    });
     document.getElementById('filterStatus').addEventListener('change', (e) => {
       this.filterStatus = e.target.value; this.page = 1; this.loadTable();
     });
@@ -249,9 +270,12 @@ const EmployeesPage = {
     });
     document.getElementById('btnClearFilters').addEventListener('click', () => {
       this.search = ''; this.filterDept = ''; this.filterPosition = ''; this.filterStatus = '';
+      this.filterSchedule = ''; this.filterScheduleType = '';
       document.getElementById('empSearch').value = '';
       document.getElementById('filterDept').value = '';
       document.getElementById('filterPosition').value = '';
+      document.getElementById('filterSchedule').value = '';
+      document.getElementById('filterScheduleType').value = '';
       document.getElementById('filterStatus').value = '';
       this.page = 1; this.loadTable();
     });
@@ -343,10 +367,12 @@ const EmployeesPage = {
     if (this.search)         params.set('search',        this.search);
     if (this.filterDept)     params.set('department_id', this.filterDept);
     if (this.filterPosition) params.set('position_id',   this.filterPosition);
+    if (this.filterSchedule) params.set('schedule_id',   this.filterSchedule);
+    if (this.filterScheduleType) params.set('shift_type', this.filterScheduleType);
     if (this.filterStatus !== '') params.set('is_active', this.filterStatus);
 
     // Actualizar UI del indicador de filtros activos
-    const activeFilters = [this.filterDept, this.filterPosition, this.filterStatus, this.search]
+    const activeFilters = [this.filterDept, this.filterPosition, this.filterSchedule, this.filterScheduleType, this.filterStatus, this.search]
       .filter(v => v !== '').length;
     const clearBtn    = document.getElementById('btnClearFilters');
     const filterCount = document.getElementById('empFilterCount');
@@ -362,7 +388,7 @@ const EmployeesPage = {
       }
     }
     // Resaltar visualmente los dropdowns con valor activo
-    ['filterDept','filterPosition','filterStatus'].forEach(id => {
+    ['filterDept','filterPosition','filterSchedule','filterScheduleType','filterStatus'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('active-filter', el.value !== '');
     });
@@ -428,7 +454,7 @@ const EmployeesPage = {
             <td class="col-code"><code class="copyable" title="Clic para copiar código de empleado" style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${e.employee_code}</code></td>
             <td class="col-position" style="color:var(--text-2)">${e.position?.name||'-'}</td>
             <td class="col-dept">${e.department?.name||'-'}</td>
-            <td class="col-schedule" style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
+            <td class="col-schedule" style="font-size:.78rem;color:var(--text-3)">${e.schedule ? `<strong style="color:var(--primary-color)">${e.schedule.name}</strong><br><span style="font-size:0.72rem;color:var(--text-2)">(${e.schedule.shift_type === 'flexible' ? 'Flexible' : e.schedule.work_start_time + ' - ' + e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}</td>
             <td class="col-device">
               ${e.synced_to_device 
                 ? `<span class="badge badge-green">✓ Sync</span>` 
@@ -522,7 +548,7 @@ const EmployeesPage = {
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; text-align: right;">
                       <span style="color: var(--text-3); font-weight: 600;">Horario:</span>
                       <span style="color: var(--text-2); font-weight: 600; font-size: 0.76rem;">
-                        ${e.schedule ? `<strong style="color:var(--accent)">${e.schedule.name}</strong><br><span style="font-size: 0.7rem; color:var(--text-3)">(${e.schedule.work_start_time} - ${e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}
+                        ${e.schedule ? `<strong style="color:var(--accent)">${e.schedule.name}</strong><br><span style="font-size: 0.7rem; color:var(--text-3)">(${e.schedule.shift_type === 'flexible' ? 'Flexible' : e.schedule.work_start_time + ' - ' + e.schedule.work_end_time})</span>` : `${e.work_start_time} – ${e.work_end_time}`}
                       </span>
                     </div>
                   </div>
@@ -675,14 +701,17 @@ const EmployeesPage = {
     
     const depOpts = depts.map(d => `<option value="${d.id}" ${emp?.department_id==d.id?'selected':''}>${d.name}</option>`).join('');
     const posOpts = positions.map(p => `<option value="${p.id}" ${emp?.position_id==p.id?'selected':''}>${p.name}</option>`).join('');
-    const schedOpts = schedules.map(s => `<option value="${s.id}" ${emp?.schedule_id==s.id?'selected':''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`).join('');
+    const schedOpts = schedules.map(s => {
+      const timeInfo = s.shift_type === 'flexible' ? 'Flexible' : `${s.work_start_time} - ${s.work_end_time}`;
+      return `<option value="${s.id}" ${emp?.schedule_id==s.id?'selected':''}>${s.name} (${timeInfo})</option>`;
+    }).join('');
 
     const initials = emp ? (emp.first_name.charAt(0) + (emp.last_name && emp.last_name !== '-' ? emp.last_name.charAt(0) : '')).toUpperCase() : '+';
 
     Modal.open(id ? 'Editar Empleado' : 'Nuevo Empleado', `
       <!-- Selector de foto de perfil interactivo -->
       <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
-        <div style="position: relative; width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 2px dashed var(--primary-color, #7c3aed); display: flex; align-items: center; justify-content: center; background: var(--surface-3, #f8fafc); cursor: pointer;" onclick="document.getElementById('fPhotoInput').click()" title="Hacer clic para subir foto">
+        <div style="position: relative; width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 2px dashed var(--primary-color, #1a5cff); display: flex; align-items: center; justify-content: center; background: var(--surface-3, #f4f6fa); cursor: pointer;" onclick="document.getElementById('fPhotoInput').click()" title="Hacer clic para subir foto">
           <img id="fPhotoPreview" src="${emp?.photo_path ? `/uploads/${emp.photo_path}?t=${new Date().getTime()}` : ''}" style="width: 100%; height: 100%; object-fit: cover; display: ${emp?.photo_path ? 'block' : 'none'};" />
           <span id="fPhotoPlaceholder" style="font-size: 1.8rem; font-weight: 700; color: var(--text-3, #94a3b8); display: ${emp?.photo_path ? 'none' : 'block'};">
             ${initials}
@@ -905,7 +934,7 @@ const EmployeesPage = {
       
       const settings = await API.get('/api/settings') || {};
       const companyName = settings.company_name || "Mi Empresa";
-      const primaryColor = settings.primary_color || "#4f46e5";
+      const primaryColor = settings.primary_color || "#1a5cff";
       const logoPath = settings.logo_path || "";
       
       const photoSrc = emp.photo_path ? `/uploads/${emp.photo_path}?t=${new Date().getTime()}` : null;
@@ -1089,7 +1118,7 @@ const EmployeesPage = {
               Descargando imágenes de rostro desde el dispositivo. Por favor, no cierre esta ventana.
             </p>
             <div style="background-color: #f1f5f9; border-radius: 9999px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-              <div id="importProgressBar" style="background-color: var(--primary-color, #7c3aed); height: 100%; width: 0%; transition: width 0.4s ease;"></div>
+              <div id="importProgressBar" style="background-color: var(--primary-color, #1a5cff); height: 100%; width: 0%; transition: width 0.4s ease;"></div>
             </div>
             <div id="importProgressPercent" style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">0%</div>
           </div>
@@ -1449,10 +1478,29 @@ const EmployeesPage = {
                       const dt = new Date(r.event_time);
                       const dateStr = dt.toLocaleDateString('es-PE', {day:'2-digit',month:'short',year:'2-digit'});
                       const timeStr = dt.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit',hour12:false});
+                      
+                      let methodHtml = '<span style="color:var(--text-3);">—</span>';
+                      if (r.auth_method) {
+                        const m = r.auth_method.toLowerCase();
+                        if (m.includes('face') || m.includes('facial')) {
+                          methodHtml = '<span style="color:var(--success); font-weight:600;">👤 Facial</span>';
+                        } else if (m.includes('qr')) {
+                          methodHtml = '<span style="color:var(--accent); font-weight:600;">📱 Código QR</span>';
+                        } else if (m.includes('card') || m.includes('tarjeta') || m.includes('m1')) {
+                          methodHtml = '<span style="color:var(--accent-3); font-weight:600;">💳 Tarjeta</span>';
+                        } else if (m.includes('finger') || m.includes('huella')) {
+                          methodHtml = '<span style="color:var(--warning); font-weight:600;">👆 Huella</span>';
+                        } else if (m === 'manual') {
+                          methodHtml = '<span style="color:var(--text-3); font-weight:600;">✍️ Manual</span>';
+                        } else {
+                          methodHtml = `<span style="color:var(--text-3);">${r.auth_method}</span>`;
+                        }
+                      }
+
                       return `<tr style="border-bottom:1px solid var(--border);transition:background 0.2s;" onmouseover="this.style.background='var(--surface-1)'" onmouseout="this.style.background='transparent'">
                         <td style="padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:.78rem;"><span style="color:var(--text-3);">${dateStr}</span> <strong>${timeStr}</strong></td>
                         <td style="padding:10px 14px;font-weight:600;">${eventTypeLabel(r.event_type, r.is_late)}</td>
-                        <td style="padding:10px 14px;color:var(--text-3);font-size:.75rem;">${r.auth_method}</td>
+                        <td style="padding:10px 14px;font-size:.75rem;">${methodHtml}</td>
                       </tr>`;
                     }).join('')}
                   </tbody>

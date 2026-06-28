@@ -104,7 +104,7 @@ class PositionOut(PositionCreate):
 
 class ScheduleCreate(BaseModel):
     name: str
-    shift_type: str = "continuous"  # continuous / split
+    shift_type: str = "continuous"  # continuous / split / flexible
     work_start_time: str = "07:00"
     work_end_time: str = "18:00"
     lunch_start_time: Optional[str] = None

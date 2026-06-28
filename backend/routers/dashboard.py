@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from backend.auth import get_current_user
 from backend.database import get_db
@@ -42,27 +42,32 @@ def get_kpis(date: str = None, db: Session = Depends(get_db), _=Depends(get_curr
     cfg = db.query(DeviceConfig).first()
 
     # Calcular cuántos empleados activos ya debieron haber entrado hoy y no lo han hecho
-    from backend.models import Schedule
     today_unmarked_count = 0
     
     # Solo calcular si target_date es hoy para que tenga sentido el tiempo actual de control
     if target_date == get_local_now().date():
         current_time_str = get_local_now().strftime("%H:%M")
+        
+        # Batch query all active employees with their schedules
+        active_employees = db.query(Employee).options(joinedload(Employee.schedule)).filter(Employee.is_active == True).all()
+        emp_dict = {e.id: e for e in active_employees}
+        
+        # Batch query all employee IDs with active leaves today
+        from backend.models import EmployeeLeave
+        active_leaves_emp_ids = set(
+            r[0] for r in db.query(EmployeeLeave.employee_id).filter(
+                EmployeeLeave.start_date <= target_date,
+                EmployeeLeave.end_date >= target_date
+            ).all()
+        )
+        
         for s in summaries:
             if not s["is_present"]:
-                # Obtener el horario asignado al empleado para ver si ya debió marcar entrada
-                emp = db.query(Employee).filter(Employee.id == s["employee_id"]).first()
+                emp = emp_dict.get(s["employee_id"])
                 if emp and emp.schedule:
                     start_time = emp.schedule.work_start_time # formato "HH:MM"
                     if start_time and start_time <= current_time_str:
-                        # Tampoco debe estar de vacaciones/permiso hoy
-                        from backend.models import EmployeeLeave
-                        has_leave = db.query(EmployeeLeave).filter(
-                            EmployeeLeave.employee_id == emp.id,
-                            EmployeeLeave.start_date <= target_date,
-                            EmployeeLeave.end_date >= target_date
-                        ).first()
-                        if not has_leave:
+                        if emp.id not in active_leaves_emp_ids:
                             today_unmarked_count += 1
 
     return {

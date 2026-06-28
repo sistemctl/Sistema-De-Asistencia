@@ -2,6 +2,9 @@
 
 const SchedulesPage = {
   currentSubTab: 'catalog',
+  matrixFilterDept: '',
+  matrixFilterPosition: '',
+  matrixFilterSchedule: '',
 
   formatWorkDays(str) {
     if (!str) return '<span style="color:var(--text-3)">No especificado</span>';
@@ -133,9 +136,12 @@ const SchedulesPage = {
           day: '2-digit', month: '2-digit', year: 'numeric'
         });
         const isSplit = s.shift_type === 'split';
+        const isFlexible = s.shift_type === 'flexible';
         const typeBadge = isSplit 
           ? '<span class="badge badge-yellow">Jornada Partida</span>' 
-          : '<span class="badge badge-green">Jornada Continua</span>';
+          : (isFlexible 
+            ? '<span class="badge badge-blue" style="background:rgba(79, 70, 229, 0.1); color:#818cf8; border:1px solid rgba(79, 70, 229, 0.2);">Flexible / Marcación</span>' 
+            : '<span class="badge badge-green">Jornada Continua</span>');
         
         let timesHtml = '';
         if (isSplit) {
@@ -145,6 +151,8 @@ const SchedulesPage = {
               <div>🥪 <strong>Almuerzo:</strong> <code style="background:var(--surface-3);padding:1px 6px;border-radius:4px;">${s.lunch_start_time}</code> a <code style="background:var(--surface-3);padding:1px 6px;border-radius:4px;">${s.lunch_end_time}</code></div>
               <div>🌇 <strong>Salida:</strong> <code style="background:var(--surface-3);padding:1px 6px;border-radius:4px;">${s.work_end_time}</code></div>
             </div>`;
+        } else if (isFlexible) {
+          timesHtml = `<span style="font-size:0.82rem;color:var(--text-3);font-style:italic;">Por Marcación (Flexible)</span>`;
         } else {
           timesHtml = `<code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.78rem;font-family:'JetBrains Mono',monospace;">${s.work_start_time} – ${s.work_end_time}</code>`;
         }
@@ -223,10 +231,25 @@ const SchedulesPage = {
           </button>
         </div>
 
-        <!-- Buscador instantáneo de Colaborador -->
-        <div style="flex-grow:1; max-width:320px; position:relative;">
-          <input type="text" id="matrixSearchInput" placeholder="Buscar colaborador..." oninput="SchedulesPage.filterMatrix()" style="width:100%; padding: 7px 12px 7px 32px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text-1); box-sizing: border-box;">
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); pointer-events:none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <!-- Buscador y Filtros Rápidos -->
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; flex:1; max-width:680px; justify-content:flex-end;">
+          <!-- Buscador instantáneo de Colaborador -->
+          <div style="flex:1; min-width:180px; position:relative;">
+            <input type="text" id="matrixSearchInput" placeholder="Buscar colaborador..." oninput="SchedulesPage.filterMatrix()" style="width:100%; padding: 7px 12px 7px 32px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text-1); box-sizing: border-box;">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); pointer-events:none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+
+          <select id="matrixFilterDept" onchange="SchedulesPage.filterMatrix()" class="form-control" style="width:140px; padding: 6px 10px; font-size: 0.82rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-1);">
+            <option value="">🏢 Todos Deps.</option>
+          </select>
+
+          <select id="matrixFilterPosition" onchange="SchedulesPage.filterMatrix()" class="form-control" style="width:140px; padding: 6px 10px; font-size: 0.82rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-1);">
+            <option value="">💼 Todos Cargos</option>
+          </select>
+
+          <select id="matrixFilterSchedule" onchange="SchedulesPage.filterMatrix()" class="form-control" style="width:140px; padding: 6px 10px; font-size: 0.82rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-1);">
+            <option value="">📅 Todos Horarios</option>
+          </select>
         </div>
 
         <div>
@@ -298,12 +321,14 @@ const SchedulesPage = {
     `;
 
     try {
-      const [employees, schedules, dailySchedules, leaves, holidays] = await Promise.all([
+      const [employees, schedules, dailySchedules, leaves, holidays, depts, positions] = await Promise.all([
         API.get('/api/employees?limit=200'),
         API.get('/api/schedules'),
         API.get(`/api/employees/daily-schedules?start_date=${start_date_str}&end_date=${end_date_str}`),
         API.get(`/api/leaves?date_from=${start_date_str}&date_to=${end_date_str}`),
-        API.get(`/api/holidays?year=${this.currentWeekStart.getFullYear()}`)
+        API.get(`/api/holidays?year=${this.currentWeekStart.getFullYear()}`),
+        API.get('/api/employees/departments', true) || [],
+        API.get('/api/employees/positions', true) || []
       ]);
 
       this.cachedEmployees = employees || [];
@@ -312,6 +337,23 @@ const SchedulesPage = {
       this.cachedLeaves = leaves || [];
       this.cachedHolidays = holidays || [];
       this.datesOfWeek = datesOfWeek;
+
+      // Populate filter dropdowns
+      const deptSel = document.getElementById('matrixFilterDept');
+      const posSel = document.getElementById('matrixFilterPosition');
+      const schedSel = document.getElementById('matrixFilterSchedule');
+
+      if (deptSel) deptSel.innerHTML = '<option value="">🏢 Todos Deps.</option>' +
+        (depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      if (posSel) posSel.innerHTML = '<option value="">💼 Todos Cargos</option>' +
+        (positions || []).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      if (schedSel) schedSel.innerHTML = '<option value="">📅 Todos Horarios</option>' +
+        (schedules || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+      // Restore selected values if any
+      if (this.matrixFilterDept && deptSel) deptSel.value = this.matrixFilterDept;
+      if (this.matrixFilterPosition && posSel) posSel.value = this.matrixFilterPosition;
+      if (this.matrixFilterSchedule && schedSel) schedSel.value = this.matrixFilterSchedule;
 
       this.displayMatrixRows();
     } catch(err) {
@@ -322,6 +364,9 @@ const SchedulesPage = {
   },
 
   filterMatrix() {
+    this.matrixFilterDept = document.getElementById('matrixFilterDept')?.value || '';
+    this.matrixFilterPosition = document.getElementById('matrixFilterPosition')?.value || '';
+    this.matrixFilterSchedule = document.getElementById('matrixFilterSchedule')?.value || '';
     const query = document.getElementById('matrixSearchInput')?.value || '';
     this.displayMatrixRows(query);
   },
@@ -331,6 +376,10 @@ const SchedulesPage = {
     if (!tbody) return;
 
     const filtered = this.cachedEmployees.filter(e => {
+      if (this.matrixFilterDept && e.department_id !== parseInt(this.matrixFilterDept)) return false;
+      if (this.matrixFilterPosition && e.position_id !== parseInt(this.matrixFilterPosition)) return false;
+      if (this.matrixFilterSchedule && e.schedule_id !== parseInt(this.matrixFilterSchedule)) return false;
+
       const fullName = (e.full_name || '').toLowerCase();
       const posName = (e.position?.name || e.position_legacy || '').toLowerCase();
       const query = searchQuery.toLowerCase();
@@ -395,7 +444,7 @@ const SchedulesPage = {
             badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(148,163,184,0.1);color:var(--text-3);border:1px dashed var(--border);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Asignado por Rotación (Clic para modificar)">Libre (R)</span>`;
           } else if (override.schedule) {
             scheduleName = override.schedule.name;
-            const timeRange = `${override.schedule.work_start_time}-${override.schedule.work_end_time}`;
+            const timeRange = override.schedule.shift_type === 'flexible' ? 'Flexible' : `${override.schedule.work_start_time}-${override.schedule.work_end_time}`;
             badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:6px;font-family:monospace;display:inline-block;cursor:pointer;" title="Turno Rotativo: ${scheduleName} (Clic para modificar)">${timeRange} (R)</span>`;
           } else {
             badgeHtml = `<span class="badge badge-gray" style="font-size:0.72rem;padding:5px 10px;border-radius:6px;display:inline-block;cursor:pointer;" title="Clic para modificar">Por Defecto</span>`;
@@ -406,7 +455,7 @@ const SchedulesPage = {
             badgeHtml = `<span class="badge" style="font-size:0.72rem;padding:5px 10px;background:rgba(100,116,139,0.06);color:var(--text-3);border-radius:6px;display:inline-block;cursor:pointer;opacity:0.6;" title="Sin Horario Semanal (Clic para modificar)">Sin Turno</span>`;
           } else if (workDaysList.includes(String(weekdayNum))) {
             scheduleName = empSchedule.name;
-            const timeRange = `${empSchedule.work_start_time}-${empSchedule.work_end_time}`;
+            const timeRange = empSchedule.shift_type === 'flexible' ? 'Flexible' : `${empSchedule.work_start_time}-${empSchedule.work_end_time}`;
             badgeHtml = `<span class="badge badge-green" style="font-size:0.72rem;padding:5px 10px;border-radius:6px;font-family:monospace;display:inline-block;cursor:pointer;" title="Horario Fijo: ${scheduleName} (Clic para modificar)">${timeRange}</span>`;
           } else {
             badgeHtml = `<span class="badge badge-gray" style="font-size:0.72rem;padding:5px 10px;background:rgba(100,116,139,0.04);color:var(--text-3);border-radius:6px;display:inline-block;cursor:pointer;" title="Descanso Semanal Fijo (Clic para modificar)">Libre</span>`;
@@ -478,9 +527,10 @@ const SchedulesPage = {
 
     try {
       const schedules = await API.get('/api/schedules') || [];
-      const optionsHtml = schedules.map(s => 
-        `<option value="${s.id}" ${(!currentIsOff && currentScheduleId === s.id) ? 'selected' : ''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`
-      ).join('');
+      const optionsHtml = schedules.map(s => {
+        const timeInfo = s.shift_type === 'flexible' ? 'Flexible' : `${s.work_start_time} - ${s.work_end_time}`;
+        return `<option value="${s.id}" ${(!currentIsOff && currentScheduleId === s.id) ? 'selected' : ''}>${s.name} (${timeInfo})</option>`;
+      }).join('');
 
       Modal.open(`Turno de ${employeeName} (${dateStr})`, `
         <div style="padding: 10px 15px; text-align: left;">
@@ -608,9 +658,10 @@ const SchedulesPage = {
         const optionsHtmlForStep = `
           <option value="" ${defaultVal === '' ? 'selected' : ''}>-- Sin Turno / Desactivado --</option>
           <option value="off" ${defaultVal === 'off' ? 'selected' : ''}>-- Descanso / Libre --</option>
-          ${schedList.map(s => 
-            `<option value="${s.id}" ${defaultVal === s.id.toString() ? 'selected' : ''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`
-          ).join('')}
+          ${schedList.map(s => {
+            const timeInfo = s.shift_type === 'flexible' ? 'Flexible' : `${s.work_start_time} - ${s.work_end_time}`;
+            return `<option value="${s.id}" ${defaultVal === s.id.toString() ? 'selected' : ''}>${s.name} (${timeInfo})</option>`;
+          }).join('')}
         `;
 
         stepsHtml += `
@@ -897,12 +948,12 @@ const SchedulesPage = {
         if (!sched) return;
 
         const workDays = sched.work_days.split(',').map(d => dayMap[parseInt(d)]);
-        const color = sched.shift_type === 'split' ? '#f59e0b' : '#4f46e5';
+        const color = sched.shift_type === 'split' ? '#f59e0b' : (sched.shift_type === 'flexible' ? '#10b981' : '#1a5cff');
 
         events.push({
           title: emp.full_name,
-          startTime: sched.work_start_time,
-          endTime: sched.work_end_time,
+          startTime: sched.shift_type === 'flexible' ? '00:00' : sched.work_start_time,
+          endTime: sched.shift_type === 'flexible' ? '23:59' : sched.work_end_time,
           daysOfWeek: workDays,
           color: color,
           textColor: '#ffffff',
@@ -910,7 +961,7 @@ const SchedulesPage = {
             employee: emp.full_name,
             schedule: sched.name,
             shift_type: sched.shift_type,
-            time_range: sched.work_start_time.substring(0,5) + ' - ' + sched.work_end_time.substring(0,5)
+            time_range: sched.shift_type === 'flexible' ? 'Flexible' : sched.work_start_time.substring(0,5) + ' - ' + sched.work_end_time.substring(0,5)
           }
         });
       });
@@ -1007,7 +1058,10 @@ const SchedulesPage = {
       const schedules = await API.get('/api/schedules') || [];
       const optionsHtml = [
         `<option value="" ${currentScheduleId === null ? 'selected' : ''}>Sin Horario / Configuración Personalizada</option>`,
-        ...schedules.map(s => `<option value="${s.id}" ${currentScheduleId === s.id ? 'selected' : ''}>${s.name} (${s.work_start_time} - ${s.work_end_time})</option>`)
+        ...schedules.map(s => {
+          const timeInfo = s.shift_type === 'flexible' ? 'Flexible' : `${s.work_start_time} - ${s.work_end_time}`;
+          return `<option value="${s.id}" ${currentScheduleId === s.id ? 'selected' : ''}>${s.name} (${timeInfo})</option>`;
+        })
       ].join('');
 
       Modal.open('Reasignar Horario', `
@@ -1060,8 +1114,9 @@ const SchedulesPage = {
           <div class="field" style="width:100%">
             <label>Tipo de Jornada</label>
             <select id="fSchedType" onchange="SchedulesPage.onShiftTypeChange(this)">
-              <option value="continuous" ${s?.shift_type!=='split'?'selected':''}>Jornada Continua (Horario Corrido)</option>
+              <option value="continuous" ${s?.shift_type==='continuous'||!s?.shift_type?'selected':''}>Jornada Continua (Horario Corrido)</option>
               <option value="split" ${s?.shift_type==='split'?'selected':''}>Jornada Partida (Horario Cortado / Con Almuerzo)</option>
+              <option value="flexible" ${s?.shift_type==='flexible'?'selected':''}>Flexible / Por Marcación (Sin horario fijo)</option>
             </select>
           </div>
         </div>
@@ -1118,11 +1173,11 @@ const SchedulesPage = {
             </style>
           </div>
         </div>
-        <div class="form-row">
+        <div id="continuousShiftFields" class="form-row" style="${s?.shift_type === 'flexible' ? 'display:none;' : 'display:flex;'}">
           <div class="field"><label>Hora de Entrada</label><input id="fSchedStart" type="time" value="${s?.work_start_time||'07:00'}" /></div>
           <div class="field"><label>Hora de Salida</label><input id="fSchedEnd" type="time" value="${s?.work_end_time||'18:00'}" /></div>
         </div>
-        <div id="splitShiftFields" style="${isSplit ? 'display:flex; gap:12px; width:100%; flex-direction:row;' : 'display:none; gap:12px; width:100%; flex-direction:row;'}">
+        <div id="splitShiftFields" style="${s?.shift_type === 'split' ? 'display:flex; gap:12px; width:100%; flex-direction:row;' : 'display:none; gap:12px; width:100%; flex-direction:row;'}">
           <div class="field"><label>Salida Almuerzo</label><input id="fSchedLunchStart" type="time" value="${s?.lunch_start_time||'12:00'}" /></div>
           <div class="field"><label>Regreso Almuerzo</label><input id="fSchedLunchEnd" type="time" value="${s?.lunch_end_time||'14:00'}" /></div>
         </div>`,
@@ -1135,10 +1190,16 @@ const SchedulesPage = {
 
   onShiftTypeChange(selectEl) {
     const splitFields = document.getElementById('splitShiftFields');
+    const continuousFields = document.getElementById('continuousShiftFields');
     if (selectEl.value === 'split') {
       splitFields.style.display = 'flex';
+      continuousFields.style.display = 'flex';
+    } else if (selectEl.value === 'flexible') {
+      splitFields.style.display = 'none';
+      continuousFields.style.display = 'none';
     } else {
       splitFields.style.display = 'none';
+      continuousFields.style.display = 'flex';
     }
   },
 
@@ -1153,8 +1214,8 @@ const SchedulesPage = {
     const body = {
       name: document.getElementById('fSchedName').value.trim(),
       shift_type: shiftType,
-      work_start_time: document.getElementById('fSchedStart').value,
-      work_end_time: document.getElementById('fSchedEnd').value,
+      work_start_time: shiftType === 'flexible' ? '00:00' : document.getElementById('fSchedStart').value,
+      work_end_time: shiftType === 'flexible' ? '00:00' : document.getElementById('fSchedEnd').value,
       lunch_start_time: shiftType === 'split' ? document.getElementById('fSchedLunchStart').value : null,
       lunch_end_time: shiftType === 'split' ? document.getElementById('fSchedLunchEnd').value : null,
       work_days: workDaysStr
@@ -1163,7 +1224,7 @@ const SchedulesPage = {
     if (!body.name) { Toast.show('Por favor, ingresa el nombre del horario', 'warning'); return; }
     if (!body.work_days) { Toast.show('Por favor, selecciona al menos un día laboral', 'warning'); return; }
 
-    if (body.work_start_time >= body.work_end_time) {
+    if (shiftType !== 'flexible' && body.work_start_time >= body.work_end_time) {
       Toast.show('La hora de inicio de jornada debe ser anterior a la hora de fin de jornada', 'warning');
       return;
     }

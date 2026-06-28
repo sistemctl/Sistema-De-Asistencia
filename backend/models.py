@@ -71,7 +71,7 @@ class Schedule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
-    shift_type = Column(String(30), default="continuous", nullable=False)  # continuous / split
+    shift_type = Column(String(30), default="continuous", nullable=False)  # continuous / split / flexible
     work_start_time = Column(String(5), default="07:00")  # HH:MM
     work_end_time = Column(String(5), default="18:00")     # HH:MM
     lunch_start_time = Column(String(5), nullable=True)   # HH:MM

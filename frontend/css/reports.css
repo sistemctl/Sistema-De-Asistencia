@@ -1,6 +1,6 @@
 /* ── Corporate Precision System (Reports) ── */
 .corp-container {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   color: var(--text-1);
   background: var(--bg-base);
 }
@@ -19,10 +19,11 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  opacity: 0.8;
+  width: var(--punch-w, 3px);
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.7;
+  border-radius: 3px 0 0 3px;
 }
 .corp-card:hover {
   transform: translateY(-2px);
@@ -71,7 +72,7 @@
   font-weight: 700;
 }
 .corp-label-caps {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   line-height: 16px;
@@ -80,10 +81,10 @@
   color: var(--text-3);
 }
 .corp-display-lg {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 32px;
+  font-family: var(--font-display);
+  font-size: 30px;
   font-weight: 700;
-  line-height: 40px;
+  line-height: 38px;
   letter-spacing: -0.02em;
   color: var(--accent);
   display: flex;
@@ -91,20 +92,20 @@
   gap: 6px;
 }
 .corp-headline-md {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 18px;
   font-weight: 600;
-  line-height: 28px;
-  letter-spacing: 0.02em;
+  line-height: 26px;
+  letter-spacing: 0.01em;
 }
 .corp-title-sm {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 16px;
+  font-family: var(--font-display);
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-1);
 }
 .corp-body-sm {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   color: var(--text-3);
 }
@@ -121,7 +122,7 @@
 }
 .corp-zebra-table th {
   padding: 14px 24px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -150,7 +151,7 @@
 .corp-badge {
   padding: 4px 12px;
   border-radius: 9999px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -167,7 +168,7 @@
   color: var(--bg-raised);
   padding: 8px 20px;
   border-radius: 10px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -175,12 +176,10 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.15);
 }
 .corp-btn-primary:hover {
   background: var(--accent-2);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.2);
 }
 
 .chart-container { position: relative; height: 230px; }
@@ -200,7 +199,7 @@
   box-shadow: 0 4px 15px rgba(0,0,0,0.15);
   transform: translateX(4px);
 }
-.event-time { font-size: .72rem; color: var(--text-3); white-space: nowrap; min-width: 55px; text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.event-time { font-size: .72rem; color: var(--text-3); white-space: nowrap; min-width: 55px; text-align: right; font-family: var(--font-mono); font-weight: 500; }
 .event-name { font-size: .88rem; font-weight: 700; color: var(--text-1); }
 .event-sub  { font-size: .76rem; color: var(--text-3); font-weight: 500; margin-top: 2px; }
 

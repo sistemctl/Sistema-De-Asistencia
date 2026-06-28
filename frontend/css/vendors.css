@@ -6,11 +6,11 @@ body .flatpickr-calendar {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   color: var(--text-1);
   padding: 8px;
   width: 310px;
-  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalFadeIn 0.3s ease;
 }
 
 body .flatpickr-months {

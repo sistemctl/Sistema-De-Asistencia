@@ -19,6 +19,12 @@
       "skillPath": "skills/taste-skill-v1/SKILL.md",
       "computedHash": "8d59c96751feacf88f341a43151eae6f4fd748978884c4552293b8841573d776"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+    },
     "full-output-enforcement": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
@@ -66,6 +72,18 @@
       "sourceType": "github",
       "skillPath": "skills/minimalist-skill/SKILL.md",
       "computedHash": "7e88897e0371184e97a82b8d9ef080323c13f21eb067b58ef71eb05173a08ac2"
+    },
+    "prompt-optimizer": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/prompt-optimizer/SKILL.md",
+      "computedHash": "71f19d5b1fc9d7a5417b4d529890da9054becea8fce7c9df688d91cd7bde51dc"
+    },
+    "python-performance-optimization": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/python-performance-optimization/SKILL.md",
+      "computedHash": "393407ad12fa7c847db0e77935783908f394b883efc05442e886ad70f9fa34f5"
     },
     "redesign-existing-projects": {
       "source": "Leonxlnx/taste-skill",

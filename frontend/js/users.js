@@ -2,13 +2,14 @@
 
 const UsersPage = {
   currentSubTab: 'list',
+  targetElId: 'pageContent',
 
   async render(subTab = 'list') {
     this.currentSubTab = subTab;
     const isSuper = Auth.isAdmin();
 
     if (!isSuper) {
-      document.getElementById('pageContent').innerHTML = `
+      document.getElementById(this.targetElId).innerHTML = `
         <div class="empty-state">
           <div class="icon">🔒</div>
           <h3>Acceso Denegado</h3>
@@ -17,7 +18,7 @@ const UsersPage = {
       return;
     }
 
-    document.getElementById('pageContent').innerHTML = `
+    document.getElementById(this.targetElId).innerHTML = `
       <!-- Sub-pestañas internas -->
       <div class="subtabs-container" style="margin-bottom:20px; border-bottom:1px solid var(--border); display:flex; gap:24px;">
         <button class="user-tab-btn ${subTab === 'list' ? 'active' : ''}" onclick="UsersPage.switchSubTab('list')" style="background:none;border:none;color:var(--text-2);padding:12px 0;font-weight:600;font-size:0.92rem;cursor:pointer;position:relative;transition:color 0.2s;">

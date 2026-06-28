@@ -1,46 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-/* ── Design Tokens ── */
 :root {
-  --bg-base:     #f3f4f8;
+  /* Clinical white workspace — attendance ledger */
+  --bg-base:     #f7f8fb;
   --bg-raised:   #ffffff;
   --surface-1:   #ffffff;
-  --surface-2:   #f8f9fb;
-  --surface-3:   #eff0f4;
-  --border:      rgba(11, 28, 48, 0.06);
-  --border-light:rgba(11, 28, 48, 0.12);
-  --border-glow: rgba(11, 28, 48, 0.03);
-  --accent:      #0b1c30;
-  --accent-rgb:  11, 28, 48;
-  --accent-2:    #475569;
-  --accent-2-rgb: 71, 85, 105;
-  --accent-3:    #0f766e;
-  --danger:      #be123c;
-  --warning:     #b45309;
-  --success:     #0f766e;
-  --text-1: #0b1c30;
-  --text-2: #334155;
-  --text-3: #516278;
-  --sidebar-w: 270px;
-  --radius:    24px;
-  --radius-sm: 12px;
-  --shadow:    0 1px 2px rgba(11, 28, 48, 0.02), 0 16px 32px -12px rgba(11, 28, 48, 0.04);
+  --surface-2:   #f4f6fa;
+  --surface-3:   #e9edf4;
+  --border:      rgba(15, 23, 42, 0.08);
+  --border-light:rgba(15, 23, 42, 0.12);
+  --border-glow: rgba(29, 78, 216, 0.05);
 
-  /* ── Corporate Precision System Tokens ── */
-  --corp-surface: #f8f9ff;
-  --corp-surface-lowest: #ffffff;
-  --corp-surface-low: #eff4ff;
-  --corp-surface-high: #dce9ff;
-  --corp-on-surface: #0b1c30;
-  --corp-on-surface-var: #4c4546;
-  --corp-primary: #000000;
-  --corp-on-primary: #ffffff;
-  --corp-secondary: #b7102a;
-  --corp-outline: #cfc4c5;
+  --accent:      #2563eb;
+  --accent-rgb:  37, 99, 235;
+  --accent-2:    #1e293b;
+  --accent-2-rgb: 30, 41, 59;
+  --accent-3:    #059669;
+
+  --danger:      #dc2626;
+  --warning:     #d97706;
+  --success:     #059669;
+
+  --text-1:      #0f172a;
+  --text-2:      #475569;
+  --text-3:      #94a3b8;
+
+  --sidebar-w:   264px;
+  --radius:      14px;
+  --radius-sm:   9px;
+  --radius-inner: calc(var(--radius) - 4px);
+
+  --shadow:
+    0 1px 2px rgba(15, 23, 42, 0.02),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-elevated:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 8px 24px -6px rgba(15, 23, 42, 0.07);
+
+  --font-display:'Sora', sans-serif;
+  --font-body:   'Plus Jakarta Sans', sans-serif;
+  --font-mono:   'IBM Plex Mono', monospace;
+
+  --punch-w:     3px;
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 html {
   font-size: 16px;
   scroll-behavior: smooth;
@@ -48,30 +54,42 @@ html {
   scrollbar-width: thin;
   scrollbar-color: var(--surface-3) transparent;
 }
+
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   background: var(--bg-base);
   color: var(--text-1);
   min-height: 100vh;
-  line-height: 1.6;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  background-image: none;
+  -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
 }
-a { color: var(--accent); text-decoration: none; transition: color .2s; }
-a:hover { color: #312e81; }
 
+a { color: var(--accent); text-decoration: none; transition: color .2s var(--ease-out); }
+a:hover { color: #1d4ed8; }
 button { cursor: pointer; font-family: inherit; border: none; background: none; }
 input, select, textarea { font-family: inherit; }
 img { max-width: 100%; height: auto; }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--surface-2); border-radius: 99px; }
-::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.25);
-  border-radius: 99px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+code, kbd, samp, pre,
+[style*="font-family"][style*="mono"] {
+  font-family: var(--font-mono) !important;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--accent) !important; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.15);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

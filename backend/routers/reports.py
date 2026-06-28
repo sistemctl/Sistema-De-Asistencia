@@ -431,7 +431,7 @@ def get_analytics(
     def compute_kpi_metrics(results):
         if not results:
             return {
-                "punctuality_rate": 100.0,
+                "punctuality_rate": 0.0,
                 "total_lates": 0,
                 "avg_entry_time": "--:--",
                 "avg_entry_seconds": 0,
@@ -442,12 +442,13 @@ def get_analytics(
                 "total_early_exits": 0
             }
         
-        present_sums = [r for r in results if r["is_present"]]
-        total_present = len(present_sums)
-        late_count = sum(1 for r in present_sums if r["is_late"])
-        ontime_count = total_present - late_count
+        # Días laborables esperados (excluyendo festivos, días libres, licencias y ausencias justificadas)
+        expected_days = sum(1 for s in results if not s.get("is_holiday", False) and not s.get("is_off", False) and s.get("leave_type") is None and not (not s.get("is_present", False) and s.get("justification") is not None))
         
-        punctuality_rate = round((ontime_count / total_present * 100) if total_present else 100.0, 1)
+        # Días asistidos a tiempo
+        ontime_count = sum(1 for s in results if s.get("is_present", False) and not s.get("is_late", False))
+        
+        punctuality_rate = round((ontime_count / expected_days * 100) if expected_days else 0.0, 1)
         
         avg_entry_time_str = "--:--"
         avg_seconds = 0
@@ -602,16 +603,18 @@ def get_analytics_batch(
     def compute_metrics(results):
         if not results:
             return {
-                "punctuality": "100.0%",
+                "punctuality": "0.0%",
                 "lates": 0,
                 "avg_entry": "--:--",
                 "critical": "Ninguno"
             }
-        present_sums = [r for r in results if r["is_present"]]
-        total_present = len(present_sums)
-        late_count = sum(1 for r in present_sums if r["is_late"])
-        ontime_count = total_present - late_count
-        punctuality_rate = round((ontime_count / total_present * 100) if total_present else 100.0, 1)
+        # Días laborables esperados (excluyendo festivos, días libres, licencias y ausencias justificadas)
+        expected_days = sum(1 for s in results if not s.get("is_holiday", False) and not s.get("is_off", False) and s.get("leave_type") is None and not (not s.get("is_present", False) and s.get("justification") is not None))
+        
+        # Días asistidos a tiempo
+        ontime_count = sum(1 for s in results if s.get("is_present", False) and not s.get("is_late", False))
+        
+        punctuality_rate = round((ontime_count / expected_days * 100) if expected_days else 0.0, 1)
         
         avg_entry_time_str = "--:--"
         entry_times = []

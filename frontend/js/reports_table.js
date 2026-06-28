@@ -89,13 +89,17 @@ const ReportsTable = {
         if (method) {
           const m = method.toLowerCase();
           if (m.includes('face') || m.includes('facial')) {
-            methodTag = '<div style="font-size:0.6rem; color:var(--success); font-weight:700; margin-top:2px;">👤 Facial</div>';
-          } else if (m.includes('card') || m.includes('tarjeta') || m.includes('qr')) {
-            methodTag = '<div style="font-size:0.6rem; color:var(--accent); font-weight:700; margin-top:2px;">💳 Tarjeta</div>';
+            methodTag = '<div style="font-size:0.65rem; color:var(--success); font-weight:700; margin-top:2px;">👤 Facial</div>';
+          } else if (m.includes('qr')) {
+            methodTag = '<div style="font-size:0.65rem; color:var(--accent); font-weight:700; margin-top:2px;">📱 Código QR</div>';
+          } else if (m.includes('card') || m.includes('tarjeta') || m.includes('m1')) {
+            methodTag = '<div style="font-size:0.65rem; color:var(--accent-3); font-weight:700; margin-top:2px;">💳 Tarjeta</div>';
+          } else if (m.includes('finger') || m.includes('huella')) {
+            methodTag = '<div style="font-size:0.65rem; color:var(--warning); font-weight:700; margin-top:2px;">👆 Huella</div>';
           } else if (m === 'manual') {
-            methodTag = '<div style="font-size:0.6rem; color:var(--text-3); font-weight:700; margin-top:2px;">✍️ Manual</div>';
+            methodTag = '<div style="font-size:0.65rem; color:var(--text-3); font-weight:700; margin-top:2px;">✍️ Manual</div>';
           } else {
-            methodTag = `<div style="font-size:0.6rem; color:var(--text-3); font-weight:700; margin-top:2px;">${method}</div>`;
+            methodTag = `<div style="font-size:0.65rem; color:var(--text-3); font-weight:700; margin-top:2px;">${method}</div>`;
           }
         }
         return `<span style="color: var(--text-1); font-weight: 600;">${new Date(isoString).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'})}</span>${methodTag}`;

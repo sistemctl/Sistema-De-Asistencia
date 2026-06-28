@@ -735,13 +735,27 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
             hour = event_time.hour
             event_type = "entry" if 5 <= hour < 13 else "exit"
 
+        raw_verify_mode = event.get("currentVerifyMode")
+        auth_method = raw_verify_mode
+        if raw_verify_mode:
+            vm = str(raw_verify_mode).lower()
+            if "card" in vm:
+                if employee.qr_enabled:
+                    auth_method = "qr"
+                else:
+                    auth_method = "card"
+            elif "face" in vm:
+                auth_method = "face"
+            elif "fprint" in vm or "finger" in vm:
+                auth_method = "fingerprint"
+
         record = AttendanceRecord(
             employee_id=employee.id,
             device_event_id=str(event_id),
             device_user_id=str(device_uid) if device_uid else None,
             event_time=event_time,
             event_type=event_type,
-            auth_method=event.get("currentVerifyMode"),
+            auth_method=auth_method,
             is_late=is_late,
             raw_data=json.dumps(event),
         )

@@ -149,6 +149,8 @@ def list_employees(
     search: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),
     position_id: Optional[int] = Query(None),
+    schedule_id: Optional[int] = Query(None),
+    shift_type: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     skip: int = 0,
     limit: int = 100,
@@ -172,6 +174,11 @@ def list_employees(
         q = q.filter(Employee.department_id == department_id)
     if position_id:
         q = q.filter(Employee.position_id == position_id)
+    if schedule_id:
+        q = q.filter(Employee.schedule_id == schedule_id)
+    if shift_type:
+        from backend.models import Schedule
+        q = q.join(Employee.schedule).filter(Schedule.shift_type == shift_type)
     if is_active is not None:
         q = q.filter(Employee.is_active == is_active)
     return q.order_by(Employee.last_name).offset(skip).limit(limit).all()

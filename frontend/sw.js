@@ -3,11 +3,11 @@ const ASSETS_TO_CACHE = [
   '/',
   '/app',
   '/manifest.json',
-  '/static/main.css?v=30',
+  '/static/main.css?v=36',
   '/static/favicon.svg',
   '/js/app.js?v=22',
   '/js/auth.js?v=9',
-  'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
 ];
 
 self.addEventListener('install', (event) => {

@@ -45,12 +45,14 @@ def generate_daily_schedules(
         if total_length <= 0:
             raise HTTPException(status_code=400, detail="La longitud total del ciclo debe ser mayor a 0")
         
-        # Verify schedule IDs in the sequence
-        for step in data.sequence:
-            if not step.is_off and step.schedule_id:
-                sched = db.query(Schedule).filter(Schedule.id == step.schedule_id).first()
-                if not sched:
-                    raise HTTPException(status_code=404, detail=f"Horario {step.schedule_id} no encontrado")
+        # Verify schedule IDs in the sequence in batch
+        sched_ids = {step.schedule_id for step in data.sequence if not step.is_off and step.schedule_id}
+        if sched_ids:
+            existing_count = db.query(Schedule).filter(Schedule.id.in_(sched_ids)).count()
+            if existing_count != len(sched_ids):
+                for sid in sched_ids:
+                    if not db.query(Schedule).filter(Schedule.id == sid).first():
+                        raise HTTPException(status_code=404, detail=f"Horario {sid} no encontrado")
     else:
         total_length = (data.cycle_days_work or 0) + (data.cycle_nights_work or 0) + (data.cycle_days_off or 0)
         if total_length <= 0:
@@ -75,11 +77,14 @@ def generate_daily_schedules(
         curr += timedelta(days=1)
 
     generated_count = 0
+    
+    # Query all valid employee IDs in batch to avoid N+1 queries
+    valid_emp_ids = set(
+        r[0] for r in db.query(Employee.id).filter(Employee.id.in_(data.employee_ids)).all()
+    )
 
     for emp_id in data.employee_ids:
-        # Verificar empleado
-        emp = db.query(Employee).filter(Employee.id == emp_id).first()
-        if not emp:
+        if emp_id not in valid_emp_ids:
             continue
 
         # Eliminar cualquier horario diario existente en este rango de fechas para evitar duplicados/conflictos

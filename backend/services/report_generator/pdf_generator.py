@@ -484,7 +484,7 @@ def _get_employee_flowables(
 
             full_row_data = {
                 "period": Paragraph(formatted_date, cell_style),
-                "schedule": Paragraph("Partido" if is_split else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
+                "schedule": Paragraph("Partido" if is_split else ("Continuo" if s.get("schedule_type") == "continuous" else ("Flexible" if s.get("schedule_type") == "flexible" else "Sin Horario")), cell_style),
                 "punches_e1": Paragraph(entry_1, cell_style),
                 "punches_x1": Paragraph(exit_1, cell_style),
                 "punches_e2": Paragraph(entry_2, cell_style),
@@ -515,7 +515,7 @@ def _get_employee_flowables(
 
             full_row_data = {
                 "period": Paragraph(period_str, cell_style),
-                "schedule": Paragraph("Partido" if s.get("schedule_type") == "split" else ("Continuo" if s.get("schedule_type") == "continuous" else "Sin Horario"), cell_style),
+                "schedule": Paragraph("Partido" if s.get("schedule_type") == "split" else ("Continuo" if s.get("schedule_type") == "continuous" else ("Flexible" if s.get("schedule_type") == "flexible" else "Sin Horario")), cell_style),
                 "status_p": Paragraph("Sí" if s.get("is_present") else "No", ParagraphStyle("B_P_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#00E676") if s.get("is_present") else colors.HexColor("#FF3D00"))),
                 "status_l": Paragraph("Sí" if s.get("is_late") else "No", ParagraphStyle("B_T_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFB300") if s.get("is_late") else colors.HexColor("#00E676"))),
                 "status_m": Paragraph("Sí" if s.get("missing_punches") else "No", ParagraphStyle("B_I_" + str(employee_code), parent=cell_bold_style, textColor=colors.HexColor("#FFA000") if s.get("missing_punches") else colors.HexColor("#00E676"))),

@@ -395,7 +395,7 @@ const SystemSettingsPage = {
         company_name: this.settings.company_name || 'Hikvision DS-K1T323MBWX',
         primary_color: this.settings.primary_color || '#1e3a5f',
         accent_color: this.settings.accent_color || '#00e676',
-        bg_base_color: this.settings.bg_base_color || '#f8fafc',
+        bg_base_color: this.settings.bg_base_color || '#f3f5fa',
         bg_surface_color: this.settings.bg_surface_color || '#ffffff',
         work_days: workDaysStr,
         time_format: timeFormat,

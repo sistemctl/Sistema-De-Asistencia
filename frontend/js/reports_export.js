@@ -189,7 +189,7 @@ const ReportsExport = {
               Esto puede demorar unos segundos. Por favor, no cierre esta ventana.
             </p>
             <div style="background-color: #f1f5f9; border-radius: 9999px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0;">
-              <div id="reportProgressBar" style="background-color: var(--accent, #7c3aed); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+              <div id="reportProgressBar" style="background-color: var(--accent, #1a5cff); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
             </div>
             <div id="reportProgressPercent" style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">0%</div>
           </div>

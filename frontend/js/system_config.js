@@ -27,6 +27,9 @@ const SystemConfigPage = {
         <button class="tab-btn" data-tab="audit" onclick="SystemConfigPage.switchTab('audit')">
           Historial de Auditoría
         </button>
+        <button class="tab-btn" data-tab="users" onclick="SystemConfigPage.switchTab('users')">
+          Gestión de Usuarios
+        </button>
       </div>
       <div id="systemTabContent">
       </div>
@@ -56,7 +59,10 @@ const SystemConfigPage = {
         return;
       }
 
-    if (tab === 'branding') {
+      if (tab === 'users') {
+        UsersPage.targetElId = 'systemTabContent';
+        await UsersPage.render('list');
+      } else if (tab === 'branding') {
       contentEl.innerHTML = `
         <div class="section-header" style="margin-top: 10px;">
           <div class="section-title">Personalización de Marca y Temas</div>
@@ -615,8 +621,8 @@ const SystemConfigPage = {
       document.getElementById('sysAccentColor').value = data.accent_color || '#00e676';
       document.getElementById('sysAccentColorHex').textContent = (data.accent_color || '#00e676').toUpperCase();
 
-      document.getElementById('sysBgBaseColor').value = data.bg_base_color || '#f8fafc';
-      document.getElementById('sysBgBaseColorHex').textContent = (data.bg_base_color || '#f8fafc').toUpperCase();
+      document.getElementById('sysBgBaseColor').value = data.bg_base_color || '#f3f5fa';
+      document.getElementById('sysBgBaseColorHex').textContent = (data.bg_base_color || '#f3f5fa').toUpperCase();
       document.getElementById('sysBgSurfaceColor').value = data.bg_surface_color || '#ffffff';
       document.getElementById('sysBgSurfaceColorHex').textContent = (data.bg_surface_color || '#ffffff').toUpperCase();
 

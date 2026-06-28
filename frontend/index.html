@@ -6,55 +6,65 @@
   <title>Iniciar Sesión — Sistema de Asistencia</title>
   <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#ffffff" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/static/main.css?v=30" />
+  <link rel="stylesheet" href="/static/main.css?v=35" />
   <style>
-    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background-color: #f8fafc; color: var(--text-1); font-family: 'Plus Jakarta Sans', sans-serif; position:relative; overflow:hidden; }
-    
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: var(--bg-base, #f3f5fa);
+      color: var(--text-1);
+      font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+      position: relative;
+      overflow: hidden;
+    }
+
     .login-container {
       position: relative;
       z-index: 2;
       display: flex;
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: 24px;
+      background: var(--surface-1, #ffffff);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.07));
+      border-radius: calc(var(--radius, 14px) + 6px);
       width: 100%;
       max-width: 840px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
-      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: var(--shadow-elevated, 0 12px 32px -8px rgba(15, 23, 42, 0.10));
+      animation: slideUp 0.55s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
       overflow: hidden;
     }
-    @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
     .login-visual {
       flex: 1;
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      background: var(--surface-2, #f4f6fa);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       position: relative;
-      padding: 40px;
-      border-left: 1px solid var(--border);
-      color: var(--accent, #4f46e5);
+      padding: 44px 36px;
+      border-left: 1px solid var(--border, rgba(15, 23, 42, 0.08));
       overflow: hidden;
     }
 
     .visual-grid {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-image: 
-        linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
-      background-size: 20px 20px;
-      background-position: center;
-      mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
-      -webkit-mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
-      opacity: 0.8;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(var(--accent-rgb, 37, 99, 235), 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--accent-rgb, 37, 99, 235), 0.04) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.5;
+    }
+
+    .visual-grid::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 35%, transparent 40%, var(--surface-2, #f4f6fa) 100%);
     }
 
     .scanner-wrapper {
@@ -63,16 +73,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 24px;
+      gap: 20px;
     }
 
     .viewfinder {
       position: relative;
-      width: 200px;
-      height: 200px;
-      background: rgba(255, 255, 255, 0.6);
-      border: 1px dashed var(--border);
-      border-radius: 20px;
+      width: 180px;
+      height: 180px;
+      background: var(--surface-1, #ffffff);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+      border-radius: calc(var(--radius, 14px) + 2px);
+      box-shadow: var(--shadow, 0 1px 3px rgba(15, 23, 42, 0.04));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -80,35 +91,36 @@
 
     .viewfinder .corner {
       position: absolute;
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--accent, #4f46e5);
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--accent, #2563eb);
     }
-    .viewfinder .corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; border-top-left-radius: 8px; }
-    .viewfinder .corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; border-top-right-radius: 8px; }
-    .viewfinder .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; border-bottom-left-radius: 8px; }
-    .viewfinder .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; border-bottom-right-radius: 8px; }
+    .viewfinder .corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; border-top-left-radius: 6px; }
+    .viewfinder .corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; border-top-right-radius: 6px; }
+    .viewfinder .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; border-bottom-left-radius: 6px; }
+    .viewfinder .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; border-bottom-right-radius: 6px; }
 
     .scan-line {
       position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent, #4f46e5), transparent);
-      box-shadow: 0 0 8px var(--accent, #4f46e5), 0 0 16px var(--accent, #4f46e5);
-      animation: scanMove 3.5s infinite ease-in-out;
+      left: 8px;
+      right: 8px;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--accent, #1d4ed8), transparent);
+      box-shadow: 0 0 6px var(--accent, #1d4ed8);
+      animation: scanMove 3s infinite ease-in-out;
       z-index: 3;
+      border-radius: 1px;
     }
 
     @keyframes scanMove {
-      0%, 100% { top: 5%; }
-      50% { top: 95%; }
+      0%, 100% { top: 10%; }
+      50% { top: 90%; }
     }
 
     .face-mesh {
-      width: 130px;
-      height: 130px;
-      color: var(--accent, #4f46e5);
+      width: 120px;
+      height: 120px;
+      color: var(--accent, #2563eb);
       opacity: 0.85;
       transition: color 0.3s ease;
     }
@@ -117,51 +129,42 @@
       animation: nodePulse 2s infinite ease-in-out;
       transform-origin: center;
     }
-    .mesh-node:nth-child(even) { animation-delay: 0.6s; }
-    .mesh-node:nth-child(3n) { animation-delay: 1.2s; }
+    .mesh-node:nth-child(even) { animation-delay: 0.5s; }
+    .mesh-node:nth-child(3n) { animation-delay: 1.0s; }
 
     @keyframes nodePulse {
-      0%, 100% { transform: scale(1); opacity: 0.4; }
-      50% { transform: scale(1.6); opacity: 1; filter: drop-shadow(0 0 2px var(--accent, #4f46e5)); }
+      0%, 100% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.5); opacity: 1; filter: drop-shadow(0 0 3px var(--accent, #1d4ed8)); }
     }
 
     .tech-labels {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
       width: 200px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
-      color: var(--text-3);
+      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      font-size: .64rem;
+      color: #7c8da8;
     }
     .tech-row {
       display: flex;
       justify-content: space-between;
-      border-bottom: 1px dashed var(--border);
-      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 3px;
     }
-    .tech-key {
-      font-weight: 500;
-    }
-    .tech-val {
-      color: var(--text-2);
-      font-weight: bold;
-    }
-    .tech-val.active {
-      color: #10b981;
-    }
-    .tech-val.pulse {
-      animation: textPulse 1.5s infinite ease-in-out;
-    }
+    .tech-key { font-weight: 500; }
+    .tech-val { color: #cbd5e1; font-weight: 600; }
+    .tech-val.active { color: #34d399; }
+    .tech-val.pulse { animation: textPulse 1.5s infinite ease-in-out; }
     @keyframes textPulse {
       0%, 100% { opacity: 0.4; }
       50% { opacity: 1; }
     }
 
-    .login-card-panel { 
+    .login-card-panel {
       flex: 1;
-      background: #ffffff; 
-      padding: 48px 44px; 
+      background: var(--surface-1, #ffffff);
+      padding: 48px 44px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
@@ -170,84 +173,90 @@
 
     @media (max-width: 768px) {
       .login-container {
-        max-width: 420px;
+        max-width: 400px;
         flex-direction: column;
-        border-radius: 24px;
+        border-radius: 20px;
         margin: 16px;
       }
-      .login-visual {
-        display: none;
-      }
-      .login-card-panel {
-        padding: 40px 32px;
-      }
+      .login-visual { display: none; }
+      .login-card-panel { padding: 36px 28px; }
     }
-    
-    .logo-row { display:flex; align-items:center; gap:16px; margin-bottom:36px; }
-    .logo-icon { 
-      width: 52px; 
-      height: 52px; 
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); 
+
+    .logo-row { display:flex; align-items:center; gap:14px; margin-bottom:32px; }
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm, 9px);
+      background: linear-gradient(145deg, #2563eb, var(--accent, #1d4ed8));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.3);
     }
-    .logo-row h1 { font-size:1.15rem; font-weight:800; color:var(--text-1); line-height:1.25; margin:0; letter-spacing: -0.015em; }
-    .logo-row p { font-size:.78rem; color:var(--text-3); margin:4px 0 0; font-weight: 500; }
-    
-    .form-group { margin-bottom:22px; }
-    .form-group label { 
-      display:block; 
-      font-size:.72rem; 
-      font-weight:700; 
+    .logo-row h1 {
+      font-family: var(--font-display, 'Sora', sans-serif);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-1);
+      line-height: 1.25;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+    .logo-row p { font-size:.75rem; color:var(--text-3); margin:3px 0 0; font-weight: 500; }
+
+    .form-group { margin-bottom:20px; }
+    .form-group label {
+      display:block;
+      font-size:.7rem;
+      font-weight:600;
       color:var(--text-2);
-      margin-bottom:8px; 
-      letter-spacing:.06em; 
-      text-transform:uppercase; 
+      margin-bottom:6px;
+      letter-spacing:.04em;
+      text-transform:uppercase;
     }
-    .form-group input { 
-      width:100%; 
-      padding:12px 18px; 
-      border-radius:8px; 
-      background: var(--surface-2);
-      border: 1px solid var(--border); 
-      color: var(--text-1); 
-      font-size: .95rem;
-      transition: all 0.25s ease; 
-      box-sizing: border-box; 
+    .form-group input {
+      width:100%;
+      padding:11px 14px;
+      border-radius:var(--radius-sm, 9px);
+      background: var(--surface-2, #eef1f7);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.07));
+      color: var(--text-1);
+      font-size: .86rem;
+      transition: all 0.22s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+      box-sizing: border-box;
     }
-    .form-group input:focus { 
-      outline: none; 
-      border-color: var(--accent); 
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); 
-      background: #ffffff; 
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 29, 78, 216), 0.12);
+      background: var(--bg-raised, #ffffff);
     }
     .form-group input::placeholder { color: var(--text-3); }
-    
-    .btn-login { 
-      width: 100%; 
-      padding: 13px; 
-      border-radius: 8px; 
-      border: none; 
+
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius-sm, 9px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       cursor: pointer;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: #fff; 
-      font-size: 0.95rem; 
-      font-weight: 700; 
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); 
-      margin-top: 12px; 
-      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25); 
+      background: linear-gradient(180deg, #2563eb 0%, var(--accent, #1d4ed8) 100%);
+      color: #fff;
+      font-size: .86rem;
+      font-weight: 600;
+      transition: all 0.22s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+      margin-top: 8px;
       position: relative;
       overflow: hidden;
+      font-family: var(--font-display, 'Sora', sans-serif);
+      box-shadow: 0 1px 2px rgba(29, 78, 216, 0.2), 0 4px 12px -2px rgba(29, 78, 216, 0.28);
     }
-    .btn-login:hover { 
-      transform: translateY(-2px); 
-      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35); 
+    .btn-login:hover {
+      background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(29, 78, 216, 0.25), 0 6px 16px -2px rgba(29, 78, 216, 0.32);
     }
-    .btn-login:disabled { opacity:.6; cursor:not-allowed; transform:none; box-shadow: none; }
-    
+    .btn-login:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
     .btn-login::after {
       content: '';
       position: absolute;
@@ -259,7 +268,7 @@
         to bottom right,
         rgba(255, 255, 255, 0) 0%,
         rgba(255, 255, 255, 0) 40%,
-        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.10) 50%,
         rgba(255, 255, 255, 0) 60%,
         rgba(255, 255, 255, 0) 100%
       );
@@ -270,54 +279,61 @@
     .btn-login:hover::after {
       transform: translate(15%, 15%) rotate(30deg);
     }
-    
-    .login-error { 
-      background: rgba(220, 38, 38, 0.08); 
-      border: 1px solid rgba(220, 38, 38, 0.25);
-      color: var(--danger); 
-      border-radius: 8px; 
-      padding: 12px 16px; 
-      font-size: .85rem; 
-      margin-top: 16px; 
-      display: none; 
+
+    .login-error {
+      background: rgba(255, 109, 0, 0.06);
+      border: 1px solid rgba(255, 109, 0, 0.2);
+      color: var(--danger);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: .82rem;
+      margin-top: 14px;
+      display: none;
       font-weight: 500;
     }
-    .login-error.show { display:block; animation: shake 0.4s ease; }
-    @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
-    
-    .login-footer { margin-top:28px; text-align:center; font-size:.8rem; color:var(--text-3); font-weight:500; }
-    @keyframes slideDownIntro { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    .login-error.show { display:block; animation: shake 0.35s ease; }
+    @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-4px);} 75% {transform: translateX(4px);} }
+
+    .login-footer { margin-top:24px; text-align:center; font-size:.76rem; color:var(--text-3); font-weight:500; }
+    @keyframes slideDownIntro { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     .welcome-intro { animation: slideDownIntro 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.1s; }
+
+    .swipe-hint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: .62rem;
+      font-weight: 600;
+      color: var(--text-3);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      z-index: 2;
+      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+    }
   </style>
 </head>
 <body>
 
-<!-- ── Fondo Mesh Gradient Dinámico ── -->
-<div class="mesh-glows">
-  <div class="glow-orb orb-1"></div>
-  <div class="glow-orb orb-2"></div>
-  <div class="glow-orb orb-3"></div>
-</div>
-
 <div class="login-container">
-  <!-- Panel del Formulario de Login -->
   <div class="login-card-panel">
     <div class="logo-row">
       <div class="logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;stroke:#fff;" id="loginLogoSvg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;stroke:#fff;" id="loginLogoSvg">
           <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
           <line x1="9" y1="22" x2="9" y2="16"></line>
           <line x1="15" y1="22" x2="15" y2="16"></line>
           <line x1="9" y1="16" x2="15" y2="16"></line>
           <circle cx="12" cy="7" r="2"></circle>
         </svg>
-        <img id="loginLogoImg" style="display: none; width: 32px; height: 32px; object-fit: contain;" />
+        <img id="loginLogoImg" style="display: none; width: 28px; height: 28px; object-fit: contain;" />
       </div>
       <div><h1 id="loginSystemName">Control de Asistencia</h1><p id="loginCompanyName">Hikvision DS-K1T323MBWX</p></div>
     </div>
-    <p style="font-size:1.45rem;font-weight:800;color:var(--text-1);margin:0 0 4px;letter-spacing:-0.02em;">Bienvenido</p>
-    <p style="font-size:.86rem;color:var(--text-3);margin:0 0 28px;font-weight:500;">Ingresa tus credenciales para continuar</p>
-    
+    <p style="font-family:var(--font-display,'Sora',sans-serif);font-size:1.3rem;font-weight:600;color:var(--text-1);margin:0 0 4px;letter-spacing:-0.02em;">Bienvenido</p>
+    <p style="font-size:.84rem;color:var(--text-3);margin:0 0 26px;font-weight:500;">Ingresa tus credenciales para continuar</p>
+
     <form id="loginForm">
       <div class="form-group">
         <label for="username">Usuario</label>
@@ -330,45 +346,35 @@
       <button type="submit" class="btn-login" id="btnLogin">Iniciar sesión</button>
       <div class="login-error" id="loginError"></div>
     </form>
-    
+
     <div class="login-footer" id="loginFooter">Sistema de Asistencia v1.0 &mdash; Sede principal</div>
   </div>
 
-  <!-- Panel Visual: Biometría & Animación -->
   <div class="login-visual">
     <div class="visual-grid"></div>
     <div class="scanner-wrapper">
-
-
       <div class="viewfinder">
         <div class="corner tl"></div>
         <div class="corner tr"></div>
         <div class="corner bl"></div>
         <div class="corner br"></div>
         <div class="scan-line"></div>
-        
-        <!-- SVG Malla Facial Biométrica -->
+
         <svg class="face-mesh" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-          <!-- Contornos -->
-          <path d="M25,35 Q20,55 35,75 T50,85 T65,75 T75,35 Q70,20 50,20 T25,35 Z" stroke-width="0.5" stroke-dasharray="1 1" opacity="0.3" />
-          <path d="M30,38 Q26,53 38,70 T50,78 T62,70 T70,38 Q66,26 50,26 T30,38 Z" stroke-width="0.75" opacity="0.6" />
-          <!-- Cejas y Ojos -->
+          <path d="M25,35 Q20,55 35,75 T50,85 T65,75 T75,35 Q70,20 50,20 T25,35 Z" stroke-width="0.5" stroke-dasharray="1 1" opacity="0.25" />
+          <path d="M30,38 Q26,53 38,70 T50,78 T62,70 T70,38 Q66,26 50,26 T30,38 Z" stroke-width="0.75" opacity="0.5" />
           <path d="M34,42 Q39,40 44,42" stroke-width="0.75" />
           <path d="M56,42 Q61,40 66,42" stroke-width="0.75" />
           <circle cx="39" cy="45" r="1.5" fill="currentColor" />
           <circle cx="61" cy="45" r="1.5" fill="currentColor" />
-          <!-- Nariz -->
           <path d="M50,44 L50,58 L46,58 M50,58 L54,58" stroke-width="0.75" />
-          <!-- Boca -->
           <path d="M42,66 Q50,70 58,66" stroke-width="0.75" />
-          <!-- Conexiones adicionales de la malla -->
-          <line x1="39" y1="45" x2="50" y2="30" stroke-width="0.5" opacity="0.3" />
-          <line x1="61" y1="45" x2="50" y2="30" stroke-width="0.5" opacity="0.3" />
-          <line x1="39" y1="45" x2="30" y2="52" stroke-width="0.5" opacity="0.3" />
-          <line x1="61" y1="45" x2="70" y2="52" stroke-width="0.5" opacity="0.3" />
-          <line x1="30" y1="52" x2="38" y2="70" stroke-width="0.5" opacity="0.3" />
-          <line x1="70" y1="52" x2="62" y2="70" stroke-width="0.5" opacity="0.3" />
-          <!-- Puntos Biométricos Pulsantes -->
+          <line x1="39" y1="45" x2="50" y2="30" stroke-width="0.5" opacity="0.25" />
+          <line x1="61" y1="45" x2="50" y2="30" stroke-width="0.5" opacity="0.25" />
+          <line x1="39" y1="45" x2="30" y2="52" stroke-width="0.5" opacity="0.25" />
+          <line x1="61" y1="45" x2="70" y2="52" stroke-width="0.5" opacity="0.25" />
+          <line x1="30" y1="52" x2="38" y2="70" stroke-width="0.5" opacity="0.25" />
+          <line x1="70" y1="52" x2="62" y2="70" stroke-width="0.5" opacity="0.25" />
           <circle class="mesh-node" cx="50" cy="30" r="1.8" fill="currentColor" />
           <circle class="mesh-node" cx="39" cy="45" r="1.8" fill="currentColor" />
           <circle class="mesh-node" cx="61" cy="45" r="1.8" fill="currentColor" />
@@ -379,21 +385,20 @@
           <circle class="mesh-node" cx="50" cy="78" r="1.8" fill="currentColor" />
         </svg>
       </div>
-      
-      <!-- Introducción / Descripción del Sistema -->
-      <div class="welcome-intro" style="text-align: center; max-width: 260px; margin-top: 4px;">
-        <p style="font-size: 0.82rem; color: var(--text-3); margin: 0; line-height: 1.55; font-weight: 500;">
-          Plataforma centralizada para el control, registro y monitoreo de asistencia en tiempo real, integrada directamente con tu terminal biométrico facial.
+
+      <div class="welcome-intro" style="text-align: center; max-width: 250px; margin-top: 4px;">
+        <p style="font-size: 0.78rem; color: var(--text-3); margin: 0; line-height: 1.55; font-weight: 500;">
+          Control centralizado de asistencia en tiempo real, conectado a tu terminal biométrico facial.
         </p>
       </div>
     </div>
+    <div class="swipe-hint">Verificación biométrica</div>
   </div>
 </div>
 
 <script>
   if (localStorage.getItem('token')) window.location.href = '/app';
-  
-  // Cargar branding del sistema
+
   (async () => {
     function hexToRgb(hex) {
       if (!hex) return null;
@@ -432,68 +437,50 @@
             logoIcon.style.background = 'none';
             logoIcon.style.boxShadow = 'none';
             logoIcon.style.width = 'auto';
-            logoIcon.style.height = '48px';
+            logoIcon.style.height = '44px';
             logoIcon.style.borderRadius = '0';
             img.style.width = 'auto';
             img.style.height = '100%';
-            img.style.maxWidth = '180px';
+            img.style.maxWidth = '160px';
             img.style.objectFit = 'contain';
           }
         }
-        
-        // Inyectar colores de tema y fondos
-        const base = data.bg_base_color || '#f8fafc';
-        const surface = data.bg_surface_color || '#ffffff';
-        const pColor = data.primary_color || '#4f46e5';
-        const aColor = data.accent_color || '#7c3aed';
 
-        document.documentElement.style.setProperty('--bg-base', base);
-        document.documentElement.style.setProperty('--bg-raised', surface);
-        document.documentElement.style.setProperty('--surface-1', surface);
-        
+        const base = data.bg_base_color || '#f3f5fa';
+        const surface = data.bg_surface_color || '#ffffff';
+        const pColor = data.primary_color || '#1d4ed8';
+        const aColor = data.accent_color || '#0a1020';
+
+        const lightBase = base && getBrightness(base) >= 210 ? base : '#f7f8fb';
+        document.documentElement.style.setProperty('--bg-base', lightBase);
+        document.documentElement.style.setProperty('--bg-raised', '#ffffff');
+        document.documentElement.style.setProperty('--surface-1', '#ffffff');
+        document.documentElement.style.setProperty('--surface-2', '#f4f6fa');
+        document.documentElement.style.setProperty('--surface-3', '#e9edf4');
+        document.documentElement.style.setProperty('--text-1', '#0f172a');
+        document.documentElement.style.setProperty('--text-2', '#475569');
+        document.documentElement.style.setProperty('--text-3', '#94a3b8');
+        document.documentElement.style.setProperty('--border', 'rgba(15, 23, 42, 0.08)');
+        document.documentElement.style.setProperty('--border-light', 'rgba(15, 23, 42, 0.12)');
+
         document.documentElement.style.setProperty('--accent', pColor);
         const pRgb = hexToRgb(pColor);
         if (pRgb) {
           document.documentElement.style.setProperty('--accent-rgb', pRgb);
           document.documentElement.style.setProperty('--border-glow', `rgba(${pRgb}, 0.08)`);
         }
-        
+
         document.documentElement.style.setProperty('--accent-2', aColor);
         const aRgb = hexToRgb(aColor);
         if (aRgb) {
           document.documentElement.style.setProperty('--accent-2-rgb', aRgb);
         }
-        if (logoIcon && !data.logo_path) {
-          logoIcon.style.boxShadow = `0 4px 12px rgba(${pRgb || '79, 70, 229'}, 0.15)`;
-        }
 
-        // Calcular contraste según el brillo de las tarjetas
-        const brightness = getBrightness(surface);
-        if (brightness < 135) {
-          document.documentElement.style.setProperty('--text-1', '#f8fafc');
-          document.documentElement.style.setProperty('--text-2', '#cbd5e1');
-          document.documentElement.style.setProperty('--text-3', '#94a3b8');
-          document.documentElement.style.setProperty('--border', '#334155');
-          document.documentElement.style.setProperty('--border-light', '#475569');
-          document.documentElement.style.setProperty('--surface-2', '#1e293b');
-          document.documentElement.style.setProperty('--surface-3', '#334155');
-        } else {
-          document.documentElement.style.setProperty('--text-1', '#0f172a');
-          document.documentElement.style.setProperty('--text-2', '#334155');
-          document.documentElement.style.setProperty('--text-3', '#64748b');
-          document.documentElement.style.setProperty('--border', '#e2e8f0');
-          document.documentElement.style.setProperty('--border-light', '#cbd5e1');
-          document.documentElement.style.setProperty('--surface-2', '#f1f5f9');
-          document.documentElement.style.setProperty('--surface-3', '#e2e8f0');
-        }
+        document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '37, 99, 235'}, 0.025) 0%, ${lightBase} 100%)`;
 
-        document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '79, 70, 229'}, 0.03) 0%, ${base} 100%)`;
-
-        // Actualizar favicon de la pestaña del navegador
         const faviconEl = document.getElementById('favicon');
         if (faviconEl) {
           if (data.logo_path) {
-            // Recortar logo en círculo usando canvas
             const size = 64;
             const img = new Image();
             img.crossOrigin = 'anonymous';

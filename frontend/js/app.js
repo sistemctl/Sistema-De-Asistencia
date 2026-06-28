@@ -184,11 +184,7 @@ function loadUserInfo() {
   document.getElementById('userRole').textContent  = roleLabels[user.role] || user.role;
   document.getElementById('userAvatar').textContent = user.full_name.charAt(0).toUpperCase();
 
-  // Mostrar menú de usuarios y dispositivo solo a Super Admins
-  const navUsers = document.getElementById('nav-users');
-  if (navUsers) {
-    navUsers.style.display = user.role === 'admin' ? 'flex' : 'none';
-  }
+
   const navDevice = document.getElementById('nav-device');
   if (navDevice) {
     navDevice.style.display = user.role === 'admin' ? 'flex' : 'none';
@@ -326,10 +322,10 @@ async function loadSystemBranding() {
     }
     
     // Inyectar colores de tema y fondos en el DOM
-    const base = data.bg_base_color || '#f8fafc';
+    const base = data.bg_base_color || '#f3f5fa';
     const surface = data.bg_surface_color || '#ffffff';
-    const pColor = data.primary_color || '#4f46e5';
-    const aColor = data.accent_color || '#7c3aed';
+    const pColor = data.primary_color || '#1d4ed8';
+    const aColor = data.accent_color || '#0a1020';
 
     applyThemeColors(pColor, aColor, base, surface);
 
@@ -369,35 +365,20 @@ function applyThemeColors(pColor, aColor, base, surface) {
     return;
   }
 
-  // Inyectar variables base
-  document.documentElement.style.setProperty('--bg-base', base);
-  document.documentElement.style.setProperty('--bg-raised', surface);
-  document.documentElement.style.setProperty('--surface-1', surface);
+  // Modo claro: shell blanco fijo; el branding solo afecta acento y fondo sutil
+  const lightBase = base && getBrightness(base) >= 210 ? base : '#f7f8fb';
+  document.documentElement.style.setProperty('--bg-base', lightBase);
+  document.documentElement.style.setProperty('--bg-raised', '#ffffff');
+  document.documentElement.style.setProperty('--surface-1', '#ffffff');
+  document.documentElement.style.setProperty('--surface-2', '#f4f6fa');
+  document.documentElement.style.setProperty('--surface-3', '#e9edf4');
+  document.documentElement.style.setProperty('--text-1', '#0f172a');
+  document.documentElement.style.setProperty('--text-2', '#475569');
+  document.documentElement.style.setProperty('--text-3', '#94a3b8');
+  document.documentElement.style.setProperty('--border', 'rgba(15, 23, 42, 0.08)');
+  document.documentElement.style.setProperty('--border-light', 'rgba(15, 23, 42, 0.12)');
 
-  // Calcular contraste según el brillo de las tarjetas (donde reside el texto)
-  const brightness = getBrightness(surface);
-  if (brightness < 135) {
-    // Modo Oscuro Automático
-    document.documentElement.style.setProperty('--text-1', '#f8fafc');
-    document.documentElement.style.setProperty('--text-2', '#cbd5e1');
-    document.documentElement.style.setProperty('--text-3', '#94a3b8');
-    document.documentElement.style.setProperty('--border', '#334155');
-    document.documentElement.style.setProperty('--border-light', '#475569');
-    document.documentElement.style.setProperty('--surface-2', '#1e293b');
-    document.documentElement.style.setProperty('--surface-3', '#334155');
-  } else {
-    // Modo Claro (Valores por defecto de styles.css)
-    document.documentElement.style.setProperty('--text-1', '#0f172a');
-    document.documentElement.style.setProperty('--text-2', '#334155');
-    document.documentElement.style.setProperty('--text-3', '#64748b');
-    document.documentElement.style.setProperty('--border', '#e2e8f0');
-    document.documentElement.style.setProperty('--border-light', '#cbd5e1');
-    document.documentElement.style.setProperty('--surface-2', '#f1f5f9');
-    document.documentElement.style.setProperty('--surface-3', '#e2e8f0');
-  }
-
-  // Actualizar fondo gradiente radial decorativo
-  document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '79, 70, 229'}, 0.03) 0%, ${base} 100%)`;
+  document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '37, 99, 235'}, 0.025) 0%, ${lightBase} 100%)`;
 }
 
 // Exponer globalmente para que system_settings.js y device.js lo puedan invocar
