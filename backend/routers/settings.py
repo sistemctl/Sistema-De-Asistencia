@@ -66,6 +66,8 @@ class SettingsUpdateSchema(BaseModel):
     absences_check_time: Optional[str] = "11:00"
     backup_dir: Optional[str] = "backups"
     backup_retention_days: Optional[int] = 7
+    button_style: Optional[str] = "rounded"
+    sidebar_style: Optional[str] = "dark"
 
 
 
@@ -123,6 +125,8 @@ class SettingsPatchSchema(BaseModel):
     absences_check_time: Optional[str] = None
     backup_dir: Optional[str] = None
     backup_retention_days: Optional[int] = None
+    button_style: Optional[str] = None
+    sidebar_style: Optional[str] = None
 
 
 
@@ -264,7 +268,9 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "daily_report_time": config.daily_report_time or "19:00",
         "absences_check_time": config.absences_check_time or "11:00",
         "backup_dir": config.backup_dir or "backups",
-        "backup_retention_days": config.backup_retention_days if config.backup_retention_days is not None else 7
+        "backup_retention_days": config.backup_retention_days if config.backup_retention_days is not None else 7,
+        "button_style": getattr(config, "button_style", "rounded") or "rounded",
+        "sidebar_style": getattr(config, "sidebar_style", "dark") or "dark"
     }
 
 @router.put("")
@@ -336,6 +342,8 @@ def update_settings(
     config.absences_check_time = data.absences_check_time
     config.backup_dir = data.backup_dir
     config.backup_retention_days = data.backup_retention_days
+    config.button_style = data.button_style or "rounded"
+    config.sidebar_style = data.sidebar_style or "dark"
     
     db.commit()
     db.refresh(config)

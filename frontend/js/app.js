@@ -327,7 +327,7 @@ async function loadSystemBranding() {
     const pColor = data.primary_color || '#1d4ed8';
     const aColor = data.accent_color || '#0a1020';
 
-    applyThemeColors(pColor, aColor, base, surface);
+    applyThemeColors(pColor, aColor, base, surface, data.button_style || 'rounded', data.sidebar_style || 'dark');
 
     // Actualizar favicon de la pestaña del navegador
     updateFavicon(data.logo_path, pColor, data.system_name);
@@ -337,7 +337,11 @@ async function loadSystemBranding() {
 }
 
 // Función para aplicar colores de tema en tiempo real
-function applyThemeColors(pColor, aColor, base, surface) {
+function applyThemeColors(pColor, aColor, base, surface, buttonStyle = 'rounded', sidebarStyle = 'dark') {
+  // Aplicar estilos de botones/bordes y de barra lateral
+  document.documentElement.setAttribute('data-button-style', buttonStyle);
+  document.documentElement.setAttribute('data-sidebar-style', sidebarStyle);
+
   // Mapear primario/acento y sus componentes RGB
   document.documentElement.style.setProperty('--accent', pColor);
   const pRgb = hexToRgb(pColor);

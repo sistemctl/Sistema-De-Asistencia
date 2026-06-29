@@ -291,3 +291,72 @@
   .topbar { padding: 0 16px; }
   .content { padding: 16px; }
 }
+
+/* ── ESTILOS DINÁMICOS DE APARIENCIA (BOTONES, BORDES Y SIDEBAR) ── */
+
+:root[data-button-style="compact"] {
+  --radius: 8px !important;
+  --radius-sm: 5px !important;
+}
+:root[data-button-style="sharp"] {
+  --radius: 0px !important;
+  --radius-sm: 0px !important;
+}
+:root[data-button-style="rounded"] {
+  --radius: 14px !important;
+  --radius-sm: 9px !important;
+}
+
+/* Sidebar Oscuro */
+:root[data-sidebar-style="dark"] .sidebar {
+  background: #0b0f19 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+:root[data-sidebar-style="dark"] .sidebar-brand {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+:root[data-sidebar-style="dark"] .sidebar-brand-text strong {
+  color: #ffffff !important;
+}
+:root[data-sidebar-style="dark"] .sidebar-brand-text span {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+:root[data-sidebar-style="dark"] .nav-label,
+:root[data-sidebar-style="dark"] .nav-sublabel {
+  color: rgba(255, 255, 255, 0.4) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+:root[data-sidebar-style="dark"] .nav-item {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+:root[data-sidebar-style="dark"] .nav-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+:root[data-sidebar-style="dark"] .nav-item.active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Sidebar Claro */
+:root[data-sidebar-style="light"] .sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+/* Sidebar Vidriado / Glassmorphic */
+:root[data-sidebar-style="glass"] .sidebar {
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.02) !important;
+}
+.dark-theme :root[data-sidebar-style="glass"] .sidebar {
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+

@@ -10,7 +10,7 @@ const SystemConfigPage = {
     document.getElementById('pageContent').innerHTML = `
       <div class="tabs-container">
         <button class="tab-btn active" data-tab="branding" onclick="SystemConfigPage.switchTab('branding')">
-          Personalización de Marca
+          Apariencia
         </button>
         <button class="tab-btn" data-tab="email_settings" onclick="SystemConfigPage.switchTab('email_settings')">
           Configuración de Correo
@@ -65,14 +65,14 @@ const SystemConfigPage = {
       } else if (tab === 'branding') {
       contentEl.innerHTML = `
         <div class="section-header" style="margin-top: 10px;">
-          <div class="section-title">Personalización de Marca y Temas</div>
+          <div class="section-title">Apariencia y Marca del Sistema</div>
         </div>
         
         <div style="max-width: 600px; margin-top: 16px;">
           <div class="card">
             <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
               <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Branding e Identidad del Sistema
+              Apariencia y Estilos Visuales
             </div>
             
             <div class="field" style="margin-bottom: 16px;">
@@ -119,6 +119,25 @@ const SystemConfigPage = {
               </div>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+              <div class="field">
+                <label>Bordes de Botones y Tarjetas</label>
+                <select id="sysButtonStyle" style="width: 100%; box-sizing: border-box;">
+                  <option value="rounded">Redondeado / Moderno</option>
+                  <option value="compact">Compacto / Profesional</option>
+                  <option value="sharp">Recto / Industrial</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Tema de la Barra Lateral</label>
+                <select id="sysSidebarStyle" style="width: 100%; box-sizing: border-box;">
+                  <option value="dark">Oscuro Clásico</option>
+                  <option value="light">Claro Limpio</option>
+                  <option value="glass">Vidriado (Glassmorphism)</option>
+                </select>
+              </div>
+            </div>
+
             <div class="field" style="margin-bottom: 16px;">
               <label>Logotipo del Sistema (PNG, JPG o SVG)</label>
               <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 12px; border-radius: 12px; border: 1px dashed var(--border);">
@@ -136,7 +155,7 @@ const SystemConfigPage = {
 
             <div style="text-align: right; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 24px;">
               <button class="btn btn-primary" id="btnSaveBranding" style="width: 100%; padding: 12px; font-weight: bold;">
-                Guardar cambios de personalización
+                Guardar cambios de apariencia
               </button>
             </div>
           </div>
@@ -626,6 +645,9 @@ const SystemConfigPage = {
       document.getElementById('sysBgSurfaceColor').value = data.bg_surface_color || '#ffffff';
       document.getElementById('sysBgSurfaceColorHex').textContent = (data.bg_surface_color || '#ffffff').toUpperCase();
 
+      document.getElementById('sysButtonStyle').value = data.button_style || 'rounded';
+      document.getElementById('sysSidebarStyle').value = data.sidebar_style || 'dark';
+
       const svgDef = document.getElementById('sysLogoSvgDefault');
       const imgPrev = document.getElementById('sysLogoImgPreview');
       const prevContainer = document.getElementById('sysLogoPreviewContainer');
@@ -711,6 +733,8 @@ const SystemConfigPage = {
     const accentColor = document.getElementById('sysAccentColor').value;
     const bgBaseColor = document.getElementById('sysBgBaseColor').value;
     const bgSurfaceColor = document.getElementById('sysBgSurfaceColor').value;
+    const buttonStyle = document.getElementById('sysButtonStyle').value;
+    const sidebarStyle = document.getElementById('sysSidebarStyle').value;
 
     if (!systemName) {
       Toast.show('Por favor, ingresa el nombre del sistema', 'warning');
@@ -734,6 +758,8 @@ const SystemConfigPage = {
         accent_color: accentColor,
         bg_base_color: bgBaseColor,
         bg_surface_color: bgSurfaceColor,
+        button_style: buttonStyle,
+        sidebar_style: sidebarStyle,
         work_days: this.settings.work_days || '1,2,3,4,5',
         time_format: this.settings.time_format || '24h',
         entry_tolerance_minutes: this.settings.entry_tolerance_minutes ?? 10,
@@ -756,7 +782,7 @@ const SystemConfigPage = {
         flexible_shift_end: this.settings.flexible_shift_end || '18:00:00'
       });
 
-      Toast.show('Personalización de marca y colores guardada correctamente', 'success');
+      Toast.show('Apariencia y marca guardadas correctamente', 'success');
 
       if (window.loadSystemBranding) {
         await window.loadSystemBranding();

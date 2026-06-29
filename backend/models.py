@@ -210,6 +210,8 @@ class SystemConfig(Base):
     bg_surface_color = Column(String(30), default="#ffffff")
     work_days = Column(String(100), default="1,2,3,4,5") # Lunes a Viernes (1=Lunes, 7=Domingo)
     time_format = Column(String(10), default="24h") # 12h / 24h
+    button_style = Column(String(50), default="rounded")
+    sidebar_style = Column(String(50), default="dark")
     
     # ── QR Settings ──
     qr_badge_show_blood_type = Column(Boolean, default=True)

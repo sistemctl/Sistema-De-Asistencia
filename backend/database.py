@@ -37,7 +37,32 @@ def init_db():
     """Crea todas las tablas si no existen y siembra datos iniciales."""
     from backend import models  # noqa: F401 — importar para registrar los modelos
     Base.metadata.create_all(bind=engine)
+    _apply_database_migrations()
     _seed_initial_data()
+
+
+def _apply_database_migrations():
+    """Ejecuta migraciones rápidas para añadir columnas nuevas si no existen."""
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        # Añadir button_style si no existe
+        try:
+            db.execute(text("ALTER TABLE system_config ADD COLUMN button_style VARCHAR(50) DEFAULT 'rounded'"))
+            db.commit()
+            logger.info("Migración: Columna button_style agregada exitosamente.")
+        except Exception:
+            db.rollback()
+            
+        # Añadir sidebar_style si no existe
+        try:
+            db.execute(text("ALTER TABLE system_config ADD COLUMN sidebar_style VARCHAR(50) DEFAULT 'dark'"))
+            db.commit()
+            logger.info("Migración: Columna sidebar_style agregada exitosamente.")
+        except Exception:
+            db.rollback()
+    finally:
+        db.close()
 
 
 def _seed_initial_data():
