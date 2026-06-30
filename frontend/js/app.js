@@ -327,7 +327,7 @@ async function loadSystemBranding() {
     const pColor = data.primary_color || '#1d4ed8';
     const aColor = data.accent_color || '#0a1020';
 
-    applyThemeColors(pColor, aColor, base, surface, data.button_style || 'rounded', data.sidebar_style || 'dark');
+    applyThemeColors(pColor, aColor, base, surface, data.button_style || 'rounded', data.sidebar_style || 'dark', data.card_style || 'glass', data.enable_mesh_bg ?? true);
 
     // Actualizar favicon de la pestaña del navegador
     updateFavicon(data.logo_path, pColor, data.system_name);
@@ -337,10 +337,34 @@ async function loadSystemBranding() {
 }
 
 // Función para aplicar colores de tema en tiempo real
-function applyThemeColors(pColor, aColor, base, surface, buttonStyle = 'rounded', sidebarStyle = 'dark') {
-  // Aplicar estilos de botones/bordes y de barra lateral
+// Helpers para calcular colores más claros/oscuros en JS
+function lightenColor(hex, percent) {
+  if (!hex || hex.charAt(0) !== '#') return hex;
+  const num = parseInt(hex.replace("#",""), 16),
+    amt = Math.round(2.55 * percent),
+    R = (num >> 16) + amt,
+    G = (num >> 8 & 0x00FF) + amt,
+    B = (num & 0x0000FF) + amt;
+  return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+}
+
+function darkenColor(hex, percent) {
+  if (!hex || hex.charAt(0) !== '#') return hex;
+  const num = parseInt(hex.replace("#",""), 16),
+    amt = Math.round(2.55 * percent),
+    R = (num >> 16) - amt,
+    G = (num >> 8 & 0x00FF) - amt,
+    B = (num & 0x0000FF) - amt;
+  return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+}
+
+// Función para aplicar colores de tema en tiempo real
+function applyThemeColors(pColor, aColor, base, surface, buttonStyle = 'rounded', sidebarStyle = 'dark', cardStyle = 'glass', enableMeshBg = true) {
+  // Aplicar estilos de botones/bordes, barra lateral, estilo de tarjetas y fondo mesh
   document.documentElement.setAttribute('data-button-style', buttonStyle);
   document.documentElement.setAttribute('data-sidebar-style', sidebarStyle);
+  document.documentElement.setAttribute('data-card-style', cardStyle);
+  document.documentElement.setAttribute('data-mesh-bg', enableMeshBg ? 'true' : 'false');
 
   // Mapear primario/acento y sus componentes RGB
   document.documentElement.style.setProperty('--accent', pColor);
@@ -356,9 +380,17 @@ function applyThemeColors(pColor, aColor, base, surface, buttonStyle = 'rounded'
     document.documentElement.style.setProperty('--accent-2-rgb', aRgb);
   }
 
-  // Si está activo el modo oscuro, no inyectamos los colores de fondo/superficie/texto claros como inline-styles,
-  // permitiendo que apliquen los estilos de dark_mode.css
-  if (document.documentElement.classList.contains('dark-theme')) {
+  // Guardar el RGB de la tarjeta (surface) para el efecto glassmorphism
+  const sRgb = hexToRgb(surface || '#ffffff');
+  if (sRgb) {
+    document.documentElement.style.setProperty('--surface-1-rgb', sRgb);
+  }
+
+  // Si está activo el modo oscuro y no tenemos una paleta con colores personalizados (ej. base oscuro personalizado), 
+  // removemos los fondos fijos para que aplique el stylesheet dark_mode.css.
+  const isCustomDarkPalette = (base && getBrightness(base) < 50 && base !== '#060912');
+
+  if (document.documentElement.classList.contains('dark-theme') && !isCustomDarkPalette) {
     const propsToRemove = [
       '--bg-base', '--bg-raised', '--surface-1', '--surface-2', '--surface-3',
       '--text-1', '--text-2', '--text-3',
@@ -369,20 +401,34 @@ function applyThemeColors(pColor, aColor, base, surface, buttonStyle = 'rounded'
     return;
   }
 
-  // Modo claro: shell blanco fijo; el branding solo afecta acento y fondo sutil
-  const lightBase = base && getBrightness(base) >= 210 ? base : '#f7f8fb';
-  document.documentElement.style.setProperty('--bg-base', lightBase);
-  document.documentElement.style.setProperty('--bg-raised', '#ffffff');
-  document.documentElement.style.setProperty('--surface-1', '#ffffff');
-  document.documentElement.style.setProperty('--surface-2', '#f4f6fa');
-  document.documentElement.style.setProperty('--surface-3', '#e9edf4');
-  document.documentElement.style.setProperty('--text-1', '#0f172a');
-  document.documentElement.style.setProperty('--text-2', '#475569');
-  document.documentElement.style.setProperty('--text-3', '#94a3b8');
-  document.documentElement.style.setProperty('--border', 'rgba(15, 23, 42, 0.08)');
-  document.documentElement.style.setProperty('--border-light', 'rgba(15, 23, 42, 0.12)');
+  // Aplicar colores de fondo y tarjetas (tanto para claro como para oscuro personalizado)
+  const brightness = getBrightness(base);
+  const isDark = brightness < 120;
+  
+  document.documentElement.style.setProperty('--bg-base', base);
+  document.documentElement.style.setProperty('--surface-1', surface);
+  document.documentElement.style.setProperty('--bg-raised', surface);
+  
+  // Calcular colores derivados para surface-2, surface-3, bordes y textos según luminosidad
+  if (isDark) {
+    document.documentElement.style.setProperty('--surface-2', lightenColor(surface, 5));
+    document.documentElement.style.setProperty('--surface-3', lightenColor(surface, 10));
+    document.documentElement.style.setProperty('--text-1', '#f1f5f9');
+    document.documentElement.style.setProperty('--text-2', '#cbd5e1');
+    document.documentElement.style.setProperty('--text-3', '#7c8da8');
+    document.documentElement.style.setProperty('--border', 'rgba(255, 255, 255, 0.06)');
+    document.documentElement.style.setProperty('--border-light', 'rgba(255, 255, 255, 0.10)');
+  } else {
+    document.documentElement.style.setProperty('--surface-2', darkenColor(surface, 4));
+    document.documentElement.style.setProperty('--surface-3', darkenColor(surface, 8));
+    document.documentElement.style.setProperty('--text-1', '#0f172a');
+    document.documentElement.style.setProperty('--text-2', '#475569');
+    document.documentElement.style.setProperty('--text-3', '#94a3b8');
+    document.documentElement.style.setProperty('--border', 'rgba(15, 23, 42, 0.08)');
+    document.documentElement.style.setProperty('--border-light', 'rgba(15, 23, 42, 0.12)');
+  }
 
-  document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '37, 99, 235'}, 0.025) 0%, ${lightBase} 100%)`;
+  document.body.style.backgroundImage = `radial-gradient(circle at 10% 20%, rgba(${pRgb || '37, 99, 235'}, 0.018) 0%, ${base} 100%)`;
 }
 
 // Exponer globalmente para que system_settings.js y device.js lo puedan invocar
@@ -457,7 +503,16 @@ function initTheme() {
     // Volver a evaluar colores de branding con el nuevo estado del tema
     if (window.currentBrandingData) {
       const d = window.currentBrandingData;
-      applyThemeColors(d.primary_color, d.accent_color, d.bg_base_color, d.bg_surface_color);
+      applyThemeColors(
+        d.primary_color,
+        d.accent_color,
+        d.bg_base_color,
+        d.bg_surface_color,
+        d.button_style || 'rounded',
+        d.sidebar_style || 'dark',
+        d.card_style || 'glass',
+        d.enable_mesh_bg ?? true
+      );
     }
   });
 }

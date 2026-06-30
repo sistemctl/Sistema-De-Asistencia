@@ -7,8 +7,8 @@
   <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#ffffff" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/static/main.css?v=35" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/main.css?v=37" />
   <style>
     body {
       display: flex;
@@ -27,11 +27,9 @@
       z-index: 2;
       display: flex;
       background: var(--surface-1, #ffffff);
-      border: 1px solid var(--border, rgba(15, 23, 42, 0.07));
-      border-radius: calc(var(--radius, 14px) + 6px);
+      border: 1px solid var(--border, #d1d5db);
       width: 100%;
       max-width: 840px;
-      box-shadow: var(--shadow-elevated, 0 12px 32px -8px rgba(15, 23, 42, 0.10));
       animation: slideUp 0.55s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
       overflow: hidden;
     }
@@ -81,9 +79,7 @@
       width: 180px;
       height: 180px;
       background: var(--surface-1, #ffffff);
-      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
-      border-radius: calc(var(--radius, 14px) + 2px);
-      box-shadow: var(--shadow, 0 1px 3px rgba(15, 23, 42, 0.04));
+      border: 1px solid var(--border, #d1d5db);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -236,10 +232,9 @@
     .btn-login {
       width: 100%;
       padding: 12px;
-      border-radius: var(--radius-sm, 9px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--accent, #0055ff);
       cursor: pointer;
-      background: linear-gradient(180deg, #2563eb 0%, var(--accent, #1d4ed8) 100%);
+      background: var(--accent, #0055ff);
       color: #fff;
       font-size: .86rem;
       font-weight: 600;
@@ -247,13 +242,13 @@
       margin-top: 8px;
       position: relative;
       overflow: hidden;
-      font-family: var(--font-display, 'Sora', sans-serif);
-      box-shadow: 0 1px 2px rgba(29, 78, 216, 0.2), 0 4px 12px -2px rgba(29, 78, 216, 0.28);
+      font-family: var(--font-display, 'Archivo', sans-serif);
+      box-shadow: none;
     }
     .btn-login:hover {
-      background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
+      background: #0044cc;
+      border-color: #0044cc;
       transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(29, 78, 216, 0.25), 0 6px 16px -2px rgba(29, 78, 216, 0.32);
     }
     .btn-login:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 

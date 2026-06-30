@@ -83,7 +83,7 @@ const ReportsAnalytics = {
                 position: 'right',
                 labels: {
                   color: '#cbd5e1',
-                  font: { family: 'Plus Jakarta Sans', size: 10, weight: 600 }
+                  font: { family: 'IBM Plex Mono', size: 10, weight: 600 }
                 }
               }
             },
@@ -161,12 +161,12 @@ const ReportsAnalytics = {
             },
             scales: {
               x: { 
-                ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 9, weight: 500 } }, 
-                grid: { color: 'rgba(255,255,255,.015)' } 
+                ticks: { color: '#64748b', font: { family: 'IBM Plex Mono', size: 9, weight: 500 } }, 
+                grid: { color: 'rgba(0,0,0,0.05)' } 
               },
               y: { 
-                ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 9, weight: 500 }, stepSize: 1 }, 
-                grid: { color: 'rgba(255,255,255,.015)' } 
+                ticks: { color: '#64748b', font: { family: 'IBM Plex Mono', size: 9, weight: 500 }, stepSize: 1 }, 
+                grid: { color: 'rgba(0,0,0,0.05)' } 
               }
             },
             onClick: (e, activeElements) => {
@@ -223,7 +223,7 @@ const ReportsAnalytics = {
                   position: 'bottom',
                   labels: {
                     color: document.documentElement.classList.contains('dark-theme') ? '#cbd5e1' : '#0b1c30',
-                    font: { family: 'Plus Jakarta Sans', size: 14, weight: 600 }
+                    font: { family: 'IBM Plex Mono', size: 13, weight: 600 }
                   }
                 }
               },
@@ -271,18 +271,18 @@ const ReportsAnalytics = {
                 legend: {
                   labels: {
                     color: document.documentElement.classList.contains('dark-theme') ? '#cbd5e1' : '#0b1c30',
-                    font: { family: 'Plus Jakarta Sans', size: 12, weight: 600 }
+                    font: { family: 'IBM Plex Mono', size: 11, weight: 600 }
                   }
                 }
               },
               scales: {
                 x: { 
-                  ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 11, weight: 500 } }, 
-                  grid: { color: 'rgba(255,255,255,.03)' } 
+                  ticks: { color: '#64748b', font: { family: 'IBM Plex Mono', size: 10, weight: 500 } }, 
+                  grid: { color: 'rgba(0,0,0,0.05)' } 
                 },
                 y: { 
-                  ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 11, weight: 500 }, stepSize: 1 }, 
-                  grid: { color: 'rgba(255,255,255,.03)' } 
+                  ticks: { color: '#64748b', font: { family: 'IBM Plex Mono', size: 10, weight: 500 }, stepSize: 1 }, 
+                  grid: { color: 'rgba(0,0,0,0.05)' } 
                 }
               }
             }
@@ -305,18 +305,17 @@ const ReportsAnalytics = {
     };
 
     container.innerHTML = `
-      <div class="double-bezel-outer">
-        <div class="double-bezel-inner" style="border:none; box-shadow:none; padding:0;">
+      <div style="border: 1px solid var(--border); background: var(--surface-1); padding: 24px;">
         <div class="card-header">
           <div>
-            <div class="card-title" style="font-size: 1.1rem; color: var(--accent);">
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <div class="card-title" style="font-size: 1rem; color: var(--text-1); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em;">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;color:var(--accent);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
               Tabla Comparativa de Analíticas
             </div>
-            <div class="card-sub">Resumen de puntualidad y métricas clave de todos los elementos en el periodo seleccionado</div>
+            <div class="card-sub" style="font-family: var(--font-mono);">Resumen de puntualidad y métricas clave · periodo seleccionado</div>
           </div>
         </div>
-        <div class="table-wrap" style="margin-top:16px;">
+        <div class="table-wrap" style="margin-top:16px; border-radius:0;">
           <table>
             <thead>
               <tr>
@@ -336,7 +335,6 @@ const ReportsAnalytics = {
               </tr>
             </tbody>
           </table>
-        </div>
         </div>
       </div>
     `;

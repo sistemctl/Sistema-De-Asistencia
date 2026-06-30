@@ -74,7 +74,8 @@ def run_migrations():
         "migrations/migration_justification_docs.py",
         "migrations/migration_automatic_sync_toggle.py",
         "migrations/migration_scheduler_times.py",
-        "migrations/migration_backup_dir_retention.py"
+        "migrations/migration_backup_dir_retention.py",
+        "migrations/migration_visual_customization.py"
     ]
     for m in migrations:
         print(f"\n──────────────────────────────────────────────────")

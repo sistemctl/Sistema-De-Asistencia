@@ -14,24 +14,24 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   padding: 4px;
-  border-radius: 18px;
-  box-shadow: var(--shadow);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--radius);
+  box-shadow: none;
+  transition: border-color 0.2s ease;
   max-width: 100%;
   box-sizing: border-box;
 }
 .double-bezel-inner {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-inner);
   padding: 20px;
-  box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.5);
+  box-shadow: none;
   height: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 .double-bezel-outer:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+  border-color: var(--accent);
 }
 
 /* Bento Card Sizing & Grid Layout */

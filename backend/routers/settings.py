@@ -68,6 +68,9 @@ class SettingsUpdateSchema(BaseModel):
     backup_retention_days: Optional[int] = 7
     button_style: Optional[str] = "rounded"
     sidebar_style: Optional[str] = "dark"
+    theme_preset: Optional[str] = "default"
+    card_style: Optional[str] = "glass"
+    enable_mesh_bg: Optional[bool] = True
 
 
 
@@ -127,6 +130,9 @@ class SettingsPatchSchema(BaseModel):
     backup_retention_days: Optional[int] = None
     button_style: Optional[str] = None
     sidebar_style: Optional[str] = None
+    theme_preset: Optional[str] = None
+    card_style: Optional[str] = None
+    enable_mesh_bg: Optional[bool] = None
 
 
 
@@ -143,6 +149,11 @@ def get_public_settings(db: Session = Depends(get_db)):
             "accent_color": "#00e676",
             "bg_base_color": "#f8fafc",
             "bg_surface_color": "#ffffff",
+            "button_style": "rounded",
+            "sidebar_style": "dark",
+            "theme_preset": "default",
+            "card_style": "glass",
+            "enable_mesh_bg": True,
         }
     return {
         "system_name": config.system_name,
@@ -152,6 +163,11 @@ def get_public_settings(db: Session = Depends(get_db)):
         "accent_color": config.accent_color,
         "bg_base_color": config.bg_base_color or "#f8fafc",
         "bg_surface_color": config.bg_surface_color or "#ffffff",
+        "button_style": getattr(config, "button_style", "rounded") or "rounded",
+        "sidebar_style": getattr(config, "sidebar_style", "dark") or "dark",
+        "theme_preset": getattr(config, "theme_preset", "default") or "default",
+        "card_style": getattr(config, "card_style", "glass") or "glass",
+        "enable_mesh_bg": getattr(config, "enable_mesh_bg", True) if getattr(config, "enable_mesh_bg", True) is not None else True,
     }
 
 @router.get("")
@@ -212,7 +228,12 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
             "daily_report_time": "19:00",
             "absences_check_time": "11:00",
             "backup_dir": "backups",
-            "backup_retention_days": 7
+            "backup_retention_days": 7,
+            "button_style": "rounded",
+            "sidebar_style": "dark",
+            "theme_preset": "default",
+            "card_style": "glass",
+            "enable_mesh_bg": True
         }
     return {
         "system_name": config.system_name,
@@ -270,7 +291,10 @@ def get_settings(db: Session = Depends(get_db), _=Depends(get_current_user)):
         "backup_dir": config.backup_dir or "backups",
         "backup_retention_days": config.backup_retention_days if config.backup_retention_days is not None else 7,
         "button_style": getattr(config, "button_style", "rounded") or "rounded",
-        "sidebar_style": getattr(config, "sidebar_style", "dark") or "dark"
+        "sidebar_style": getattr(config, "sidebar_style", "dark") or "dark",
+        "theme_preset": getattr(config, "theme_preset", "default") or "default",
+        "card_style": getattr(config, "card_style", "glass") or "glass",
+        "enable_mesh_bg": getattr(config, "enable_mesh_bg", True) if getattr(config, "enable_mesh_bg", True) is not None else True
     }
 
 @router.put("")
@@ -344,6 +368,9 @@ def update_settings(
     config.backup_retention_days = data.backup_retention_days
     config.button_style = data.button_style or "rounded"
     config.sidebar_style = data.sidebar_style or "dark"
+    config.theme_preset = data.theme_preset or "default"
+    config.card_style = data.card_style or "glass"
+    config.enable_mesh_bg = data.enable_mesh_bg if data.enable_mesh_bg is not None else True
     
     db.commit()
     db.refresh(config)

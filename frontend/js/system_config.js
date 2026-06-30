@@ -85,6 +85,62 @@ const SystemConfigPage = {
               <input id="sysCompanyName" type="text" placeholder="Ej. Mi Empresa S.A.C." style="width: 100%; box-sizing: border-box;" />
             </div>
 
+            <!-- Selector de Paletas de Colores Predefinidas -->
+            <div class="field" style="margin-bottom: 20px;">
+              <label>Paleta de Colores Predefinida</label>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px;">
+                <button class="preset-btn" onclick="SystemConfigPage.applyPreset('default')" style="display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 0.72rem; text-align: left; cursor: pointer;">
+                  <span style="display: flex; gap: 2px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #00e676;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #060912; border: 1px solid #333;"></span>
+                  </span>
+                  Glow Nocturno
+                </button>
+                <button class="preset-btn" onclick="SystemConfigPage.applyPreset('emerald')" style="display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 0.72rem; text-align: left; cursor: pointer;">
+                  <span style="display: flex; gap: 2px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #34d399;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #030712; border: 1px solid #333;"></span>
+                  </span>
+                  Esmeralda Cyber
+                </button>
+                <button class="preset-btn" onclick="SystemConfigPage.applyPreset('ocean')" style="display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 0.72rem; text-align: left; cursor: pointer;">
+                  <span style="display: flex; gap: 2px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #0ea5e9;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #38bdf8;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #0f172a; border: 1px solid #333;"></span>
+                  </span>
+                  Océano Profundo
+                </button>
+                <button class="preset-btn" onclick="SystemConfigPage.applyPreset('sunset')" style="display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 0.72rem; text-align: left; cursor: pointer;">
+                  <span style="display: flex; gap: 2px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #f43f5e;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #fb7185;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #09050d; border: 1px solid #333;"></span>
+                  </span>
+                  Lava Neon
+                </button>
+                <button class="preset-btn" onclick="SystemConfigPage.applyPreset('light')" style="display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 0.72rem; text-align: left; cursor: pointer;">
+                  <span style="display: flex; gap: 2px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #2563eb;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #475569;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #f8fafc; border: 1px solid #ddd;"></span>
+                  </span>
+                  Minimalista Claro
+                </button>
+                <button class="preset-btn" onclick="SystemConfigPage.applyPreset('steel')" style="display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 0.72rem; text-align: left; cursor: pointer;">
+                  <span style="display: flex; gap: 2px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #a1a1aa;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #facc15;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #0f0f11; border: 1px solid #333;"></span>
+                  </span>
+                  Acero Industrial
+                </button>
+              </div>
+              <input type="hidden" id="sysThemePreset" value="default" />
+            </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
               <div class="field">
                 <label>Color Primario (Tema)</label>
@@ -138,6 +194,27 @@ const SystemConfigPage = {
               </div>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+              <div class="field">
+                <label>Estilo de Tarjetas</label>
+                <select id="sysCardStyle" style="width: 100%; box-sizing: border-box;">
+                  <option value="glass">Vidriado (Glassmorphism)</option>
+                  <option value="raised">Sólido Elevado (Sombra)</option>
+                  <option value="flat">Plano Extra Minimalista</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Fondo Mesh Gradient</label>
+                <div style="display: flex; align-items: center; height: 38px;">
+                  <label class="toggle-switch" style="margin-top: 0; margin-bottom: 0;">
+                    <input type="checkbox" id="sysEnableMeshBg" checked />
+                    <span class="slider"></span>
+                  </label>
+                  <span style="font-size: 0.82rem; margin-left: 10px; color: var(--text-2);">Orbes animados de fondo</span>
+                </div>
+              </div>
+            </div>
+
             <div class="field" style="margin-bottom: 16px;">
               <label>Logotipo del Sistema (PNG, JPG o SVG)</label>
               <div style="display: flex; gap: 16px; align-items: center; background: var(--surface-2); padding: 12px; border-radius: 12px; border: 1px dashed var(--border);">
@@ -162,34 +239,74 @@ const SystemConfigPage = {
         </div>
       `;
 
-      // Setup color picker sync
+      // Setup color picker and visual options sync
       const pColor = document.getElementById('sysPrimaryColor');
       const aColor = document.getElementById('sysAccentColor');
       const bColor = document.getElementById('sysBgBaseColor');
       const sColor = document.getElementById('sysBgSurfaceColor');
-      if (pColor && aColor && bColor && sColor) {
+      const bStyle = document.getElementById('sysButtonStyle');
+      const sStyle = document.getElementById('sysSidebarStyle');
+      const cStyle = document.getElementById('sysCardStyle');
+      const mBg = document.getElementById('sysEnableMeshBg');
+
+      if (pColor && aColor && bColor && sColor && bStyle && sStyle && cStyle && mBg) {
         const updatePreview = () => {
           if (typeof window.applyThemeColors === 'function') {
-            window.applyThemeColors(pColor.value, aColor.value, bColor.value, sColor.value);
+            window.applyThemeColors(
+              pColor.value,
+              aColor.value,
+              bColor.value,
+              sColor.value,
+              bStyle.value,
+              sStyle.value,
+              cStyle.value,
+              mBg.checked
+            );
           }
         };
 
         pColor.addEventListener('input', (e) => {
           document.getElementById('sysPrimaryColorHex').textContent = e.target.value.toUpperCase();
+          document.getElementById('sysThemePreset').value = 'custom';
+          // Desmarcar presets
+          document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.style.borderColor = 'var(--border)';
+            btn.style.boxShadow = 'none';
+          });
           updatePreview();
         });
         aColor.addEventListener('input', (e) => {
           document.getElementById('sysAccentColorHex').textContent = e.target.value.toUpperCase();
+          document.getElementById('sysThemePreset').value = 'custom';
+          document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.style.borderColor = 'var(--border)';
+            btn.style.boxShadow = 'none';
+          });
           updatePreview();
         });
         bColor.addEventListener('input', (e) => {
           document.getElementById('sysBgBaseColorHex').textContent = e.target.value.toUpperCase();
+          document.getElementById('sysThemePreset').value = 'custom';
+          document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.style.borderColor = 'var(--border)';
+            btn.style.boxShadow = 'none';
+          });
           updatePreview();
         });
         sColor.addEventListener('input', (e) => {
           document.getElementById('sysBgSurfaceColorHex').textContent = e.target.value.toUpperCase();
+          document.getElementById('sysThemePreset').value = 'custom';
+          document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.style.borderColor = 'var(--border)';
+            btn.style.boxShadow = 'none';
+          });
           updatePreview();
         });
+
+        bStyle.addEventListener('change', updatePreview);
+        sStyle.addEventListener('change', updatePreview);
+        cStyle.addEventListener('change', updatePreview);
+        mBg.addEventListener('change', updatePreview);
       }
 
       // Setup file upload listener
@@ -628,6 +745,51 @@ const SystemConfigPage = {
 
   // ── Branding ─────────────────────────────────────────────────────────────────
 
+  applyPreset(preset) {
+    const presets = {
+      default:  { p: '#3b82f6', a: '#00e676', b: '#060912', s: '#0c101e' },
+      emerald:  { p: '#10b981', a: '#34d399', b: '#030712', s: '#0f172a' },
+      ocean:    { p: '#0ea5e9', a: '#38bdf8', b: '#0f172a', s: '#1e293b' },
+      sunset:   { p: '#f43f5e', a: '#fb7185', b: '#09050d', s: '#150d22' },
+      light:    { p: '#2563eb', a: '#475569', b: '#f8fafc', s: '#ffffff' },
+      steel:    { p: '#a1a1aa', a: '#facc15', b: '#0f0f11', s: '#18181b' }
+    };
+
+    const colors = presets[preset];
+    if (!colors) return;
+
+    document.getElementById('sysPrimaryColor').value = colors.p;
+    document.getElementById('sysPrimaryColorHex').textContent = colors.p.toUpperCase();
+    document.getElementById('sysAccentColor').value = colors.a;
+    document.getElementById('sysAccentColorHex').textContent = colors.a.toUpperCase();
+    document.getElementById('sysBgBaseColor').value = colors.b;
+    document.getElementById('sysBgBaseColorHex').textContent = colors.b.toUpperCase();
+    document.getElementById('sysBgSurfaceColor').value = colors.s;
+    document.getElementById('sysBgSurfaceColorHex').textContent = colors.s.toUpperCase();
+    document.getElementById('sysThemePreset').value = preset;
+
+    // Trigger preview update
+    if (typeof window.applyThemeColors === 'function') {
+      const bStyle = document.getElementById('sysButtonStyle').value;
+      const sStyle = document.getElementById('sysSidebarStyle').value;
+      const cStyle = document.getElementById('sysCardStyle').value;
+      const mBg = document.getElementById('sysEnableMeshBg').checked;
+      window.applyThemeColors(colors.p, colors.a, colors.b, colors.s, bStyle, sStyle, cStyle, mBg);
+    }
+
+    // Highlight active preset button visually
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.style.borderColor = 'var(--border)';
+      btn.style.boxShadow = 'none';
+    });
+    // Set border of clicked button
+    const clickedBtn = event.currentTarget;
+    if (clickedBtn) {
+      clickedBtn.style.borderColor = 'var(--accent)';
+      clickedBtn.style.boxShadow = '0 0 0 2px rgba(var(--accent-rgb), 0.2)';
+    }
+  },
+
   async loadBranding() {
     try {
       const data = await API.get('/api/settings');
@@ -647,6 +809,24 @@ const SystemConfigPage = {
 
       document.getElementById('sysButtonStyle').value = data.button_style || 'rounded';
       document.getElementById('sysSidebarStyle').value = data.sidebar_style || 'dark';
+      document.getElementById('sysCardStyle').value = data.card_style || 'glass';
+      document.getElementById('sysEnableMeshBg').checked = data.enable_mesh_bg ?? true;
+      document.getElementById('sysThemePreset').value = data.theme_preset || 'default';
+
+      // Marcar visualmente el botón del preset correspondiente
+      const currentPreset = data.theme_preset || 'default';
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.style.borderColor = 'var(--border)';
+        btn.style.boxShadow = 'none';
+      });
+      // Buscar botón por onclick que contiene el preset
+      const presetButtons = document.querySelectorAll('.preset-btn');
+      presetButtons.forEach(btn => {
+        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(currentPreset)) {
+          btn.style.borderColor = 'var(--accent)';
+          btn.style.boxShadow = '0 0 0 2px rgba(var(--accent-rgb), 0.2)';
+        }
+      });
 
       const svgDef = document.getElementById('sysLogoSvgDefault');
       const imgPrev = document.getElementById('sysLogoImgPreview');
@@ -725,7 +905,6 @@ const SystemConfigPage = {
       Toast.show(e.message, 'error');
     }
   },
-
   async saveBranding() {
     const systemName = document.getElementById('sysSystemName').value.trim();
     const companyName = document.getElementById('sysCompanyName').value.trim();
@@ -735,6 +914,9 @@ const SystemConfigPage = {
     const bgSurfaceColor = document.getElementById('sysBgSurfaceColor').value;
     const buttonStyle = document.getElementById('sysButtonStyle').value;
     const sidebarStyle = document.getElementById('sysSidebarStyle').value;
+    const themePreset = document.getElementById('sysThemePreset').value;
+    const cardStyle = document.getElementById('sysCardStyle').value;
+    const enableMeshBg = document.getElementById('sysEnableMeshBg').checked;
 
     if (!systemName) {
       Toast.show('Por favor, ingresa el nombre del sistema', 'warning');
@@ -746,12 +928,13 @@ const SystemConfigPage = {
     }
 
     try {
-      if (!this.settings.work_days) {
+      if (!this.settings || !this.settings.work_days) {
         const currentData = await API.get('/api/settings');
         this.settings = currentData;
       }
 
-      await API.put('/api/settings', {
+      const payload = {
+        ...this.settings,
         system_name: systemName,
         company_name: companyName,
         primary_color: primaryColor,
@@ -760,27 +943,12 @@ const SystemConfigPage = {
         bg_surface_color: bgSurfaceColor,
         button_style: buttonStyle,
         sidebar_style: sidebarStyle,
-        work_days: this.settings.work_days || '1,2,3,4,5',
-        time_format: this.settings.time_format || '24h',
-        entry_tolerance_minutes: this.settings.entry_tolerance_minutes ?? 10,
-        exit_tolerance_minutes: this.settings.exit_tolerance_minutes ?? 10,
-        require_checkin: this.settings.require_checkin ?? true,
-        require_checkout: this.settings.require_checkout ?? true,
-        mark_late_enable: this.settings.mark_late_enable ?? true,
-        mark_late_limit_minutes: this.settings.mark_late_limit_minutes ?? 0,
-        mark_absent_if_late_enable: this.settings.mark_absent_if_late_enable ?? false,
-        mark_absent_if_late_limit_minutes: this.settings.mark_absent_if_late_limit_minutes ?? 60,
-        mark_early_departure_enable: this.settings.mark_early_departure_enable ?? true,
-        mark_early_departure_limit_minutes: this.settings.mark_early_departure_limit_minutes ?? 0,
-        mark_absent_if_early_checkout_enable: this.settings.mark_absent_if_early_checkout_enable ?? false,
-        mark_absent_if_early_checkout_limit_minutes: this.settings.mark_absent_if_early_checkout_limit_minutes ?? 60,
-        no_checkin_enable: this.settings.no_checkin_enable ?? true,
-        no_checkin_status: this.settings.no_checkin_status || 'Absent',
-        no_checkout_enable: this.settings.no_checkout_enable ?? true,
-        no_checkout_status: this.settings.no_checkout_status || 'Absent',
-        flexible_shift_start: this.settings.flexible_shift_start || '09:00:00',
-        flexible_shift_end: this.settings.flexible_shift_end || '18:00:00'
-      });
+        theme_preset: themePreset,
+        card_style: cardStyle,
+        enable_mesh_bg: enableMeshBg
+      };
+
+      await API.put('/api/settings', payload);
 
       Toast.show('Apariencia y marca guardadas correctamente', 'success');
 

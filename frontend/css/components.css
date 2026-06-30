@@ -1,12 +1,10 @@
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: var(--shadow);
+  padding: 20px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
+  transition: border-color 0.25s var(--ease-out);
 }
 .card::before {
   content: '';
@@ -21,11 +19,9 @@
   transition: opacity 0.25s var(--ease-out);
 }
 .card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-elevated);
-  border-color: var(--border-light);
+  border-color: var(--accent);
 }
-.card:hover::before { opacity: 0.85; }
+.card:hover::before { opacity: 1; }
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .card-title {
   font-family: var(--font-display);
@@ -55,7 +51,7 @@
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
 }
 table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: .85rem; }
@@ -101,7 +97,7 @@ tbody tr:hover .table-actions {
   opacity: 1;
 }
 
-.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 99px; font-size: .7rem; font-weight: 600; border: 1px solid transparent; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 0; font-size: .7rem; font-weight: 600; border: 1px solid transparent; }
 .badge-green  { background: rgba(0, 200, 83, 0.08); color: var(--success); border-color: rgba(0, 200, 83, 0.15); }
 .badge-red    { background: rgba(255, 109, 0, 0.08);  color: var(--danger);  border-color: rgba(255, 109, 0, 0.15); }
 .badge-yellow { background: rgba(245, 158, 11, 0.08); color: var(--warning); border-color: rgba(245, 158, 11, 0.15); }
@@ -114,7 +110,7 @@ tbody tr:hover .table-actions {
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  border-radius: 99px;
+  border-radius: 0;
   font-size: .72rem;
   font-weight: 600;
   border: 1px solid;
@@ -141,7 +137,7 @@ tbody tr:hover .table-actions {
 .field input, .field select, .field textarea, .form-control {
   width: 100%;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-1);
@@ -164,7 +160,7 @@ tbody tr:hover .table-actions {
   padding: 0 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   width: 100%;
   max-width: 260px;
   transition: max-width 0.3s ease, border-color 0.25s ease, box-shadow 0.25s ease;
@@ -199,12 +195,14 @@ tbody tr:hover .table-actions {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 0;
   border: none;
   font-size: .8rem;
   font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
   outline: none;
   transition: all .2s ease;
   cursor: pointer;
@@ -225,14 +223,14 @@ tbody tr:hover .table-actions {
   transform: translateY(0.5px) !important;
 }
 .btn-primary {
-  background: linear-gradient(180deg, #2563eb 0%, var(--accent) 100%);
+  background: var(--accent);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1px 2px rgba(var(--accent-rgb), 0.2), 0 4px 12px -2px rgba(var(--accent-rgb), 0.28);
+  border: 1px solid var(--accent);
+  box-shadow: none;
 }
 .btn-primary:hover {
-  background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
-  box-shadow: 0 2px 4px rgba(var(--accent-rgb), 0.25), 0 6px 16px -2px rgba(var(--accent-rgb), 0.32);
+  background: #0044cc;
+  border-color: #0044cc;
 }
 .btn-secondary {
   background: #ffffff;
@@ -259,10 +257,10 @@ tbody tr:hover .table-actions {
 .btn-success:hover {
   background: rgba(0, 200, 83, 0.15);
 }
-.btn-sm { padding: 6px 12px; font-size: .75rem; border-radius: 6px; }
+.btn-sm { padding: 6px 12px; font-size: .75rem; border-radius: 0; }
 .btn-icon {
   padding: 7px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-2);
@@ -308,9 +306,9 @@ tbody tr:hover .table-actions {
   -webkit-backdrop-filter: blur(6px);
 }
 .modal {
-  background: var(--surface-1);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 4px);
+  border-radius: 0;
   padding: 28px;
   width: 100%;
   max-width: 560px;
@@ -343,7 +341,7 @@ tbody tr:hover .table-actions {
   max-height: 100vh;
   width: 100%;
   max-width: 440px;
-  border-radius: 16px 0 0 16px;
+  border-radius: 0;
   border-right: none;
   border-top: none;
   border-bottom: none;
@@ -372,7 +370,7 @@ tbody tr:hover .table-actions {
   color: var(--text-3);
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: 0;
   transition: all .2s;
   display: flex;
   align-items: center;
@@ -398,11 +396,12 @@ tbody tr:hover .table-actions {
 .pagination-btns { display: flex; gap: 6px; }
 .page-btn {
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-2);
   font-size: .75rem;
+  font-family: var(--font-mono);
   font-weight: 600;
   transition: all .15s;
 }
@@ -413,16 +412,16 @@ tbody tr:hover .table-actions {
 .toast-container { position: fixed; bottom: 28px; right: 28px; z-index: 200; display: flex; flex-direction: column; gap: 10px; }
 .toast {
   padding: 12px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: .8rem;
   font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 260px;
   border: 1px solid;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   animation: toastIn .4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 .toast.success {
@@ -446,6 +445,18 @@ tbody tr:hover .table-actions {
   color: var(--warning);
 }
 
+.sidebar-brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0;
+  flex-shrink: 0;
+  background: var(--text-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.table-wrap { border-radius: 0; }
 .emp-avatar {
   width: 36px;
   height: 36px;
@@ -674,4 +685,98 @@ input[type="checkbox"]:active {
 }
 .toggle-switch input:checked + .slider:before {
   transform: translateX(20px);
+}
+
+/* ── CUSTOM CARD STYLES (GLASS, RAISED, FLAT) ── */
+
+:root[data-card-style="glass"] .card {
+  background: rgba(var(--surface-1-rgb, 255, 255, 255), 0.65) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  border: 1px solid rgba(var(--accent-rgb), 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.dark-theme:root[data-card-style="glass"] .card,
+.dark-theme [data-card-style="glass"] .card {
+  background: rgba(var(--surface-1-rgb, 12, 16, 30), 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+:root[data-card-style="glass"] .card:hover {
+  transform: translateY(-2px);
+  background: rgba(var(--surface-1-rgb, 255, 255, 255), 0.75) !important;
+  border-color: rgba(var(--accent-rgb), 0.18) !important;
+  box-shadow: 0 12px 40px 0 rgba(var(--accent-rgb), 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.dark-theme:root[data-card-style="glass"] .card:hover,
+.dark-theme [data-card-style="glass"] .card:hover {
+  background: rgba(var(--surface-1-rgb, 12, 16, 30), 0.55) !important;
+  border-color: rgba(var(--accent-rgb), 0.25) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Sólido / Elevado */
+:root[data-card-style="raised"] .card {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
+}
+
+.dark-theme:root[data-card-style="raised"] .card,
+.dark-theme [data-card-style="raised"] .card {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root[data-card-style="raised"] .card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -15px rgba(var(--accent-rgb), 0.14), 0 1px 4px rgba(15, 23, 42, 0.04) !important;
+}
+
+.dark-theme:root[data-card-style="raised"] .card:hover,
+.dark-theme [data-card-style="raised"] .card:hover {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Plano Minimalista */
+:root[data-card-style="flat"] .card {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+:root[data-card-style="flat"] .card:hover {
+  transform: none;
+  background: var(--surface-2) !important;
+  border-color: var(--border-light) !important;
+  box-shadow: none !important;
+}
+
+/* Tactile Micro-Interactions (design-taste-frontend-v1) */
+.btn:active, 
+.dash-kpi-card:active, 
+.segmented-btn:active, 
+.nav-item:active, 
+.page-btn:active {
+  transform: scale(0.98) translateY(1px) !important;
+}
+
+/* Custom Brutalist Skeletons (Asymmetric layout) */
+.skeleton {
+  background-color: var(--border-light);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonLoad 1.5s infinite;
+}
+
+@keyframes skeletonLoad {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

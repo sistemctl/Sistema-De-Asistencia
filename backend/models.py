@@ -212,6 +212,9 @@ class SystemConfig(Base):
     time_format = Column(String(10), default="24h") # 12h / 24h
     button_style = Column(String(50), default="rounded")
     sidebar_style = Column(String(50), default="dark")
+    theme_preset = Column(String(50), default="default")
+    card_style = Column(String(50), default="glass")
+    enable_mesh_bg = Column(Boolean, default=True)
     
     # ── QR Settings ──
     qr_badge_show_blood_type = Column(Boolean, default=True)

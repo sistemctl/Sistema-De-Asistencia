@@ -35,12 +35,14 @@ def test_scheduler_toggles():
 
         # Respaldar valores iniciales
         orig_sys_email = sys_config.email_notifications_enabled
+        orig_sys_recipients = sys_config.email_alerts_recipients
         orig_sys_report = sys_config.alert_admin_daily_report
         orig_sys_cleanup = sys_config.cleanup_enabled
         orig_dev_sync = getattr(dev_config, "automatic_sync_enabled", True)
 
         print(f"🔄 Configuración inicial:")
         print(f"  - Correo Maestro Habilitado: {orig_sys_email}")
+        print(f"  - Destinatarios de Alertas: {orig_sys_recipients}")
         print(f"  - Reporte Diario Habilitado: {orig_sys_report}")
         print(f"  - Limpieza Automática Habilitada: {orig_sys_cleanup}")
         print(f"  - Sync Automático Habilitado: {orig_dev_sync}")
@@ -80,6 +82,7 @@ def test_scheduler_toggles():
         # --- PRUEBA 2: Activar todo ---
         print("\n⚙️ Activando todas las tareas en la base de datos...")
         sys_config.email_notifications_enabled = True
+        sys_config.email_alerts_recipients = "admin@example.com"
         sys_config.alert_admin_daily_report = True
         sys_config.cleanup_enabled = True
         dev_config.automatic_sync_enabled = True
@@ -110,6 +113,7 @@ def test_scheduler_toggles():
 
         # Restaurar valores iniciales
         sys_config.email_notifications_enabled = orig_sys_email
+        sys_config.email_alerts_recipients = orig_sys_recipients
         sys_config.alert_admin_daily_report = orig_sys_report
         sys_config.cleanup_enabled = orig_sys_cleanup
         dev_config.automatic_sync_enabled = orig_dev_sync

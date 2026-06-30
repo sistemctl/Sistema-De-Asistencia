@@ -9,7 +9,7 @@
   <link id="favicon" rel="icon" type="image/png" href="/static/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/main.css?v=36" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
@@ -158,10 +158,11 @@
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           Instalar App
         </button>
-        <button class="btn-icon" id="themeToggleBtn" title="Cambiar tema" aria-label="Cambiar tema" style="width: 38px; height: 38px; border-radius: 50%;"></button>
-        <div class="device-badge" id="deviceBadge">
+        <button class="btn-icon" id="themeToggleBtn" title="Cambiar tema" aria-label="Cambiar tema" style="width: 34px; height: 34px;"></button>
+        <div class="device-badge" id="deviceBadge" style="border-radius: 0; font-family: var(--font-mono); font-size: 0.65rem; border: 1px solid var(--border); letter-spacing: 0.04em;">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="1.5" fill="none" style="opacity:0.8"><path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v2M16 20h2a2 2 0 0 0 2-2v-2"></path><circle cx="12" cy="12" r="3"></circle></svg>
           <span class="status-dot"></span>
-          <span id="deviceBadgeText">Dispositivo</span>
+          <span id="deviceBadgeText">SYS_LINK</span>
         </div>
         <div class="topbar-clock">
           <span class="topbar-clock-time" id="topbarClockTime">00:00:00</span>

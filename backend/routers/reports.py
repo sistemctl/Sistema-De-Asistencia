@@ -448,6 +448,10 @@ def get_analytics(
         # Días asistidos a tiempo
         ontime_count = sum(1 for s in results if s.get("is_present", False) and not s.get("is_late", False))
         
+        # Definir variables de conteo y listas filtradas
+        present_sums = [r for r in results if r.get("is_present", False)]
+        late_count = sum(1 for r in results if r.get("is_present", False) and r.get("is_late", False))
+        
         punctuality_rate = round((ontime_count / expected_days * 100) if expected_days else 0.0, 1)
         
         avg_entry_time_str = "--:--"

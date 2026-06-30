@@ -1,47 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Clinical white workspace — attendance ledger */
-  --bg-base:     #f7f8fb;
-  --bg-raised:   #ffffff;
-  --surface-1:   #ffffff;
-  --surface-2:   #f4f6fa;
-  --surface-3:   #e9edf4;
-  --border:      rgba(15, 23, 42, 0.08);
-  --border-light:rgba(15, 23, 42, 0.12);
-  --border-glow: rgba(29, 78, 216, 0.05);
+  /* Industrial / Hardware Terminal */
+  --bg-base:     #e8ecf0; /* Titanio frío — base de toda la shell */
+  --bg-raised:   #f4f6f8;
+  --surface-1:   #f4f6f8; /* Contenido principal — ligeramente elevado */
+  --surface-2:   #ffffff; /* Sidebar y modales — blanco puro */
+  --surface-3:   #dde1e8;
+  --border:      #c8cdd5; /* Bordes metálicos fuertes */
+  --border-light:#d8dce4;
+  --border-glow: rgba(0, 85, 255, 0.15);
 
-  --accent:      #2563eb;
-  --accent-rgb:  37, 99, 235;
-  --accent-2:    #1e293b;
-  --accent-2-rgb: 30, 41, 59;
-  --accent-3:    #059669;
+  --accent:      #0055ff; /* Terminal Blue */
+  --accent-rgb:  0, 85, 255;
+  --accent-2:    #111827; /* Dark slate */
+  --accent-2-rgb: 17, 24, 39;
+  --accent-3:    #f59e0b; /* Amber */
 
-  --danger:      #dc2626;
-  --warning:     #d97706;
-  --success:     #059669;
+  --danger:      #ef4444; /* Hardware Red */
+  --warning:     #f59e0b; /* Hardware Amber */
+  --success:     #10b981; /* Hardware Green */
 
-  --text-1:      #0f172a;
-  --text-2:      #475569;
-  --text-3:      #94a3b8;
+  --text-1:      #111827;
+  --text-2:      #374151;
+  --text-3:      #6b7280;
 
-  --sidebar-w:   264px;
-  --radius:      14px;
-  --radius-sm:   9px;
-  --radius-inner: calc(var(--radius) - 4px);
+  --sidebar-w:   248px;
+  
+  /* Precision Hardware - almost no radius */
+  --radius:      0px;
+  --radius-sm:   0px;
+  --radius-inner: 0px;
 
-  --shadow:
-    0 1px 2px rgba(15, 23, 42, 0.02),
-    0 1px 3px rgba(15, 23, 42, 0.04);
-  --shadow-elevated:
-    0 1px 2px rgba(15, 23, 42, 0.03),
-    0 8px 24px -6px rgba(15, 23, 42, 0.07);
+  /* No soft shadows. Only hard borders and structural shadows */
+  --shadow:      none;
+  --shadow-elevated: 0 4px 12px -2px rgba(17, 24, 39, 0.08), 0 0 0 1px rgba(17, 24, 39, 0.05);
 
-  --font-display:'Sora', sans-serif;
-  --font-body:   'Plus Jakarta Sans', sans-serif;
-  --font-mono:   'IBM Plex Mono', monospace;
+  --font-display:'Satoshi', sans-serif;
+  --font-body:   'IBM Plex Sans', sans-serif;
+  --font-mono:   'JetBrains Mono', monospace;
 
-  --punch-w:     3px;
+  --punch-w:     3px; /* Slightly thicker for hardware feel */
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -52,7 +52,7 @@ html {
   scroll-behavior: smooth;
   overflow: hidden;
   scrollbar-width: thin;
-  scrollbar-color: var(--surface-3) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 body {
@@ -66,8 +66,8 @@ body {
   overflow: hidden;
 }
 
-a { color: var(--accent); text-decoration: none; transition: color .2s var(--ease-out); }
-a:hover { color: #1d4ed8; }
+a { color: var(--accent); text-decoration: none; transition: color .15s linear; }
+a:hover { color: #0044cc; }
 button { cursor: pointer; font-family: inherit; border: none; background: none; }
 input, select, textarea { font-family: inherit; }
 img { max-width: 100%; height: auto; }
@@ -77,13 +77,13 @@ code, kbd, samp, pre,
   font-family: var(--font-mono) !important;
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.15);
-  border-radius: 99px;
+  background: #cbd5e1;
+  border-radius: 0; /* Hardware square scrollers */
 }
-::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

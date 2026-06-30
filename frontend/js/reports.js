@@ -109,13 +109,14 @@ const ReportsPage = {
         .trend-badge {
           display: inline-flex;
           align-items: center;
-          gap: 2px;
-          padding: 2px 6px;
-          border-radius: 6px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          font-family: 'JetBrains Mono', monospace;
-          margin-left: 6px;
+          gap: 4px;
+          padding: 2px 8px;
+          border-radius: 0;
+          font-size: 0.75rem;
+          font-weight: 600;
+          font-family: var(--font-mono);
+          text-transform: uppercase;
+          margin-left: 8px;
         }
         .trend-badge.trend-up {
           background: rgba(0, 230, 118, 0.12);
@@ -148,8 +149,7 @@ const ReportsPage = {
       <!-- ── PESTAÑA 1: ANALÍTICAS Y FILTROS ── -->
       <div id="repTabContentAnalytics" style="${isRecords ? 'display: none;' : ''}">
         <!-- ── TARJETA 1: FILTROS DE CONSULTA (ANALÍTICAS) ── -->
-        <div class="double-bezel-outer" style="margin-bottom: 24px; overflow: visible; z-index: 10;">
-          <div class="double-bezel-inner" style="overflow: visible; border: none; box-shadow: none; padding: 24px;">
+        <div style="border: 1px solid var(--border); background: var(--bg-base); margin-bottom: 24px; overflow: visible; z-index: 10; padding: 24px;">
           <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
             <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
             Filtros de Búsqueda (Analíticas)
@@ -160,9 +160,9 @@ const ReportsPage = {
             <div class="field" style="margin: 0; flex: 1; min-width: 250px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
               <div class="searchable-select-wrapper an-select-wrapper" style="position: relative; width: 100%;">
-                <input type="text" id="anFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
+                <input type="text" id="anFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
                 <input type="hidden" id="anFilterEntity" value="" />
-                <div class="searchable-select-dropdown an-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                <div class="searchable-select-dropdown an-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 0; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
                   <!-- Se llena dinámicamente -->
                 </div>
               </div>
@@ -171,13 +171,13 @@ const ReportsPage = {
             <!-- Selector de Rango de Fechas Único -->
             <div class="field" style="margin: 0; flex: 1.5; min-width: 200px; max-width: 320px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
-              <input type="text" id="anDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+              <input type="text" id="anDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
             </div>
 
             <!-- Selector Rápido de Presets -->
             <div class="field" style="margin: 0; flex: 1; min-width: 150px; max-width: 180px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango Rápido</label>
-              <select id="anDatePresets" onchange="ReportsPage.applyDatePreset('an', this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);">
+              <select id="anDatePresets" onchange="ReportsPage.applyDatePreset('an', this.value)" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);">
                 <option value="">Personalizado</option>
                 <option value="today">Hoy</option>
                 <option value="yesterday">Ayer</option>
@@ -190,37 +190,36 @@ const ReportsPage = {
 
             <!-- Botón Filtros Avanzados y Acciones -->
             <div style="display: flex; gap: 10px; align-items: flex-end; position: relative;">
-              <button class="btn btn-secondary" onclick="document.getElementById('anAdvancedFilters').style.display = document.getElementById('anAdvancedFilters').style.display === 'none' ? 'flex' : 'none';" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-secondary" onclick="document.getElementById('anAdvancedFilters').style.display = document.getElementById('anAdvancedFilters').style.display === 'none' ? 'flex' : 'none';" style="padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                 Filtros
               </button>
               
-              <div id="anAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
+              <div id="anAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
                 <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Adicionales</h4>
-                <select id="anFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <select id="anFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
                   <option value="">Todos los departamentos</option>
                 </select>
-                <select id="anFilterPosition" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <select id="anFilterPosition" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
                   <option value="">Todos los cargos</option>
                 </select>
-                <select id="anFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <select id="anFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('an')" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
                   <option value="">Todos los horarios</option>
                 </select>
               </div>
 
-              <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('an')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('an')" style="padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 Limpiar
               </button>
-              <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('an')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('an')" style="padding: 8px 20px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 Aplicar
               </button>
             </div>
           </div>
-        </div>
 
         <div id="repAnalyticsDashboard">
           <!-- ── TARJETAS DE KPI CORPORATE PRECISION ── -->
-          <div style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border);">
             <div class="corp-card" style="cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="ReportsPage.showMetricDetails('punctuality')">
               <span class="corp-label-caps" style="margin-bottom: 8px; display: block;">Puntualidad General</span>
               <div style="display: flex; align-items: baseline; justify-content: center;">
@@ -274,19 +273,19 @@ const ReportsPage = {
           </div>
 
           <!-- ── GRÁFICOS ANALÍTICOS SINCRONIZADOS ── -->
-          <div class="grid-2" style="margin-bottom: 24px;">
+          <div style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border);">
             <div class="corp-card" style="margin:0;">
-              <div style="margin-bottom: 24px; border-bottom: 1px solid var(--corp-outline); padding-bottom: 12px;">
-                <span class="corp-label-caps" style="display: block;">Distribución del Estado de Asistencia</span>
-                <span class="corp-body-sm" style="color: var(--corp-on-surface-var);">Resumen porcentual del comportamiento del personal</span>
+              <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span class="corp-label-caps" style="display: block; color: var(--text-2);">Distribución del Estado de Asistencia</span>
+                <span class="corp-body-sm" style="color: var(--text-3); font-family: var(--font-mono); text-transform: uppercase;">Resumen porcentual del comportamiento</span>
               </div>
               <div class="chart-container" style="height:250px;"><canvas id="anDoughnutChart"></canvas></div>
             </div>
             
             <div class="corp-card" style="margin:0;">
-              <div style="margin-bottom: 24px; border-bottom: 1px solid var(--corp-outline); padding-bottom: 12px;">
-                <span class="corp-label-caps" style="display: block;">Tendencia de Asistencia Diaria</span>
-                <span class="corp-body-sm" style="color: var(--corp-on-surface-var);">Evolución de puntualidad y retrasos a lo largo del tiempo</span>
+              <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span class="corp-label-caps" style="display: block; color: var(--text-2);">Tendencia de Asistencia Diaria</span>
+                <span class="corp-body-sm" style="color: var(--text-3); font-family: var(--font-mono); text-transform: uppercase;">Evolución de puntualidad y retrasos</span>
               </div>
               <div class="chart-container" style="height:250px;"><canvas id="anLineChart"></canvas></div>
             </div>
@@ -301,8 +300,7 @@ const ReportsPage = {
       <!-- ── PESTAÑA 2: REGISTROS DETALLADOS ── -->
       <div id="repTabContentRecords" style="${isRecords ? '' : 'display: none;'}">
         <!-- ── UNIFICACIÓN: FILTROS Y TABLA EN UN SOLO CUADRO ── -->
-        <div class="double-bezel-outer" style="overflow: visible; z-index: 10;">
-          <div class="double-bezel-inner" style="overflow: visible; border: none; box-shadow: none; padding: 24px;">
+        <div style="border: 1px solid var(--border); background: var(--bg-base); padding: 24px; overflow: visible; z-index: 10;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
             <div>
               <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px;">
@@ -316,12 +314,12 @@ const ReportsPage = {
             
             <!-- Dropdown Desplegable Premium de Exportación -->
             <div style="position: relative;" id="repExportDropdownContainer">
-              <button class="btn btn-primary" onclick="ReportsPage.toggleExportMenu(event)" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-primary" onclick="ReportsPage.toggleExportMenu(event)" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Exportar Reporte
                 <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
-              <div id="repExportMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px; width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100; overflow: hidden; animation: slideDown 0.2s ease;">
+              <div id="repExportMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 0; width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100; overflow: hidden; animation: slideDown 0.2s ease;">
                 <a href="#" onclick="ReportsPage.exportReport('excel'); ReportsPage.closeExportMenu(); return false;" class="export-menu-item">
                   <span style="font-size: 1.1rem; width: 20px;">📊</span> Excel Detallado
                 </a>
@@ -345,9 +343,9 @@ const ReportsPage = {
             <div class="field" style="margin: 0; flex: 1; min-width: 250px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Filtrar por Empleado</label>
               <div class="searchable-select-wrapper rec-select-wrapper" style="position: relative; width: 100%;">
-                <input type="text" id="recFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
+                <input type="text" id="recFilterEntityInput" placeholder="🔍 Todos los empleados" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);" autocomplete="off" />
                 <input type="hidden" id="recFilterEntity" value="" />
-                <div class="searchable-select-dropdown rec-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                <div class="searchable-select-dropdown rec-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 0; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
                   <!-- Se llena dinámicamente -->
                 </div>
               </div>
@@ -356,13 +354,13 @@ const ReportsPage = {
             <!-- Selector de Rango de Fechas Único -->
             <div class="field" style="margin: 0; flex: 1.5; min-width: 200px; max-width: 320px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango de Fechas</label>
-              <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
+              <input type="text" id="recDateRange" placeholder="Seleccionar rango de fechas..." style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);" />
             </div>
 
             <!-- Selector Rápido de Presets -->
             <div class="field" style="margin: 0; flex: 1; min-width: 150px; max-width: 180px;">
               <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; display: block;">Rango Rápido</label>
-              <select id="recDatePresets" onchange="ReportsPage.applyDatePreset('rec', this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);">
+              <select id="recDatePresets" onchange="ReportsPage.applyDatePreset('rec', this.value)" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1);">
                 <option value="">Personalizado</option>
                 <option value="today">Hoy</option>
                 <option value="yesterday">Ayer</option>
@@ -375,28 +373,28 @@ const ReportsPage = {
 
             <!-- Botones alineados en la misma fila con Filtros -->
             <div style="display: flex; gap: 10px; position: relative;">
-              <button class="btn btn-secondary" onclick="document.getElementById('recAdvancedFilters').style.display = document.getElementById('recAdvancedFilters').style.display === 'none' ? 'flex' : 'none';" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-secondary" onclick="document.getElementById('recAdvancedFilters').style.display = document.getElementById('recAdvancedFilters').style.display === 'none' ? 'flex' : 'none';" style="padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                 Filtros
               </button>
               
-              <div id="recAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
+              <div id="recAdvancedFilters" style="display:none; position:absolute; top:45px; left:0; background:var(--bg-raised); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:100; min-width:240px; flex-direction:column; gap:12px;">
                 <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-3); letter-spacing: 0.05em; font-weight: 700;">Filtros Adicionales</h4>
-                <select id="recFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <select id="recFilterDepartment" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
                   <option value="">Todos los departamentos</option>
                 </select>
-                <select id="recFilterPosition" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <select id="recFilterPosition" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
                   <option value="">Todos los cargos</option>
                 </select>
-                <select id="recFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
+                <select id="recFilterSchedule" onchange="ReportsPage.onDropdownFilterChange('rec')" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; background: var(--surface-2); border-color: var(--border);">
                   <option value="">Todos los horarios</option>
                 </select>
               </div>
 
-              <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('rec')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-secondary" onclick="ReportsPage.clearAllFilters('rec')" style="padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 Limpiar
               </button>
-              <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('rec')" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.82rem;">
+              <button class="btn btn-primary" onclick="ReportsPage.onFilterChange('rec')" style="padding: 8px 20px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.82rem;">
                 Filtrar
               </button>
             </div>
@@ -421,7 +419,6 @@ const ReportsPage = {
           </div>
           
           <div class="pagination" id="repPagination" style="margin-top:16px;"></div>
-          </div>
         </div>
       </div>
     `;
