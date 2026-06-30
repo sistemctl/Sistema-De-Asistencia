@@ -126,9 +126,10 @@ const ReportsTable = {
           else if (r.is_late) statusBadge = '<span class="corp-badge corp-badge-late">Tardanza</span>';
 
           const isSplit = r.schedule_type === 'split';
+          const isFlexible = r.schedule_type === 'flexible';
           const typeBadge = isSplit 
             ? '<span class="corp-badge corp-badge-rest">Partido</span>' 
-            : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continua</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>');
+            : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continua</span>' : (isFlexible ? '<span class="corp-badge corp-badge-holiday">Flexible</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>'));
 
           // Formatear fecha más legible (ej: 10 Jun 2026)
           const formattedDate = new Date(r.date + "T00:00:00").toLocaleDateString('es', {day:'2-digit', month:'short', year:'numeric'});
@@ -169,7 +170,7 @@ const ReportsTable = {
               <td><code style="background:var(--bg-base); border: 1px solid var(--border); padding:2px 8px;border-radius:5px;font-size:.75rem; font-family:'JetBrains Mono',monospace; color: var(--text-2);">${r.employee_code}</code></td>
               <td style="color:var(--text-2)">${deptVal}</td>
               <td style="color:var(--text-2); font-weight:500;">${pStart} - ${pEnd}</td>
-              <td>${r.schedule_type === 'split' ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continuo</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>')}</td>
+              <td>${r.schedule_type === 'split' ? '<span class="corp-badge corp-badge-rest">Partido</span>' : (r.schedule_type === 'continuous' ? '<span class="corp-badge corp-badge-present">Continuo</span>' : (r.schedule_type === 'flexible' ? '<span class="corp-badge corp-badge-holiday">Flexible</span>' : '<span class="corp-badge corp-badge-rest">Sin Horario</span>'))}</td>
               <td style="text-align:center;">${r.is_present ? '<span class="corp-badge corp-badge-present">Sí</span>' : '<span class="corp-badge corp-badge-absent">No</span>'}</td>
               <td style="text-align:center;">${r.is_late ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>
               <td style="text-align:center;">${r.missing_punches ? '<span class="corp-badge corp-badge-late">Sí</span>' : '<span class="corp-badge corp-badge-present">No</span>'}</td>

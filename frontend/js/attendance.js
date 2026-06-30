@@ -296,7 +296,7 @@ const AttendancePage = {
           <td><code style="background:var(--surface-3);padding:2px 8px;border-radius:5px;font-size:.75rem;font-family:'JetBrains Mono',monospace;">${r.employee_code}</code></td>
           <td style="color:var(--text-2)">${r.department}</td>
           <td style="color:var(--text-2)">${new Date(r.date + "T00:00:00").toLocaleDateString('es')}</td>
-          <td>${isSplit ? '<span class="badge badge-blue">Partida</span>' : (r.schedule_type === 'continuous' ? '<span class="badge badge-green">Continua</span>' : '<span class="badge badge-gray">Sin Horario</span>')}</td>
+          <td>${isSplit ? '<span class="badge badge-blue">Partida</span>' : (r.schedule_type === 'continuous' ? '<span class="badge badge-green">Continua</span>' : (r.schedule_type === 'flexible' ? '<span class="badge badge-purple">Flexible</span>' : '<span class="badge badge-gray">Sin Horario</span>'))}</td>
           <td style="font-weight:600;font-family:'JetBrains Mono',monospace;">${formatTime(r.punches.entry_1)}</td>
           <td style="font-family:'JetBrains Mono',monospace;color:var(--text-2)">${isSplit ? formatTime(r.punches.exit_1) : '—'}</td>
           <td style="font-family:'JetBrains Mono',monospace;color:var(--text-2)">${isSplit ? formatTime(r.punches.entry_2) : '—'}</td>
