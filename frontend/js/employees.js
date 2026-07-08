@@ -7,7 +7,8 @@ const EmployeesPage = {
 
   async render() {
     const isAdmin = Auth.canManageEmployees();
-    document.getElementById('pageContent').innerHTML = `      <!-- ── CONTENEDOR ÚNICO DE TABLA Y FILTROS ── -->
+    document.getElementById('pageContent').innerHTML = `
+      <!-- ── CONTENEDOR ÚNICO DE TABLA Y FILTROS ── -->
       <div class="double-bezel-outer" style="height: 100%; display: flex; flex-direction: column;">
         <div class="double-bezel-inner" style="padding: 0; display: flex; flex-direction: column; overflow: hidden; height: 100%; border: none; box-shadow: none;">
         
@@ -103,6 +104,10 @@ const EmployeesPage = {
                 <button class="btn btn-secondary" id="btnImportFromDevice">
                   <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   Importar del Biométrico
+                </button>
+                <button class="btn btn-secondary" id="btnExportToDevice" title="Enviar todos los empleados (info y fotos) al biométrico">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                  Exportar al Biométrico
                 </button>
                 <button class="btn btn-secondary" id="btnBulkQR" style="background:var(--surface-2); border:1px solid var(--border);" title="Generar QR para los que aún no lo tienen">
                   <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
@@ -285,6 +290,7 @@ const EmployeesPage = {
       document.getElementById('btnNewEmp')?.addEventListener('click', () => this.openForm());
       document.getElementById('btnBulkQR')?.addEventListener('click', () => this.generateBulkQR());
       document.getElementById('btnImportFromDevice')?.addEventListener('click', () => this.importFromDevice());
+      document.getElementById('btnExportToDevice')?.addEventListener('click', () => this.exportToDevice());
     }
     // Close dropdowns if clicked outside
     document.addEventListener('click', (e) => {
@@ -480,6 +486,9 @@ const EmployeesPage = {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 </button>
                 ${isAdmin ? `
+                  <button class="btn btn-icon btn-sm" onclick="EmployeesPage.enrollFingerprint(${e.id})" title="Enrolar huella en el biométrico" style="color:#8b5cf6;border-color:rgba(139,92,246,0.2);background:rgba(139,92,246,0.06);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M12 11c0 3.5-.5 6.5-1.5 8.5"></path><path d="M8.5 9.5a4 4 0 0 1 7 2.5c0 3-.5 5.5-1 7"></path><path d="M5.5 12a6.5 6.5 0 0 1 12-3.5"></path><path d="M18.5 13c0 3-.5 5-1 6.5"></path><path d="M12 6.5a5.5 5.5 0 0 0-5.5 5.5c0 2-.3 4-1 5.5"></path></svg>
+                  </button>
                   ${e.qr_enabled ? `
                   <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showBadge(${e.id})" title="Imprimir Gafete" style="color:#0ea5e9;border-color:rgba(14,165,233,0.2);background:rgba(14,165,233,0.06);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -586,6 +595,9 @@ const EmployeesPage = {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                       </button>
                       ${isAdmin ? `
+                        <button class="btn btn-icon btn-sm" onclick="EmployeesPage.enrollFingerprint(${e.id})" title="Enrolar huella en el biométrico" style="color:#8b5cf6; border-color:rgba(139,92,246,0.2); background:rgba(139,92,246,0.06);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M12 11c0 3.5-.5 6.5-1.5 8.5"></path><path d="M8.5 9.5a4 4 0 0 1 7 2.5c0 3-.5 5.5-1 7"></path><path d="M5.5 12a6.5 6.5 0 0 1 12-3.5"></path><path d="M18.5 13c0 3-.5 5-1 6.5"></path><path d="M12 6.5a5.5 5.5 0 0 0-5.5 5.5c0 2-.3 4-1 5.5"></path></svg>
+                        </button>
                         ${e.qr_enabled ? `
                         <button class="btn btn-icon btn-sm" onclick="EmployeesPage.showBadge(${e.id})" title="Imprimir Gafete" style="color:#0ea5e9; border-color:rgba(14,165,233,0.2); background:rgba(14,165,233,0.06);">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -1178,6 +1190,153 @@ const EmployeesPage = {
       },
       'warning'
     );
+  },
+
+  async exportToDevice() {
+    Modal.confirm(
+      '¿Exportar al Biométrico?',
+      '¿Deseas enviar <strong>todos</strong> los empleados del software al dispositivo biométrico? Se sincronizará su información, credenciales y fotos de perfil. Los empleados existentes se actualizarán.',
+      async () => {
+        Modal.open(
+          'Exportando al Biométrico',
+          `
+          <div style="text-align: center; padding: 15px 10px;">
+            <p style="font-weight: 600; font-size: 1.05rem; color: #1e293b; margin-bottom: 8px;">
+              Enviando empleados y fotos al dispositivo...
+            </p>
+            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">
+              Subiendo información y rostros al biométrico. Por favor, no cierre esta ventana.
+            </p>
+            <div style="background-color: #f1f5f9; border-radius: 9999px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0;">
+              <div id="exportProgressBar" style="background-color: var(--primary-color, #1a5cff); height: 100%; width: 0%; transition: width 0.4s ease;"></div>
+            </div>
+            <div id="exportProgressPercent" style="font-weight: 700; font-size: 1.1rem; color: #1e293b;">0%</div>
+          </div>
+          `,
+          ''
+        );
+
+        const closeBtn = document.getElementById('modalClose');
+        if (closeBtn) closeBtn.style.display = 'none';
+
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+          if (currentProgress < 50) {
+            currentProgress += Math.floor(Math.random() * 4) + 3;
+          } else if (currentProgress < 85) {
+            currentProgress += Math.floor(Math.random() * 2) + 1;
+          } else if (currentProgress < 95) {
+            currentProgress += 0.4;
+          }
+          const bar = document.getElementById('exportProgressBar');
+          const pct = document.getElementById('exportProgressPercent');
+          if (bar) bar.style.width = `${Math.min(currentProgress, 95)}%`;
+          if (pct) pct.textContent = `${Math.floor(Math.min(currentProgress, 95))}%`;
+        }, 250);
+
+        try {
+          const res = await API.post('/api/employees/export-all-to-device');
+          clearInterval(progressInterval);
+
+          const bar = document.getElementById('exportProgressBar');
+          const pct = document.getElementById('exportProgressPercent');
+          if (bar) bar.style.width = '100%';
+          if (pct) pct.textContent = '100% - Completado';
+
+          setTimeout(() => {
+            Modal.close();
+            if (closeBtn) closeBtn.style.display = '';
+
+            if (res.status === 'success') {
+              const msg = `Exportación finalizada: ${res.synced}/${res.total} empleados y ${res.photos} fotos enviadas al biométrico.`;
+              if (res.failed > 0) {
+                Toast.show(`${msg} (${res.failed} fallidos)`, 'warning');
+              } else {
+                Toast.show(msg, 'success');
+              }
+              this.loadTable();
+            } else {
+              Toast.show('Error al exportar empleados', 'error');
+            }
+          }, 800);
+        } catch(e) {
+          clearInterval(progressInterval);
+          Modal.close();
+          if (closeBtn) closeBtn.style.display = '';
+          Toast.show(e.message || 'Error de conexión', 'error');
+        }
+      },
+      'warning'
+    );
+  },
+
+  async enrollFingerprint(id) {
+    let emp = null;
+    try { emp = await API.get(`/api/employees/${id}`); } catch(e) { /* nombre opcional */ }
+    const name = emp ? `${emp.first_name} ${emp.last_name}` : 'este empleado';
+    this._enrollEmpId = id;
+
+    const fingerNames = ['Pulgar', 'Índice', 'Medio', 'Anular', 'Meñique'];
+    let options = '';
+    for (let i = 1; i <= 10; i++) {
+      const hand = i <= 5 ? 'Der.' : 'Izq.';
+      const fname = fingerNames[(i - 1) % 5];
+      options += `<option value="${i}" ${i === 2 ? 'selected' : ''}>Dedo ${i} — ${fname} (${hand})</option>`;
+    }
+
+    const fpIcon = `<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11c0 3.5-.5 6.5-1.5 8.5"></path><path d="M8.5 9.5a4 4 0 0 1 7 2.5c0 3-.5 5.5-1 7"></path><path d="M5.5 12a6.5 6.5 0 0 1 12-3.5"></path><path d="M18.5 13c0 3-.5 5-1 6.5"></path><path d="M12 6.5a5.5 5.5 0 0 0-5.5 5.5c0 2-.3 4-1 5.5"></path></svg>`;
+
+    const body = `
+      <div id="fpEnrollSetup" style="padding:8px 4px;">
+        <div style="display:flex;justify-content:center;margin-bottom:16px;">
+          <div style="width:64px;height:64px;border-radius:50%;background:rgba(139,92,246,0.1);color:#8b5cf6;display:flex;align-items:center;justify-content:center;">${fpIcon}</div>
+        </div>
+        <p style="text-align:center;color:var(--text-2);font-size:0.9rem;line-height:1.5;margin-bottom:18px;">
+          Se enrolará la huella de <strong>${name}</strong> en el biométrico. Elija el dedo y presione <strong>Iniciar captura</strong>; luego coloque el dedo en el lector del terminal.
+        </p>
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-2);margin-bottom:6px;">Dedo a registrar</label>
+        <select id="fpFingerSelect" class="form-control" style="width:100%;">${options}</select>
+      </div>
+      <div id="fpEnrollProgress" style="display:none;text-align:center;padding:20px 10px;">
+        <div style="margin:0 auto 18px;width:56px;height:56px;border:4px solid rgba(139,92,246,0.2);border-top-color:#8b5cf6;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <p style="font-weight:700;color:var(--text-1);margin-bottom:6px;">Coloque el dedo en el terminal</p>
+        <p style="color:var(--text-3);font-size:0.85rem;line-height:1.5;">Vaya al biométrico y apoye el dedo cuando el equipo lo pida (puede solicitar 2 o 3 lecturas del mismo dedo). No cierre esta ventana.</p>
+      </div>
+    `;
+    const footer = `
+      <button class="btn btn-secondary" onclick="Modal.close()" id="fpCancelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="fpStartBtn" onclick="EmployeesPage.startFingerCapture()">Iniciar captura</button>
+    `;
+    Modal.open('Enrolar huella dactilar', body, footer);
+  },
+
+  async startFingerCapture() {
+    const id = this._enrollEmpId;
+    const select = document.getElementById('fpFingerSelect');
+    const fingerId = select ? parseInt(select.value) : 1;
+
+    const setup = document.getElementById('fpEnrollSetup');
+    const prog = document.getElementById('fpEnrollProgress');
+    const startBtn = document.getElementById('fpStartBtn');
+    const cancelBtn = document.getElementById('fpCancelBtn');
+
+    if (setup) setup.style.display = 'none';
+    if (prog) prog.style.display = 'block';
+    if (startBtn) startBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    try {
+      const res = await API.post(`/api/employees/${id}/fingerprint/enroll`, { finger_id: fingerId });
+      Modal.close();
+      const q = (res && res.quality != null) ? ` (calidad: ${res.quality})` : '';
+      Toast.show(`Huella registrada con éxito${q}`, 'success');
+    } catch(e) {
+      if (setup) setup.style.display = 'block';
+      if (prog) prog.style.display = 'none';
+      if (startBtn) { startBtn.style.display = ''; startBtn.textContent = 'Reintentar'; }
+      if (cancelBtn) cancelBtn.disabled = false;
+      Toast.show(e.message || 'Error al enrolar la huella', 'error');
+    }
   },
 
   async deleteEmployee(id, name) {

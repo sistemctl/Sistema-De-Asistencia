@@ -252,7 +252,7 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current
             client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
             if client.check_online():
                 device_uid = emp.employee_code
-                client.create_user(device_uid, emp.full_name, emp.card_number)
+                client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
                 emp.device_user_id = device_uid
                 emp.synced_to_device = True
                 db.commit()
@@ -305,7 +305,7 @@ def regenerate_qr(emp_id: int, db: Session = Depends(get_db), current_user=Depen
         if cfg:
             client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
             if client.check_online() and emp.device_user_id:
-                client.create_user(emp.device_user_id, emp.full_name, emp.card_number)
+                client.create_user(emp.device_user_id, emp.full_name, emp.card_number, long_term=emp.is_active)
                 emp.synced_to_device = True
                 db.commit()
     except Exception as e:
@@ -381,7 +381,7 @@ def bulk_update_employees(
         if device_online and client:
             try:
                 device_uid = emp.device_user_id or emp.employee_code
-                client.create_user(device_uid, emp.full_name, emp.card_number)
+                client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
                 emp.device_user_id = device_uid
                 emp.synced_to_device = True
             except Exception:
@@ -440,7 +440,7 @@ def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get
             client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
             if client.check_online():
                 device_uid = emp.device_user_id or emp.employee_code
-                client.create_user(device_uid, emp.full_name, emp.card_number)
+                client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
                 emp.device_user_id = device_uid
                 emp.synced_to_device = True
                 db.commit()
@@ -549,7 +549,7 @@ async def upload_photo(
                 # Si el empleado no está sincronizado al biométrico, registrar sus datos primero
                 if not emp.synced_to_device:
                     try:
-                        client.create_user(device_uid, emp.full_name, emp.card_number)
+                        client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
                         emp.device_user_id = device_uid
                         emp.synced_to_device = True
                         db.commit()
@@ -601,13 +601,120 @@ def sync_employee_to_device(emp_id: int, db: Session = Depends(get_db), _=Depend
 
     device_uid = emp.device_user_id or emp.employee_code
     try:
-        client.create_user(device_uid, emp.full_name, emp.card_number)
+        client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
         emp.device_user_id = device_uid
         emp.synced_to_device = True
         db.commit()
         return {"ok": True, "device_user_id": device_uid}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al sincronizar: {str(e)}")
+
+
+# ── Enrolamiento de huella dactilar ──────────────────────────────────────────
+
+class FingerprintEnrollBody(BaseModel):
+    finger_id: int = 1
+
+
+@router.post("/{emp_id}/fingerprint/enroll")
+def enroll_fingerprint(
+    emp_id: int,
+    body: FingerprintEnrollBody,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    """Enrola la huella de un empleado disparando la captura en el terminal.
+
+    El empleado debe colocar el dedo en el lector del equipo; la captura es
+    bloqueante (el equipo controla los reintentos de lectura). La plantilla
+    resultante se guarda asociada a su usuario en el dispositivo."""
+    from backend.models import DeviceConfig
+    from backend.services.hikvision import HikvisionClient
+    from backend.services.audit import log_action
+
+    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    if body.finger_id < 1 or body.finger_id > 10:
+        raise HTTPException(status_code=400, detail="El número de dedo debe estar entre 1 y 10")
+
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=503, detail="No hay configuración de dispositivo")
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    if not client.check_online():
+        raise HTTPException(status_code=503, detail="Dispositivo fuera de línea")
+
+    device_uid = emp.device_user_id or emp.employee_code
+    try:
+        # 1. Asegurar que el usuario exista en el equipo antes de enrolar.
+        client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
+        emp.device_user_id = device_uid
+        emp.synced_to_device = True
+        db.commit()
+
+        # 2. Capturar la huella (bloqueante: el empleado coloca el dedo).
+        capture = client.capture_fingerprint(finger_no=body.finger_id)
+
+        # 3. Guardar la plantilla asociada al empleado.
+        client.set_fingerprint(device_uid, body.finger_id, capture["fingerData"])
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al enrolar huella: {str(e)}")
+
+    log_action(
+        db,
+        current_user.id,
+        "UPDATE",
+        "Employee",
+        str(emp.id),
+        f"Huella enrolada (dedo {body.finger_id}) para {emp.employee_code} ({emp.full_name})",
+    )
+    return {"ok": True, "finger_id": body.finger_id, "quality": capture.get("quality")}
+
+
+@router.delete("/{emp_id}/fingerprint/{finger_id}")
+def delete_fingerprint(
+    emp_id: int,
+    finger_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    """Elimina una huella específica de un empleado en el terminal."""
+    from backend.models import DeviceConfig
+    from backend.services.hikvision import HikvisionClient
+    from backend.services.audit import log_action
+
+    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=503, detail="No hay configuración de dispositivo")
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    if not client.check_online():
+        raise HTTPException(status_code=503, detail="Dispositivo fuera de línea")
+
+    device_uid = emp.device_user_id or emp.employee_code
+    try:
+        client.delete_fingerprint(device_uid, finger_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al eliminar huella: {str(e)}")
+
+    log_action(
+        db,
+        current_user.id,
+        "DELETE",
+        "Employee",
+        str(emp.id),
+        f"Huella eliminada (dedo {finger_id}) para {emp.employee_code} ({emp.full_name})",
+    )
+    return {"ok": True, "finger_id": finger_id}
 
 
 @router.post("/import-from-device")
@@ -770,7 +877,7 @@ def bulk_sync_employees(
         try:
             device_uid = emp.device_user_id or emp.employee_code
             
-            client.create_user(device_uid, emp.full_name, emp.card_number)
+            client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
             emp.device_user_id = device_uid
             emp.synced_to_device = True
             db.commit()
@@ -794,6 +901,72 @@ def bulk_sync_employees(
     log_action(db, current_user.id, "SYNC", "Employee", None, f"Sincronizados en lote {synced} empleados con el biométrico (Fallidos: {failed}): {', '.join(emp_details)}")
 
     return {"status": "success", "synced": synced, "failed": failed}
+
+
+@router.post("/export-all-to-device")
+def export_all_to_device(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin)
+):
+    """Exporta TODOS los empleados del software al biométrico (info + foto)."""
+    from backend.models import DeviceConfig
+    from backend.services.hikvision import HikvisionClient
+
+    cfg = db.query(DeviceConfig).first()
+    if not cfg:
+        raise HTTPException(status_code=503, detail="No hay configuración de dispositivo")
+
+    client = HikvisionClient(cfg.ip_address, cfg.port, cfg.username, cfg.password)
+    if not client.check_online():
+        raise HTTPException(status_code=503, detail="El dispositivo biométrico está fuera de línea")
+
+    import time
+
+    employees = db.query(Employee).all()
+    total = len(employees)
+    synced = 0
+    failed = 0
+    photos = 0
+    failures = []
+
+    for emp in employees:
+        try:
+            device_uid = emp.device_user_id or emp.employee_code
+
+            client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
+            emp.device_user_id = device_uid
+            emp.synced_to_device = True
+            db.commit()
+
+            if emp.photo_path:
+                dest = UPLOADS_DIR / f"{emp.employee_code}.jpg"
+                if dest.exists():
+                    with open(dest, "rb") as image_file:
+                        photo_bytes = image_file.read()
+                    try:
+                        client.upload_face_photo(device_uid, photo_bytes)
+                        photos += 1
+                    except Exception as photo_err:
+                        logger.error(f"Error al subir foto de {emp.employee_code}: {photo_err}")
+
+            synced += 1
+        except Exception as e:
+            failed += 1
+            failures.append(f"{emp.employee_code} ({emp.full_name})")
+            logger.error(f"Error al exportar empleado {emp.employee_code} al biométrico: {e}")
+
+        # Espaciar las peticiones para no disparar la protección anti-avalancha del equipo
+        time.sleep(0.2)
+
+    db.commit()
+
+    from backend.services.audit import log_action
+    log_action(
+        db, current_user.id, "SYNC", "Employee", None,
+        f"Exportación masiva al biométrico: {synced}/{total} empleados, {photos} fotos (Fallidos: {failed})"
+    )
+
+    return {"status": "success", "total": total, "synced": synced, "failed": failed, "photos": photos}
 
 
 @router.post("/bulk-delete")

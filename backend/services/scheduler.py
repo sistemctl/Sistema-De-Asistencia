@@ -309,7 +309,7 @@ def _sync_pending_employees_to_device(db: Session, client: HikvisionClient):
             try:
                 device_uid = emp.employee_code
                 # 1. Registrar usuario en el terminal
-                client.create_user(device_uid, emp.full_name, emp.card_number)
+                client.create_user(device_uid, emp.full_name, emp.card_number, long_term=emp.is_active)
                 emp.device_user_id = device_uid
                 emp.synced_to_device = True
                 
