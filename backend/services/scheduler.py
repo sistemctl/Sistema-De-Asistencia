@@ -479,9 +479,8 @@ def sync_historic_job(start_date_str: str = None, end_date_str: str = None):
                 events_page = None
                 for attempt in range(3):
                     try:
-                        r = requests.post(
+                        r = client.session.post(
                             f"{client.base_url}/AccessControl/AcsEvent?format=json",
-                            auth=HTTPDigestAuth(client.username, client.password),
                             json=payload,
                             timeout=30
                         )
@@ -552,9 +551,11 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
     valid_events = []
     
     for event in raw_events:
-        event_id = event.get("eventId") or event.get("serialNo") or None
-        if not event_id:
+        base_id = event.get("eventId") or event.get("serialNo") or None
+        if not base_id:
             continue
+        raw_time = event.get("time", "")
+        event_id = f"{base_id}_{raw_time}" if raw_time else str(base_id)
         event_ids.append(str(event_id))
         
         device_uid = event.get("employeeNoString") or event.get("employeeNo")
@@ -577,7 +578,7 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
                 existing_ids.add(r[0])
 
     # 3. Batch query employees to match device_uids
-    # 3. Batch query employees to match device_uids
+    # 3. Batch query employees to match device_uids (por device_user_id o employee_code)
     employee_map = {}
     if device_uids:
         uids_list = list(device_uids)
@@ -587,10 +588,13 @@ def _process_events(db: Session, raw_events: list[dict], cfg) -> int:
                 joinedload(Employee.schedule),
                 joinedload(Employee.department)
             ).filter(
-                Employee.device_user_id.in_(chunk)
+                (Employee.device_user_id.in_(chunk)) | (Employee.employee_code.in_(chunk))
             ).all()
             for emp in emps:
-                employee_map[emp.device_user_id] = emp
+                if emp.device_user_id:
+                    employee_map[str(emp.device_user_id)] = emp
+                if emp.employee_code:
+                    employee_map[str(emp.employee_code)] = emp
 
     new_count = 0
     new_records_data = []
