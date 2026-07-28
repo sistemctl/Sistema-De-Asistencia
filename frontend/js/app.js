@@ -523,12 +523,49 @@ function initTheme() {
   });
 }
 
+// ── Conexión en Tiempo Real WebSocket ──────────────────────────────────────────
+function initWebSocket() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${location.host}/ws`;
+  
+  try {
+    const ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      console.log('⚡ Conexión WebSocket de eventos biométricos activa.');
+    };
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'new_attendance') {
+          const emp = msg.data.employee_name || 'Empleado';
+          const time = msg.data.event_time ? new Date(msg.data.event_time).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : '';
+          Toast.show(`⚡ Marcación Registrada: ${emp} (${time})`, 'success');
+          if (window.location.hash === '#dashboard' || !window.location.hash) {
+            if (typeof DashboardPage !== 'undefined' && DashboardPage.loadKPIs) {
+              DashboardPage.loadKPIs();
+              DashboardPage.loadRecentEvents();
+            }
+          }
+        } else if (msg.type === 'device_status') {
+          updateDeviceBadge();
+        }
+      } catch (e) {}
+    };
+    ws.onclose = () => {
+      setTimeout(initWebSocket, 5000);
+    };
+  } catch (e) {
+    console.warn('WebSocket init exception:', e);
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadUserInfo();
 initTheme();
 loadSystemBranding();
 updateDeviceBadge();
 startClock();
+initWebSocket();
 
 // Determinar la página inicial basada en el hash de la URL
 const initialPage = window.location.hash.slice(1) || 'dashboard';

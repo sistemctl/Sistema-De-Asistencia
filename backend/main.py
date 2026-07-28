@@ -5,13 +5,17 @@ Sistema de Control de Asistencia — Hikvision DS-K1T323MBWX
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
 from backend.config import APP_NAME, APP_VERSION, CORS_ORIGINS, FRONTEND_DIR
-from backend.database import init_db
+from backend.database import init_db, get_db
+
+templates = Jinja2Templates(directory=str(FRONTEND_DIR / "templates"))
 from backend.services.scheduler import start_scheduler, stop_scheduler
 from backend.routers import auth, employees, attendance, device, dashboard, reports, schedules, settings, daily_schedules, holidays, leaves, audit, backup
 
@@ -95,6 +99,36 @@ if FRONTEND_DIR.exists():
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         return response
+
+    @app.get("/app/employees", include_in_schema=False)
+    def serve_employees(request: Request, db: Session = Depends(get_db)):
+        return templates.TemplateResponse(request=request, name="employees.html", context={
+            "system_name": APP_NAME,
+            "company_name": "Sistema de Asistencia",
+            "employees": [],
+            "departments": [],
+            "positions": [],
+            "schedules": []
+        })
+
+    @app.get("/app/reports", include_in_schema=False)
+    def serve_reports(request: Request, db: Session = Depends(get_db)):
+        return templates.TemplateResponse(request=request, name="reports.html", context={
+            "system_name": APP_NAME,
+            "company_name": "Sistema de Asistencia",
+            "attendance_records": [],
+            "active_filters": {}
+        })
+
+    @app.get("/app/device", include_in_schema=False)
+    def serve_device(request: Request, db: Session = Depends(get_db)):
+        return templates.TemplateResponse(request=request, name="device.html", context={
+            "system_name": APP_NAME,
+            "company_name": "Sistema de Asistencia",
+            "device_config": None,
+            "device_status": None,
+            "device_logs": []
+        })
 
     @app.get("/favicon.svg", include_in_schema=False)
     def serve_favicon_svg():
