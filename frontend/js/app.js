@@ -24,7 +24,9 @@ function navigate(page) {
 
   // Control de accesos en el frontend
   const user = Auth.user();
-  if ((basePage === 'users' || basePage === 'device' || basePage === 'system') && user?.role !== 'admin') {
+  if (basePage === 'users' && !Auth.canManageUsers()) {
+    page = 'dashboard';
+  } else if ((basePage === 'device' || basePage === 'system') && user?.role !== 'admin') {
     page = 'dashboard';
   }
 
@@ -185,6 +187,10 @@ function loadUserInfo() {
   document.getElementById('userAvatar').textContent = user.full_name.charAt(0).toUpperCase();
 
 
+  const navUsers = document.getElementById('nav-users');
+  if (navUsers) {
+    navUsers.style.display = Auth.canManageUsers() ? 'flex' : 'none';
+  }
   const navDevice = document.getElementById('nav-device');
   if (navDevice) {
     navDevice.style.display = user.role === 'admin' ? 'flex' : 'none';

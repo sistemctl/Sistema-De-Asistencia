@@ -6,14 +6,14 @@ const UsersPage = {
 
   async render(subTab = 'list') {
     this.currentSubTab = subTab;
-    const isSuper = Auth.isAdmin();
+    const isSuper = Auth.canManageUsers();
 
     if (!isSuper) {
       document.getElementById(this.targetElId).innerHTML = `
         <div class="empty-state">
           <div class="icon">🔒</div>
           <h3>Acceso Denegado</h3>
-          <p>Solo los Super Administradores pueden gestionar los usuarios del sistema.</p>
+          <p>No tienes permisos para gestionar usuarios del sistema.</p>
         </div>`;
       return;
     }
@@ -118,7 +118,7 @@ const UsersPage = {
                 <tr>
                   <td style="padding: 10px; font-weight: 500;">Gestionar Usuarios</td>
                   <td style="text-align: center; padding: 10px;">✔️</td>
-                  <td style="text-align: center; padding: 10px;">❌</td>
+                  <td style="text-align: center; padding: 10px;">✔️</td>
                   <td style="text-align: center; padding: 10px;">❌</td>
                 </tr>
                 <tr>
@@ -330,7 +330,7 @@ const UsersPage = {
       if (roleSelect) {
         const handleRoleChange = () => {
           const r = roleSelect.value;
-          document.getElementById('pManageUsers').checked = (r === 'admin');
+          document.getElementById('pManageUsers').checked = (r === 'admin' || r === 'hr_admin');
           document.getElementById('pManageDevice').checked = (r === 'admin');
           document.getElementById('pManageSettings').checked = (r === 'admin');
           document.getElementById('pManageEmployees').checked = (r === 'admin' || r === 'hr_admin');
@@ -372,7 +372,7 @@ const UsersPage = {
       if (id) {
         // Actualización
         const isActive = document.getElementById('uIsActive').value === 'true';
-        await API.put(`/api/auth/users/${id}`, {
+        const payload = {
           full_name: fullName,
           role: role,
           is_active: isActive,
@@ -385,8 +385,12 @@ const UsersPage = {
           perm_manage_attendance,
           perm_sync_device,
           perm_view_employees,
-          force_password_change: document.getElementById('uForcePwd') ? document.getElementById('uForcePwd').checked : u.force_password_change
-        });
+        };
+        const forcePwdEl = document.getElementById('uForcePwd');
+        if (forcePwdEl) {
+          payload.force_password_change = forcePwdEl.checked;
+        }
+        await API.put(`/api/auth/users/${id}`, payload);
         Toast.show('Usuario actualizado con éxito', 'success');
       } else {
         // Creación
