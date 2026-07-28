@@ -333,7 +333,7 @@ def generate_attendance_excel(summaries: list, granularity: str, columns: Option
                 "unpaid_leave": "Licencia No Remunerada",
                 "suspension": "Suspensión"
             }
-            status = "OK"
+            status = "PRESENTE"
             if s.get("justification"):
                 if s["justification"]["override_status"] == "present":
                     status = "Justificado"
@@ -348,10 +348,6 @@ def generate_attendance_excel(summaries: list, granularity: str, columns: Option
                     status = "Descanso"
                 else:
                     status = "Ausente"
-            elif s["missing_punches"]:
-                status = "Incompleto"
-            elif s["is_late"]:
-                status = "Tardanza"
 
             try:
                 formatted_date = datetime.strptime(s["date"], "%Y-%m-%d").strftime("%d/%m/%Y")

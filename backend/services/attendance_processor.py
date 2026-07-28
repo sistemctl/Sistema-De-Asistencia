@@ -222,11 +222,17 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
                 summary["auth_methods"]["entry_1"] = best_entry.auth_method
                 summary["is_present"] = True
                 
-                # Check late/absent based on delay
+                # Check late based on delay
                 diff_minutes = (best_entry.event_time - target_start).total_seconds() / 60.0
-                if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
-                    summary["is_present"] = False
-                elif mark_late_enable and diff_minutes > mark_late_limit_minutes:
+                if mark_late_enable and diff_minutes > mark_late_limit_minutes:
+                    summary["is_late"] = True
+            elif day_records:
+                best_entry = day_records[0]
+                summary["punches"]["entry_1"] = best_entry.event_time.isoformat()
+                summary["auth_methods"]["entry_1"] = best_entry.auth_method
+                summary["is_present"] = True
+                diff_minutes = (best_entry.event_time - target_start).total_seconds() / 60.0
+                if diff_minutes > mark_late_limit_minutes:
                     summary["is_late"] = True
             else:
                 if require_checkin:
@@ -247,13 +253,8 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
                 diff_minutes = (target_end - best_exit.event_time).total_seconds() / 60.0
                 if diff_minutes > 0: # Left early
                     summary["is_early_exit"] = True
-                    if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
-                        summary["is_present"] = False
             else:
                 if require_checkout:
-                    if no_checkout_enable:
-                        if no_checkout_status == "Absent":
-                            summary["is_present"] = False
                     summary["missing_punches"] = True
 
         # Calculate hours_worked for continuous shift (common to both flexible and strict)
@@ -301,9 +302,15 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             summary["is_present"] = True
             
             diff_minutes = (best.event_time - t_start).total_seconds() / 60.0
-            if mark_absent_if_late_enable and diff_minutes > mark_absent_if_late_limit_minutes:
-                summary["is_present"] = False
-            elif mark_late_enable and diff_minutes > mark_late_limit_minutes:
+            if mark_late_enable and diff_minutes > mark_late_limit_minutes:
+                summary["is_late"] = True
+        elif day_records:
+            best = day_records[0]
+            summary["punches"]["entry_1"] = best.event_time.isoformat()
+            summary["auth_methods"]["entry_1"] = best.auth_method
+            summary["is_present"] = True
+            diff_minutes = (best.event_time - t_start).total_seconds() / 60.0
+            if diff_minutes > mark_late_limit_minutes:
                 summary["is_late"] = True
         else:
             if require_checkin:
@@ -336,13 +343,6 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
             diff_minutes = (t_end - best.event_time).total_seconds() / 60.0
             if diff_minutes > 0: # Left early
                 summary["is_early_exit"] = True
-                if mark_absent_if_early_checkout_enable and diff_minutes > mark_absent_if_early_checkout_limit_minutes:
-                    summary["is_present"] = False
-        else:
-            if require_checkout:
-                if no_checkout_enable:
-                    if no_checkout_status == "Absent":
-                        summary["is_present"] = False
 
         # Check missing punches
         punches = summary["punches"]
@@ -367,6 +367,9 @@ def calculate_daily_summary(employee: Employee, records: List[AttendanceRecord],
                 summary["hours_worked_str"] = f"{h} h {m:02d} min"
         except Exception:
             pass
+
+    if day_records:
+        summary["is_present"] = True
 
     return _apply_justification(summary, justification)
 

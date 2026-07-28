@@ -247,8 +247,9 @@ const AttendancePage = {
       };
       
       tbody.innerHTML = data.items.map(r => {
-        let statusBadge = '<span class="badge badge-green">OK</span>';
-        if (!r.is_present) {
+        const hasPunch = r.is_present || (r.punches && (r.punches.entry_1 || r.punches.exit_1 || r.punches.entry_2 || r.punches.exit_2));
+        let statusBadge = '<span class="badge badge-green">PRESENTE</span>';
+        if (!hasPunch) {
           if (r.is_holiday) {
             statusBadge = '<span class="badge badge-purple">Festivo</span>';
           } else if (r.is_off) {
@@ -257,8 +258,6 @@ const AttendancePage = {
             statusBadge = '<span class="badge badge-red">Ausente</span>';
           }
         }
-        else if (r.missing_punches) statusBadge = '<span class="badge badge-yellow">Incompleto</span>';
-        else if (r.is_late) statusBadge = '<span class="badge badge-yellow">Tardanza</span>';
         
         const isSplit = r.schedule_type === 'split';
         

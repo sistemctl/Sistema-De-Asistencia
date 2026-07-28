@@ -436,7 +436,7 @@ def _get_employee_flowables(
                 "unpaid_leave": ("Licencia No Rem.", "#4f46e5"),
                 "suspension": ("Suspensión", "#b91c1c")
             }
-            status_text = "OK"
+            status_text = "PRESENTE"
             status_color = "#166534"
             if s.get("justification"):
                 status_color = "#7c3aed"
@@ -468,12 +468,6 @@ def _get_employee_flowables(
                     else:
                         status_text = "Descanso"
                         status_color = "#475569"
-            elif s.get("missing_punches", False):
-                status_text = "Incompleto"
-                status_color = "#854d0e"
-            elif s.get("is_late", False):
-                status_text = "Tardanza"
-                status_color = "#9a3412"
 
             status_paragraph = Paragraph(f"<b><font color='{status_color}'>{status_text}</font></b>", cell_bold_style)
 

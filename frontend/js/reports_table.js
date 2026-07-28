@@ -112,8 +112,9 @@ const ReportsTable = {
           : '<span style="color:var(--text-3); font-style:italic;">Sin departamento</span>';
 
         if (repGranularity === 'daily') {
-          let statusBadge = '<span class="corp-badge corp-badge-present">OK</span>';
-          if (!r.is_present) {
+          const hasPunch = r.is_present || (r.punches && (r.punches.entry_1 || r.punches.exit_1 || r.punches.entry_2 || r.punches.exit_2));
+          let statusBadge = '<span class="corp-badge corp-badge-present">PRESENTE</span>';
+          if (!hasPunch) {
             if (r.is_holiday) {
               statusBadge = '<span class="corp-badge corp-badge-holiday">Festivo</span>';
             } else if (r.is_off) {
@@ -122,8 +123,6 @@ const ReportsTable = {
               statusBadge = '<span class="corp-badge corp-badge-absent">Ausente</span>';
             }
           }
-          else if (r.missing_punches) statusBadge = '<span class="corp-badge corp-badge-late">Incompleto</span>';
-          else if (r.is_late) statusBadge = '<span class="corp-badge corp-badge-late">Tardanza</span>';
 
           const isSplit = r.schedule_type === 'split';
           const isFlexible = r.schedule_type === 'flexible';
